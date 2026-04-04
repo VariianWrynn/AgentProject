@@ -27,7 +27,7 @@ from pymilvus import (
     utility,
 )
 from sentence_transformers import SentenceTransformer
-import PyPDF2
+import fitz  # pymupdf — better CJK/table PDF extraction than PyPDF2
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -61,13 +61,12 @@ def load_txt(file_path: str) -> str:
 
 
 def load_pdf(file_path: str) -> str:
-    """Extract text from a PDF file."""
+    """Extract text from a PDF file using pymupdf (handles CJK fonts and tables)."""
     text_parts: list[str] = []
-    with open(file_path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
+    with fitz.open(file_path) as doc:
+        for page in doc:
+            page_text = page.get_text()
+            if page_text.strip():
                 text_parts.append(page_text)
     return "\n".join(text_parts)
 
@@ -104,11 +103,19 @@ def clean_text(text: str) -> str:
 # ===================================================================
 # 3. Chunking (token-level, with overlap)
 # ===================================================================
-class TokenChunker:
-    """Split text into chunks of roughly `chunk_size` tokens with overlap.
+class ParagraphChunker:
+    """Paragraph-aware chunker that respects semantic boundaries.
 
-    Uses the tokenizer from the embedding model for accurate token counts.
-    Falls back to whitespace splitting if no tokenizer is available.
+    Algorithm:
+    1. Split text at paragraph breaks (double newlines).
+    2. Merge consecutive paragraphs greedily up to `chunk_size` tokens.
+    3. Only split *within* a paragraph when it alone exceeds `chunk_size`.
+    4. Carry a `chunk_overlap`-token tail into the next chunk.
+
+    Benefits over pure token-sliding:
+    - Table rows and numbered lists stay in one chunk.
+    - Sentence boundaries are not cut mid-way.
+    - Numerical context (column headers + data rows) is preserved.
     """
 
     def __init__(
@@ -117,14 +124,13 @@ class TokenChunker:
         chunk_overlap: int = CHUNK_OVERLAP,
         tokenizer=None,
     ):
-        self.chunk_size = chunk_size
+        self.chunk_size    = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.tokenizer = tokenizer
+        self.tokenizer     = tokenizer
 
     def _tokenize(self, text: str) -> list[str]:
         if self.tokenizer is not None:
             return self.tokenizer.tokenize(text)
-        # Fallback: whitespace tokens
         return text.split()
 
     def _detokenize(self, tokens: list[str]) -> str:
@@ -133,22 +139,49 @@ class TokenChunker:
         return " ".join(tokens)
 
     def chunk(self, text: str) -> list[str]:
-        tokens = self._tokenize(text)
-        if not tokens:
+        # Split into paragraphs on two-or-more consecutive newlines
+        paragraphs = re.split(r"\n{2,}", text)
+        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+        if not paragraphs:
             return []
 
         chunks: list[str] = []
-        start = 0
-        while start < len(tokens):
-            end = start + self.chunk_size
-            chunk_tokens = tokens[start:end]
-            chunk_text = self._detokenize(chunk_tokens).strip()
+        buf: list[str] = []   # token buffer for current chunk
+
+        for para in paragraphs:
+            para_tokens = self._tokenize(para)
+            if not para_tokens:
+                continue
+
+            # Would adding this paragraph overflow the chunk?
+            if buf and len(buf) + len(para_tokens) > self.chunk_size:
+                # Flush buffer
+                chunk_text = self._detokenize(buf).strip()
+                if chunk_text:
+                    chunks.append(chunk_text)
+                # Overlap: carry the last N tokens forward
+                buf = buf[-self.chunk_overlap:] if self.chunk_overlap else []
+
+            buf.extend(para_tokens)
+
+            # If a single paragraph is larger than chunk_size, slice it
+            while len(buf) > self.chunk_size:
+                chunk_text = self._detokenize(buf[: self.chunk_size]).strip()
+                if chunk_text:
+                    chunks.append(chunk_text)
+                buf = buf[self.chunk_size - self.chunk_overlap :]
+
+        # Flush remaining tokens
+        if buf:
+            chunk_text = self._detokenize(buf).strip()
             if chunk_text:
                 chunks.append(chunk_text)
-            if end >= len(tokens):
-                break
-            start = end - self.chunk_overlap
+
         return chunks
+
+
+# Keep old name as alias so external code that imports TokenChunker still works
+TokenChunker = ParagraphChunker
 
 
 # ===================================================================
@@ -363,6 +396,15 @@ class RAGPipeline:
         """Return total number of entities in the collection."""
         self.collection.flush()
         return self.collection.num_entities
+
+    def list_sources(self) -> list[str]:
+        """Return distinct source filenames stored in the collection."""
+        results = self.collection.query(
+            expr="chunk_id == 0",   # first chunk of each doc → one row per source
+            output_fields=["source"],
+            limit=1000,
+        )
+        return sorted({r["source"] for r in results})
 
     def drop_collection(self) -> None:
         """Drop the entire collection (destructive)."""
