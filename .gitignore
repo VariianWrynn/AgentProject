@@ -9,3 +9,22 @@ build/
 venv/
 *.log
 .DS_Store
+
+# Context management — personal data, not for public repo
+resume-data/
+troubleshooting-log/
+
+# Generated / runtime files
+data/sales.db
+data/badcases.jsonl
+
+# IDE and local tooling
+.vscode/
+.claude/
+
+# Personal notes and screenshots
+record/
+简历bullet.txt
+
+# Binary test documents (recreated manually)
+test_files/*.pdf
