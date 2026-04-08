@@ -1,3 +1,4 @@
+# Legacy module — core logic migrated to langgraph_agent.py
 """
 ReAct Decision Engine
 =====================
@@ -406,99 +407,8 @@ class ReActEngine:
         self._reflector = Reflector(self._llm)
         self._redis     = redis_client
 
-    def run(self, question: str, session_id: Optional[str] = None) -> dict:
-        """
-        Execute Plan → Act → Reflect.
-
-        Returns:
-          session_id, question, answer, steps_taken, termination_reason, steps
-        """
-        sid    = session_id or str(uuid.uuid4())[:8]
-        memory = Memory(sid, self._redis)
-        memory.clear()
-        memory.save_question(question)
-
-        logger.info("=== ReAct session=%s | question: %s", sid, question)
-
-        # ---- Phase 1: Plan ----
-        plan          = self._planner.plan(question)
-        memory.save_plan(plan)
-        pending_steps = list(plan.get("steps", []))
-
-        executed      = 0
-        answer        = ""
-        termination   = "max_steps_reached"
-
-        # ---- Phase 2: Act → Reflect loop ----
-        while executed < MAX_STEPS and pending_steps:
-            step = pending_steps.pop(0)
-            executed += 1
-            logger.info(
-                "--- Step %d/%d: %s('%s')",
-                executed, MAX_STEPS, step["action"], step["query"],
-            )
-
-            result     = self._executor.execute(step)
-            context    = memory.format_context()
-            reflection = self._reflector.reflect(
-                question, step, result, context, len(pending_steps)
-            )
-
-            memory.append_step({
-                "step_id":  executed,
-                "action":   step["action"],
-                "query":    step["query"],
-                "purpose":  step.get("purpose", ""),
-                "result":   result,
-                "decision": reflection.get("decision", ""),
-                "reason":   reflection.get("reason", ""),
-            })
-
-            decision = reflection.get("decision", "continue")
-
-            if decision == "done":
-                answer      = reflection.get("answer", "")
-                termination = "done"
-                break
-
-            if decision == "replan" and executed < MAX_STEPS:
-                logger.info("[ReAct] Replanning after %d steps.", executed)
-                new_plan      = self._planner.plan(question, memory.format_context())
-                memory.save_plan(new_plan)
-                budget        = MAX_STEPS - executed
-                pending_steps = list(new_plan.get("steps", []))[:budget]
-
-            # "continue" with no steps left → replan to find more specific data
-            if decision == "continue" and not pending_steps and executed < MAX_STEPS:
-                logger.info("[ReAct] Continue but no steps left — replanning.")
-                new_plan      = self._planner.plan(question, memory.format_context())
-                memory.save_plan(new_plan)
-                budget        = MAX_STEPS - executed
-                pending_steps = list(new_plan.get("steps", []))[:budget]
-
-        # ---- Phase 3: Synthesise if not already done ----
-        if not answer:
-            answer = self._synthesise(question, memory.format_context())
-
-        return {
-            "session_id":         sid,
-            "question":           question,
-            "answer":             answer,
-            "steps_taken":        executed,
-            "termination_reason": termination,
-            "steps":              memory.load_steps(),
-        }
-
-    def _synthesise(self, question: str, context: str) -> str:
-        raw = self._llm.chat(
-            "You are a helpful assistant. Using ONLY the research steps provided, "
-            "write a clear, direct answer to the question. "
-            "Output plain text only — absolutely no tool calls, no XML tags, no JSON, no markdown code blocks.",
-            f"Question: {question}\n\nResearch steps:\n{context}\n\nAnswer:",
-        )
-        # Strip any tool-call markup that some models may inject (e.g. MiniMax)
-        raw = re.sub(r"<[a-zA-Z_:][^>]*>.*?</[a-zA-Z_:][^>]*>", "", raw, flags=re.DOTALL)
-        return raw.strip()
+    # run() and _synthesise() removed — orchestration moved to langgraph_agent.py
+    pass
 
 
 # ===========================================================================

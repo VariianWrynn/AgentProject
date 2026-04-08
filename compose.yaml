@@ -1,0 +1,6 @@
+services:
+  agentproject:
+    image: agentproject
+    build:
+      context: .
+      dockerfile: ./Dockerfile

@@ -1,0 +1,31 @@
+{
+  "tables": {
+    "sales": {
+      "description": "销售订单记录表，存储每笔销售交易的详细信息，包括产品名称、销售地区、金额和日期",
+      "columns": {
+        "id":        {"type": "INTEGER", "meaning": "销售记录唯一主键", "example": "1"},
+        "product":   {"type": "TEXT",    "meaning": "销售产品名称，与products.product_name关联", "example": "笔记本电脑"},
+        "region":    {"type": "TEXT",    "meaning": "销售区域，取值：华东/华南/华北", "example": "华东"},
+        "amount":    {"type": "REAL",    "meaning": "单笔销售金额（人民币元）", "example": "5800.00"},
+        "sale_date": {"type": "TEXT",    "meaning": "销售日期，格式YYYY-MM-DD", "example": "2025-10-15"}
+      }
+    },
+    "products": {
+      "description": "产品信息表，存储所有在售产品的类别和单价信息",
+      "columns": {
+        "id":           {"type": "INTEGER", "meaning": "产品唯一主键", "example": "1"},
+        "product_name": {"type": "TEXT",    "meaning": "产品名称，与sales.product对应", "example": "笔记本电脑"},
+        "category":     {"type": "TEXT",    "meaning": "产品类别：电子产品/家电/服装/食品/办公", "example": "电子产品"},
+        "unit_price":   {"type": "REAL",    "meaning": "产品单价（人民币元）", "example": "5999.00"}
+      }
+    }
+  },
+  "term_dict": {
+    "营收":     "SUM(amount)",
+    "总销售额": "SUM(amount)",
+    "上个月":   "strftime('%Y-%m', sale_date) = strftime('%Y-%m', date('now', '-1 month'))",
+    "上季度":   "sale_date >= date('now','start of month','-3 months') AND sale_date < date('now','start of month')",
+    "高价值":     "amount > 5000",
+    "高价值订单": "amount > 5000"
+  }
+}
