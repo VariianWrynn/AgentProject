@@ -33,6 +33,7 @@ from react_engine import (
     REDIS_PORT,
 )
 from tools.text2sql_tool import Text2SQLTool
+from memory.memgpt_memory import MemGPTMemory
 
 logger = logging.getLogger("langgraph_agent")
 
@@ -44,6 +45,7 @@ _rag        = RAGPipeline()
 _tools      = Tools(_rag)
 _text2sql   = Text2SQLTool()
 _redis_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+memgpt      = MemGPTMemory(rag=_rag)   # reuses already-loaded BGE-m3
 
 LANGGRAPH_TTL = 7200   # 2 h Redis TTL
 MAX_ITER      = 3
@@ -71,8 +73,19 @@ _ROUTER_SYSTEM = """\
 You are an intent classifier. Classify the user question into exactly one of:
   data_query  — questions about sales figures, revenue, product rankings, regional data
   analysis    — questions about documents, knowledge base content, document summaries
-  research    — questions requiring web search or broad research
-  general     — greetings, chitchat, weather, anything unrelated to the above
+  research    — questions requiring web search or broad research, OR the user is sharing
+                personal background / role / preferences / career changes (so the agent
+                can remember this via the research pipeline)
+  general     — ONLY pure greetings ("hi", "hello", "how are you"), small talk with
+                zero information content, or completely off-topic chitchat (e.g. weather)
+
+IMPORTANT rules:
+- If the user mentions their job title, region, interests, tools, or any personal/work context
+  → classify as "research" (NOT "general") so the memory layer can capture this.
+- If the user describes a career/role change ("我换岗位了", "I moved to a new team")
+  → classify as "research".
+- If the user asks to analyse sales data or generate reports → "data_query".
+- Only classify as "general" when there is truly no useful information to extract or store.
 
 Return ONLY valid JSON: {"intent": "<one of the four values above>"}
 """
@@ -131,7 +144,12 @@ def planner_node(state: AgentState) -> dict:
     except Exception:
         kb_hint = "(knowledge base unavailable)"
 
-    system = _PLANNER_SYSTEM_V2.replace("{kb_sources_hint}", kb_hint)
+    core_mem   = memgpt.get_core_memory(state["session_id"])
+    mem_prefix = (
+        f"[记忆]\npersona: {core_mem['persona']}\n"
+        f"human: {core_mem['human']}\n\n"
+    )
+    system = mem_prefix + _PLANNER_SYSTEM_V2.replace("{kb_sources_hint}", kb_hint)
 
     # When replanning, provide prior step context
     user_msg = state["question"]
@@ -215,10 +233,60 @@ def reflector_node(state: AgentState) -> dict:
     logger.info("[Reflector] confidence=%.2f  decision=%s", confidence, decision)
     print(f"[Reflector] confidence={confidence:.2f}  decision={decision}")
 
+    # === Memory judgment — runs AFTER reflection, does NOT alter decision/confidence ===
+    updated_steps = list(state["steps_executed"])   # may be extended by archival search
+    _MEM_SYSTEM = (
+        "你是记忆管理器。根据本次执行结果，主动判断是否需要操作长期记忆。\n"
+        "请遵循以下规则（按优先级）：\n"
+        "1. 用户提到自己的职位、地区、兴趣方向、技术偏好、工作变动 → 必须 core_memory_append\n"
+        "2. 本次查询产生了具体的数据结论（销售排名、金额汇总、文档关键信息等），"
+        "且该结论未来session可能被引用 → 必须 archival_memory_insert\n"
+        "3. 当前问题需要参考过去session的历史信息或结论 → archival_memory_search\n"
+        "4. 以上都不满足（纯粹的问候或无信息量的交流）→ 返回 none\n\n"
+        "注意：宁可多存储，不要漏存。数据查询结果、文档摘要结论、用户偏好均应归档。\n"
+        "返回JSON: {\"action\": \"core_memory_append\"|\"archival_memory_insert\"|"
+        "\"archival_memory_search\"|\"none\", \"block\": \"human\", \"content\": \"<内容>\"}"
+    )
+    _mem_user = (
+        f"当前问题：{state['question']}\n"
+        f"本次执行结果摘要：{_steps_context(state['steps_executed'])}\n"
+        "请判断需要执行哪个memory操作，返回JSON：\n"
+        "{\"action\": \"core_memory_append\"|\"archival_memory_insert\"|"
+        "\"archival_memory_search\"|\"none\","
+        " \"block\": \"human\","
+        " \"content\": \"<内容字符串>\"}"
+    )
+    try:
+        mem_result    = _llm.chat_json(_MEM_SYSTEM, _mem_user, temperature=0.1)
+        mem_action  = mem_result.get("action", "none")
+        mem_content = mem_result.get("content", "")
+
+        if mem_action == "core_memory_append" and mem_content:
+            memgpt.core_memory_append(
+                state["session_id"], mem_result.get("block", "human"), mem_content
+            )
+        elif mem_action == "archival_memory_insert" and mem_content:
+            memgpt.archival_memory_insert(state["session_id"], mem_content)
+        elif mem_action == "archival_memory_search" and mem_content:
+            hits = memgpt.archival_memory_search(mem_content)
+            if hits:
+                updated_steps.append({
+                    "step_id": "memory_search",
+                    "action":  "archival_memory_search",
+                    "query":   mem_content,
+                    "result":  hits,
+                })
+        else:
+            logger.info("[Memory] action=none (no memory operation triggered)")
+            print("[Memory] action=none (no memory operation triggered)")
+    except Exception as _mem_exc:
+        logger.warning("[Memory] judgment failed: %s", _mem_exc)
+
     return {
-        "reflection":   json.dumps(result, ensure_ascii=False),
-        "confidence":   confidence,
-        "final_answer": answer if decision == "done" else "",
+        "reflection":     json.dumps(result, ensure_ascii=False),
+        "confidence":     confidence,
+        "final_answer":   answer if decision == "done" else "",
+        "steps_executed": updated_steps,
     }
 
 

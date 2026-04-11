@@ -234,3 +234,216 @@ LangGraph Router (intent classification)
 
 **To restore context after /compact or /clear**, read this file then say:
 > "I've read day3-checkpoint.md. We're on Day 4, building on the LangGraph+RAG+Text2SQL stack described there. [your task]"
+
+<!-- SECTION1_RAG_RESULTS_START -->
+## SECTION 1 — RAG质量 + ReAct多轮行动 测试结果
+
+| 题目 | 标签 | 结果 | steps | 耗时 |
+| ---- | ---- | ---- | ----- | ---- |
+| VDB-1 | factual | PASS | 1 | 48.8s |
+| VDB-2 | negation | PARTIAL | 1 | 28.7s |
+| VDB-3 | numerical,table,multi-step | PARTIAL | 2 | 78.9s |
+| VDB-4 | unanswerable | PARTIAL | 1 | 46.4s |
+| VDB-5 | conflict,multi-step | PASS | 3 | 95.8s |
+| HR-1 | negation | PASS | 1 | 81.4s |
+| HR-2 | table,conditional | FAIL | 1 | 28.4s |
+| HR-3 | numerical,multi-step | PASS WARN | 1 | 50.4s |
+| HR-4 | conditional,negation | FAIL | 1 | 30.6s |
+| HR-5 | multi-step | PARTIAL | 3 | 55.7s |
+
+**得分**: 4/10 (PASS)  4/10 (PARTIAL)  2/10 (FAIL)
+**multi-step平均steps**: 2.2
+**平均响应时间**: 54.5s
+
+**按维度统计**:
+
+| 维度 | 通过率 |
+| ---- | ------ |
+| negation | 1/3 |
+| multi-step | 2/4 |
+| table | 0/2 |
+| unanswerable | 0/1 |
+| conflict | 1/1 |
+<!-- SECTION1_RAG_RESULTS_END -->
+
+<!-- SECTION2_MEMORY_RESULTS_START -->
+## SECTION 2 — MemGPT记忆写入 + 更新测试 结果
+
+| 测试 | 描述 | 结果 |
+| ---- | ---- | ---- |
+| MEM-1 | Core Memory首次写入 | PASS |
+| MEM-2 | Archival写入验证 | PASS |
+| MEM-3 | 跨session Archival检索 | PASS |
+| MEM-4 | Core Memory更新 | PASS |
+| MEM-5 | Core Memory FIFO上限 | PASS |
+| MEM-6 | 记忆注入影响Planner | PASS |
+
+**记忆测试得分**: 6/6 PASS
+<!-- SECTION2_MEMORY_RESULTS_END -->
+
+<!-- SECTION3_FUSION_RESULTS_START -->
+## SECTION 3 — RAG + MemGPT融合测试 结果
+
+| 测试 | 描述 | 结果 |
+| ---- | ---- | ---- |
+| FUS-1 | RAG结论自动归档 | PASS |
+| FUS-2 | Archival记忆增强RAG | PARTIAL |
+| FUS-3 | 跨文档多轮推理 | PASS |
+| FUS-4 | 三路协同 | PASS |
+| FUS-5 | 路由变化对照 | PASS |
+
+**融合测试得分**: 4/5 PASS
+<!-- SECTION3_FUSION_RESULTS_END -->
+
+<!-- FAIL_CASES_DETAIL_START -->
+## 失败案例详细诊断（首轮测试）
+
+### Section 1 — RAG 失败案例
+
+**VDB-4 [unanswerable] — FAIL**
+- 问题: VectorDB Pro v3.2的月度订阅价格是多少？
+- 诊断: 系统未能识别这是无法回答的问题，输出了幻觉价格信息
+- 期望关键词: ["未提及", "无法", "文档中没有"]
+- 实际: 答案中包含了价格数字（不在文档中），触发 price_guard → FAIL
+- 根本原因: RAG检索未找到相关chunk时，Critic仍基于LLM背景知识生成价格
+
+**HR-4 [conditional, negation] — FAIL**
+- 问题: 员工提交离职申请后，未使用年假补偿比例是150%还是100%？
+- 诊断: 答案包含"150%"（forbidden关键词）
+- 期望: ["100%"]，禁止: ["150%"]
+- 实际: LLM混淆了离职场景(100%)和其他场景(150%)的补偿比例
+- 根本原因: 文档中两种场景均有提及，RAG未能精确区分条件分支
+
+---
+
+### Section 2 — MemGPT 失败案例
+
+**MEM-1 [Core Memory首次写入] — FAIL**
+- 问题: "我是一名数据工程师，主要负责华北地区的业务，对IVF-PQ索引特别感兴趣，以后的分析都聚焦这个方向"
+- Router判断: intent=general → 直接进入Critic，跳过Planner/Executor/Reflector
+- Critic回答: "您好！作为华北地区的数据工程师，关注IVF-PQ索引是个很好的方向。不过我注意到目前没有执行任何研究步骤..."
+- human block: "" (0 chars) — 未写入任何内容
+- 包含关键词: [] (期望: ["数据工程师", "华北", "IVF-PQ"])
+- 根本原因: _ROUTER_SYSTEM将个人背景自我介绍误分类为general，绕过了记忆写入流程
+
+**MEM-2 [Archival写入验证] — FAIL**
+- 问题: "帮我查询华北地区上个季度所有产品类别的销售总额，并总结哪个类别表现最好"
+- archival entities: before → after 未变化（archival_memory_insert未触发）
+- 诊断: _MEM_SYSTEM判断结果为action=none，未将查询结论归档
+- 根本原因: 记忆管理器对"重要数据发现"的判断标准过于保守
+
+**MEM-4 [Core Memory更新] — FAIL**
+- 问题: "我换岗位了，现在负责华南区域，不再关注IVF-PQ了，改为研究HNSW调优"
+- Router判断: intent=general → 直接进入Critic，跳过Reflector
+- Critic回答: "您好！看起来您只是分享了您的工作变动信息，但没有提出具体的问题...请问您具体想了解什么？"
+- human block 更新前/后: 均为空 (未触发core_memory_replace/append)
+- 包含新关键词: [] (期望: ["华南", "HNSW"])
+- 根本原因: 职位变动被_ROUTER_SYSTEM误分类为general
+
+**MEM-5 [Core Memory FIFO上限] — FAIL**
+- 追加8次，每次~250字符，但first_content/last_content仅用content_unit[:50]（约62字符）
+- 实际追加总量: ~62 + 250×6 + 62 = 1624 chars (< 2000上限)
+- 最终总计: 1657字符 ≤ 2000 → cap_ok=True但oldest_gone=False
+- 最旧内容已截断: False → FAIL
+- 根本原因: 测试内容设计不足，总追加量未超过2000字符上限，FIFO机制从未触发
+
+---
+
+### Section 3 — RAG+MemGPT 融合失败案例
+
+**FUS-1 [RAG结论自动归档] — PARTIAL**
+- rag_search执行了3次，获取到文档结论
+- [Memory] action=none — archival_memory_insert未触发
+- archival entities: 未增加（插入前后数量相同）
+- 诊断: _MEM_SYSTEM未能识别文档摘要结论属于"重要数据发现"
+- 根本原因: 记忆管理器对RAG检索结论的归档标准过于保守
+
+**FUS-2 [Archival记忆增强RAG] — PARTIAL**
+- archival_memory_search触发，但top1相似度分数偏低
+- 诊断: 归档内容（来自FUS-1，即使触发了也可能质量不高）与查询问题语义匹配度低
+- 根本原因: FUS-1未能正确归档，导致FUS-2无有效记忆可检索
+
+**FUS-5 [路由变化对照] — PARTIAL**
+- 5a（无SQL注入）: intent=general，tools_used=[]，直接Critic
+- 5b（含SQL注入词"DROP TABLE"）: intent=general，tools_used=[]，直接Critic
+- 两者行为相同（均为general意图直通Critic），无法观察路由差异
+- 根本原因: _ROUTER_SYSTEM将"帮我分析一下最近的数据库销售情况"分类为general
+  实际应分类为data_query，触发text2sql工具后再验证SQL注入防护
+
+---
+
+### 核心诊断总结
+
+| 根本原因 | 影响的测试 | 修复方案 |
+| -------- | --------- | -------- |
+| _ROUTER_SYSTEM将个人背景/职位变动分类为general | MEM-1, MEM-4, FUS-5 | 明确说明个人背景分享→research |
+| _MEM_SYSTEM记忆归档标准过于保守 | MEM-2, FUS-1 | 增强归档规则，宁多勿漏 |
+| MEM-5测试内容总量不足2000字符 | MEM-5 | 改为10次追加 × 250字符 |
+| RAG无法区分条件分支 | HR-4 | 待优化（需要条件检索或重排序） |
+| Critic在无RAG结果时幻觉生成 | VDB-4 | 待优化（需要明确的无结果处理） |
+<!-- FAIL_CASES_DETAIL_END -->
+
+<!-- FAIL_CASES_DETAIL_V2_START -->
+## Post-Fix Failure Case Analysis (Round 2)
+
+**Fixes applied**: _ROUTER_SYSTEM (personal info -> research), _MEM_SYSTEM (aggressive archival), MEM-5 test content size fix
+**Overall improvement**: 14/21 PASS (was 7/21); S2: 2/6->6/6; S3: 2/5->4/5; S1: 3/10->4/10
+
+---
+
+### Section 1 -- Remaining Failures
+
+**VDB-2 [negation] -- PARTIAL**
+- Answer: ANNOY dropped since v3.0, not provided in v3.2
+- Missing exact strings ".e.不支持" or "废弃" (answer uses different phrasing)
+- Semantic meaning correct, keyword matching too strict
+
+**VDB-3 [numerical,table] -- PARTIAL**
+- Expected: ["4.2","6.8","142,000","98,000","82","31"]
+- Got 142,000 / 98,000 QPS correct, missing P99 latency & memory numbers in exact form
+
+**VDB-4 [unanswerable] -- PARTIAL (was FAIL, improved)**
+- Answer: cannot find price info (no hallucinated price)
+- Improvement: no longer returns fake price. Still PARTIAL: answer has "cannot find" but missing all 3 expected keywords
+
+**HR-2 [table] -- FAIL (was PASS, regression)**
+- Expected: ["20"], forbidden: ["15天"]
+- Answer now gives complete vacation table including "15天" for other seniority bands -> forbidden triggered
+- Regression: more complete answers now expose context that triggers forbidden check
+
+**HR-4 [negation] -- FAIL**
+- Answer correctly states 100% for resignation, but also mentions 150% for comparison -> forbidden triggered
+- Semantic content is correct; test forbidden check is too strict for contrastive explanations
+
+**HR-5 [multi-step] -- PARTIAL**
+- Expected: ["3天","无薪","10个工作日"]
+- RAG retrieves general employee rules, mixes with probation rules
+
+---
+
+### Section 3 -- Remaining Failures
+
+**FUS-2 [Archival-enhanced RAG] -- PARTIAL (persistent)**
+- archival_memory_search: NOT triggered in Executor
+- Planner plans rag_search only; archival search only happens in Reflector post-hoc
+- Root cause: Planner has no explicit instruction to check archival memory before rag_search
+- Fix needed: Add archival_memory_search as a Planner tool option
+
+---
+
+### Improvement Summary
+
+| Test | Round 1 | Round 2 | Status |
+| ---- | ------- | ------- | ------ |
+| MEM-1 | FAIL | PASS | Fixed: Router general->research |
+| MEM-2 | FAIL | PASS | Fixed: _MEM_SYSTEM aggressive archival |
+| MEM-4 | FAIL | PASS | Fixed: Router general->research |
+| MEM-5 | FAIL | PASS | Fixed: 10x250-char appends exceed 2000-cap |
+| FUS-1 | PARTIAL | PASS | Fixed: archival insert now triggers |
+| FUS-5 | PARTIAL | PASS | Fixed: Router no longer misclassifies data_query as general |
+| VDB-5 | FAIL | PASS | Improved: better multi-step planning |
+| HR-2 | PASS | FAIL | Regression: complete table answer triggers forbidden keyword |
+| VDB-4 | FAIL | PARTIAL | Improved: no longer hallucinates price |
+| HR-3 | PARTIAL WARN | PASS WARN | Improved: all expected keywords found |
+| FUS-2 | PARTIAL | PARTIAL | Unresolved: Planner needs archival_search tool |
+<!-- FAIL_CASES_DETAIL_V2_END -->
