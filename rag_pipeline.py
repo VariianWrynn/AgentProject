@@ -301,22 +301,52 @@ class RAGPipeline:
             logger.warning("Empty document after cleaning: %s", source)
             return 0
 
-        # Chunk & deduplicate
+        # Chunk & deduplicate within batch
         chunks = self.chunker.chunk(cleaned)
         chunks = deduplicate(chunks)
         logger.info("  %d unique chunks after splitting.", len(chunks))
         if not chunks:
             return 0
 
+        # Compute IDs first so we can cross-check against Milvus
+        ids = [content_hash(c)[:32] for c in chunks]
+
+        # Skip chunks whose content already exists in the collection (global ID check)
+        if self.collection.num_entities > 0:
+            id_expr = "id in [" + ", ".join(f'"{i}"' for i in ids) + "]"
+            existing = self.collection.query(
+                expr=id_expr,
+                output_fields=["id", "source"],
+                limit=len(ids),
+            )
+            existing_by_id = {r["id"]: r["source"] for r in existing}
+            new_indices = [i for i, id_ in enumerate(ids) if id_ not in existing_by_id]
+            if not new_indices:
+                other_sources = set(existing_by_id.values()) - {source}
+                if other_sources:
+                    logger.warning(
+                        "  All %d chunks from '%s' already exist in KB under: %s — skipping.",
+                        len(chunks), source, ", ".join(sorted(other_sources)),
+                    )
+                else:
+                    logger.info(
+                        "  All %d chunks already indexed for '%s'. Skipping.", len(chunks), source
+                    )
+                return 0
+            skipped = len(chunks) - len(new_indices)
+            if skipped:
+                logger.info("  Skipped %d already-indexed chunks.", skipped)
+            chunks = [chunks[i] for i in new_indices]
+            ids    = [ids[i]    for i in new_indices]
+
         # Embed
         embeddings = self.embed(chunks)
 
         # Prepare rows
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        ids = [content_hash(c)[:32] for c in chunks]  # 32-char hex ids
-        chunk_ids = list(range(len(chunks)))
-        sources = [source] * len(chunks)
-        created_ats = [now] * len(chunks)
+        chunk_ids    = list(range(len(chunks)))
+        sources      = [source] * len(chunks)
+        created_ats  = [now]    * len(chunks)
 
         # Insert
         self.collection.insert([ids, chunks, embeddings, sources, chunk_ids, created_ats])
@@ -393,16 +423,26 @@ class RAGPipeline:
     # Utility
     # ------------------------------------------------------------------
     def count(self) -> int:
-        """Return total number of entities in the collection."""
+        """Return number of queryable (non-deleted) entities in the collection.
+
+        Uses a query rather than num_entities because Milvus MVCC keeps
+        tombstoned records in num_entities until the next compaction cycle,
+        causing stale counts immediately after delete().
+        """
         self.collection.flush()
-        return self.collection.num_entities
+        results = self.collection.query(
+            expr="chunk_id >= 0",
+            output_fields=["id"],
+            limit=16384,   # Milvus max per query window
+        )
+        return len(results)
 
     def list_sources(self) -> list[str]:
         """Return distinct source filenames stored in the collection."""
         results = self.collection.query(
-            expr="chunk_id == 0",   # first chunk of each doc → one row per source
+            expr="chunk_id >= 0",
             output_fields=["source"],
-            limit=1000,
+            limit=16384,   # same cap used by count()
         )
         return sorted({r["source"] for r in results})
 
