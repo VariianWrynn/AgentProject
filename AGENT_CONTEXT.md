@@ -59,29 +59,13 @@ Do not defer — metrics are meaningless once you forget the context.
 checkpoints/dayN-checkpoint.md
 ```
 
-Day 3 is already complete. For Day 4 onwards, fill `day4-checkpoint.md`, etc.
-
-### What the placeholders look like
-
-Checkpoints use `___` for metric values inside markdown tables:
-
-```markdown
-| Simple query accuracy   | ___  |
-| Avg response time (ms)  | ___  |
-```
-
-The companion file `resume-data/week1-summary.json` uses `"__FILL__"`:
-
-```json
-"text2sql_simple_accuracy": "__FILL__",
-"langgraph_avg_response_ms": "__FILL__"
-```
+Create check point files when you finish a module. the pattern should follow existing checkpoint file.
 
 **Both must be filled from the same test run.**
 
 ---
 
-### How to fill — step by step
+### How to record result — step by step
 
 #### Step 1: Run the tests and capture output
 
