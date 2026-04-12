@@ -23,6 +23,7 @@ import redis
 from langgraph.graph import END, StateGraph
 
 from agent_state import AgentState
+from mcp_client import MCPClient, MCPCallError
 from rag_pipeline import RAGPipeline
 from react_engine import (
     _PLANNER_SYSTEM,
@@ -46,6 +47,7 @@ _tools      = Tools(_rag)
 _text2sql   = Text2SQLTool()
 _redis_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 memgpt      = MemGPTMemory(rag=_rag)   # reuses already-loaded BGE-m3
+mcp         = MCPClient()              # MCP tool server client (fallback to direct on error)
 
 LANGGRAPH_TTL = 7200   # 2 h Redis TTL
 MAX_ITER      = 3
@@ -187,19 +189,52 @@ def executor_node(state: AgentState) -> dict:
 
         try:
             if action == "rag_search":
-                result = _tools.rag_search(query)
-                hint   = f"chars={len(result)}"
+                try:
+                    hits = mcp.call("rag_search", query, {}, state["session_id"])
+                    result = "\n\n".join(
+                        f"[{i+1}] score={h['score']:.3f}  source={h['source']}\n{h['content'][:600]}"
+                        for i, h in enumerate(hits)
+                    ) or "[NO_MATCH]"
+                except MCPCallError as _e:
+                    print(f"[WARN] MCP fallback for rag_search: {_e}")
+                    # Legacy: direct call, replaced by MCP
+                    result = _tools.rag_search(query)
+                hint = f"chars={len(result)}"
+
             elif action == "web_search":
-                result = _tools.web_search(query)
-                hint   = f"chars={len(result)}"
+                try:
+                    items = mcp.call("web_search", query, {}, state["session_id"])
+                    result = "\n\n".join(
+                        f"[{i+1}] {it.get('title','')}\n    {it.get('url','')}\n    {it.get('snippet','')[:300]}"
+                        for i, it in enumerate(items)
+                    )
+                except MCPCallError as _e:
+                    print(f"[WARN] MCP fallback for web_search: {_e}")
+                    # Legacy: direct call, replaced by MCP
+                    result = _tools.web_search(query)
+                hint = f"chars={len(result)}"
+
             elif action == "text2sql":
-                r      = _text2sql.run(query)
+                try:
+                    r = mcp.call("text2sql", query, {}, state["session_id"])
+                except MCPCallError as _e:
+                    print(f"[WARN] MCP fallback for text2sql: {_e}")
+                    # Legacy: direct call, replaced by MCP
+                    r = _text2sql.run(query)
                 result = json.dumps(r, ensure_ascii=False)
-                rows   = len(r.get("result", []))
+                rows   = len(r.get("result", [])) if isinstance(r, dict) else 0
                 hint   = f"rows={rows}"
+
             elif action == "doc_summary":
-                result = _tools.doc_summary(query)
-                hint   = f"chars={len(result)}"
+                try:
+                    data   = mcp.call("doc_summary", query, {}, state["session_id"])
+                    result = data.get("summary", "") if isinstance(data, dict) else str(data)
+                except MCPCallError as _e:
+                    print(f"[WARN] MCP fallback for doc_summary: {_e}")
+                    # Legacy: direct call, replaced by MCP
+                    result = _tools.doc_summary(query)
+                hint = f"chars={len(result)}"
+
             else:
                 result = f"Unknown action: {action}"
                 hint   = "err"

@@ -81,6 +81,44 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
+
+  # --- MCP Tool Server ---
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: mcp-server
+    ports:
+      - "8000:8000"
+    environment:
+      - MILVUS_HOST=milvus-standalone
+      - REDIS_HOST=redis
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      milvus:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # --- Agent API Server ---
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: api-server
+    ports:
+      - "8001:8001"
+    environment:
+      - MCP_URL=http://mcp-server:8000
+      - REDIS_HOST=redis
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - mcp-server
+      - redis
+    restart: unless-stopped
 volumes:
   etcd_data:
   minio_data:
