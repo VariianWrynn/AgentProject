@@ -1,5 +1,5 @@
 """
-MCP Server — FastAPI tool service layer (port 8000)
+MCP Server — FastAPI tool service layer (port 8002)
 
 Exposes the 4 agent tools as HTTP endpoints plus health check and cache management.
 All endpoints return HTTP 200 even on error; check the `error` field.
@@ -13,16 +13,114 @@ Cache strategy:
 Cache key: mcp_cache:{tool}:{md5(query)}
 
 Start:
-    HF_HUB_OFFLINE=1 python mcp_server.py
+    python mcp_server.py              # HF offline mode on by default
+    python mcp_server.py --no-hf-offline  # allow HuggingFace Hub access
 """
 
+import argparse
 import hashlib
 import json
+import os
+import requests
 import sqlite3
 import sys
 import time
 from datetime import datetime
 from typing import Any
+
+# ── CLI args (parsed before heavy imports) ────────────────────────────────────
+_parser = argparse.ArgumentParser(
+    description="MCP Server",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+_parser.add_argument("--port",       type=int, default=8002,
+                     help="Port to listen on (default: 8002)")
+_parser.add_argument("--hf-offline", dest="hf_offline", action="store_true", default=True,
+                     help="Set HF_HUB_OFFLINE=1 (default: on)")
+_parser.add_argument("--no-hf-offline", dest="hf_offline", action="store_false",
+                     help="Allow HuggingFace Hub network access")
+_parser.add_argument("--kill",       action="store_true", default=False,
+                     help="Kill any process already using --port before starting")
+_args, _ = _parser.parse_known_args()
+
+# Force unbuffered output so logs appear in real-time even when stdout is
+# redirected to a file (e.g. subprocess.Popen with stdout=open(...))
+os.environ.setdefault("PYTHONUNBUFFERED", "1")
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+# ── Tee stdout+stderr → front_end_log/mcp_server.log ─────────────────────────
+_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "front_end_log")
+os.makedirs(_LOG_DIR, exist_ok=True)
+_LOG_FILE = open(os.path.join(_LOG_DIR, "mcp_server.log"), "a", encoding="utf-8",
+                 buffering=1)   # line-buffered
+
+
+class _Tee:
+    """Write to both the original stream and a log file simultaneously."""
+    def __init__(self, original, logfile):
+        self._orig = original
+        self._log  = logfile
+
+    def write(self, data):
+        self._orig.write(data)
+        self._log.write(data)
+
+    def flush(self):
+        self._orig.flush()
+        self._log.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._orig, name)
+
+
+sys.stdout = _Tee(sys.stdout, _LOG_FILE)
+sys.stderr = _Tee(sys.stderr, _LOG_FILE)
+
+import logging as _logging
+_logging.basicConfig(
+    level=_logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    handlers=[
+        _logging.StreamHandler(sys.__stdout__),          # terminal
+        _logging.FileHandler(os.path.join(_LOG_DIR, "mcp_server.log"),
+                             encoding="utf-8"),           # file
+    ],
+)
+
+if _args.hf_offline:
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
+
+def _free_port(port: int) -> None:
+    """Kill any process listening on *port* (Windows + Unix)."""
+    import subprocess, platform
+    if platform.system() == "Windows":
+        result = subprocess.run(
+            ["powershell", "-Command",
+             f"Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue"
+             f" | Select-Object -ExpandProperty OwningProcess"],
+            capture_output=True, text=True,
+        )
+        for pid in result.stdout.strip().splitlines():
+            pid = pid.strip()
+            if pid.isdigit():
+                subprocess.run(["taskkill", "/F", "/PID", pid],
+                               capture_output=True)
+                print(f"[MCP] Killed PID {pid} on port {port}")
+    else:
+        result = subprocess.run(
+            ["lsof", "-ti", f"tcp:{port}"], capture_output=True, text=True
+        )
+        for pid in result.stdout.strip().splitlines():
+            pid = pid.strip()
+            if pid.isdigit():
+                subprocess.run(["kill", "-9", pid])
+                print(f"[MCP] Killed PID {pid} on port {port}")
+
+
+if _args.kill:
+    _free_port(_args.port)
 
 import redis
 from fastapi import FastAPI
@@ -31,9 +129,20 @@ from pydantic import BaseModel
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Load .env so BOCHA_API_KEY and other secrets are available when running directly
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except ImportError:
+    pass
+
 from rag_pipeline import RAGPipeline
 from react_engine import Tools, REDIS_HOST, REDIS_PORT
 from tools.text2sql_tool import Text2SQLTool
+
+# ── Bocha API config ──────────────────────────────────────────────────────────
+_BOCHA_API_KEY = os.getenv("BOCHA_API_KEY", "")
+_BOCHA_URL     = "https://api.bochaai.com/v1/web-search"
 
 # ── cache config ──────────────────────────────────────────────────────────────
 _CACHE_TTL: dict[str, int] = {
@@ -147,16 +256,55 @@ def rag_search(req: ToolRequest) -> ToolResponse:
         return ToolResponse(tool="rag_search", result=None, latency_ms=latency, error=str(exc))
 
 
+def _parse_bocha_response(raw: dict) -> list[dict]:
+    """Normalise Bocha API response to [{title, snippet, url, date}].
+    Shape 1 (standard): {"data": {"webPages": {"value": [{name, snippet, url, dateLastCrawled}]}}}
+    Shape 2 (flat list): top-level list fallback.
+    """
+    try:
+        items = raw["data"]["webPages"]["value"]
+        return [
+            {
+                "title":   item.get("name", ""),
+                "snippet": item.get("snippet", ""),
+                "url":     item.get("url", ""),
+                "date":    item.get("dateLastCrawled", ""),
+            }
+            for item in items
+        ]
+    except (KeyError, TypeError):
+        pass
+    if isinstance(raw, list):
+        return [
+            {
+                "title":   item.get("title", item.get("name", "")),
+                "snippet": item.get("snippet", item.get("body", "")),
+                "url":     item.get("url", item.get("href", "")),
+                "date":    item.get("date", item.get("dateLastCrawled", "")),
+            }
+            for item in raw
+        ]
+    return []
+
+
 @app.post("/tools/web_search", response_model=ToolResponse)
 def web_search(req: ToolRequest) -> ToolResponse:
     # NOT cached — results are time-sensitive
     t0 = time.time()
     try:
-        raw    = list(_tools._ddgs.text(req.query, max_results=5))
-        result = [
-            {"title": r.get("title", ""), "snippet": r.get("body", ""), "url": r.get("href", "")}
-            for r in raw
-        ]
+        headers = {
+            "Authorization": f"Bearer {_BOCHA_API_KEY}",
+            "Content-Type":  "application/json",
+        }
+        body = {
+            "query":     req.query,
+            "count":     10,
+            "freshness": "noLimit",
+            "summary":   True,
+        }
+        resp   = requests.post(_BOCHA_URL, json=body, headers=headers, timeout=15)
+        resp.raise_for_status()
+        result = _parse_bocha_response(resp.json())
         latency = (time.time() - t0) * 1000
         _log("web_search", req.query, latency, cached=False)
         return ToolResponse(tool="web_search", result=result, latency_ms=latency)
@@ -224,13 +372,25 @@ def health() -> dict:
 
     # SQLite
     try:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "sales.db")
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "energy.db")
         conn = sqlite3.connect(db_path)
         conn.execute("SELECT 1")
         conn.close()
         status["sqlite"] = "ok"
     except Exception as exc:
         status["sqlite"] = f"error: {exc}"
+
+    # Bocha API
+    try:
+        bocha_resp = requests.post(
+            _BOCHA_URL,
+            json={"query": "test", "count": 1, "freshness": "noLimit", "summary": False},
+            headers={"Authorization": f"Bearer {_BOCHA_API_KEY}", "Content-Type": "application/json"},
+            timeout=5,
+        )
+        status["bocha"] = "ok" if bocha_resp.status_code == 200 else f"http_{bocha_resp.status_code}"
+    except Exception as exc:
+        status["bocha"] = f"error: {exc}"
 
     # Cache stats
     status["cache_stats"] = {
@@ -262,4 +422,10 @@ def clear_cache() -> dict:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=_args.port)
+
+# Usage:
+#   python mcp_server.py                   # port 8002, HF offline (defaults)
+#   python mcp_server.py --port 8002       # custom port (same as default)
+#   python mcp_server.py --kill            # kill existing process on port first
+#   python mcp_server.py --no-hf-offline   # allow HuggingFace Hub access

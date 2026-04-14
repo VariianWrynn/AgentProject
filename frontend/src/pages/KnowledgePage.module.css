@@ -1,0 +1,35 @@
+.page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topBar {
+  padding-bottom: 4px;
+}
+
+.backLink {
+  font-size: 14px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sub {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
