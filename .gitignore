@@ -17,6 +17,14 @@ troubleshooting-log/
 # Generated / runtime files
 data/sales.db
 data/badcases.jsonl
+logs/
+reports/
+
+# API keys and secrets — NEVER commit
+LLM_API.txt
+bocha_API_key.txt.txt
+*.key.txt
+server_pids.txt
 
 # IDE and local tooling
 .vscode/

@@ -131,9 +131,12 @@ class Memory:
 # LLM client — thin wrapper around openai SDK
 # ===========================================================================
 class LLMClient:
-    def __init__(self) -> None:
-        self._client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
-        self.model   = LLM_MODEL
+    def __init__(self, api_key: str = None, model: str = None, base_url: str = None) -> None:
+        self._client = OpenAI(
+            api_key=api_key or OPENAI_API_KEY,
+            base_url=base_url or OPENAI_BASE_URL,
+        )
+        self.model = model or LLM_MODEL
 
     def chat_json(self, system: str, user: str, temperature: float = 0.2) -> dict:
         """Call LLM expecting a JSON response. Falls back to regex extraction."""

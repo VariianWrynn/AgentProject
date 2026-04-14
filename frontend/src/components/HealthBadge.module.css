@@ -1,0 +1,23 @@
+.badge {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  color: #555;
+}
+
+.service {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: default;
+}
+
+.error {
+  color: #c0392b;
+  font-weight: 500;
+}
+
+.loading {
+  color: #888;
+}

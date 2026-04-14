@@ -1,0 +1,48 @@
+.container {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  margin-top: 12px;
+}
+
+.title {
+  padding: 8px 14px;
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  padding: 8px;
+}
+
+.placeholder {
+  padding: 24px;
+  color: #94a3b8;
+  text-align: center;
+  font-size: 13px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th, .table td {
+  padding: 6px 14px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #64748b;
+}

@@ -1,22 +1,24 @@
 """
 LangGraph Agent
 ===============
-5-node StateGraph that replaces the manual ReAct loop in react_engine.py.
+Dual-graph architecture:
 
-Nodes:  RouterNode → PlannerNode → ExecutorNode → ReflectorNode → CriticNode
-Edges:
-  router   → planner  (intent != general)
-  router   → critic   (intent == general)
-  planner  → executor
-  executor → reflector
-  reflector→ critic   (decision==done OR confidence>=0.7 OR iteration>=MAX_ITER)
-  reflector→ planner  (otherwise, iteration+1)
-  critic   → END
+Graph 1 (legacy /chat): 5-node ReAct loop
+  RouterNode → PlannerNode → ExecutorNode → ReflectorNode → CriticNode
+
+Graph 2 (deep research): 7-node multi-agent pipeline
+  RouterNode → ChiefArchitect → DeepScout → DataAnalyst
+             → LeadWriter → CriticMaster
+             → [re_researching: DeepScout | done: Synthesizer] → END
+
+Graph 2 supports conditional RE_RESEARCHING loop when CriticMaster quality_score < 0.75
+and pending_queries exist.
 """
 
 import json
 import logging
 import re
+import time
 import uuid
 
 import redis
@@ -35,13 +37,14 @@ from react_engine import (
 )
 from tools.text2sql_tool import Text2SQLTool
 from memory.memgpt_memory import MemGPTMemory
+from llm_router import make_llm
 
 logger = logging.getLogger("langgraph_agent")
 
 # ---------------------------------------------------------------------------
 # Shared singletons (initialised once at import time)
 # ---------------------------------------------------------------------------
-_llm        = LLMClient()
+_llm        = LLMClient()   # fallback singleton for legacy /chat nodes
 _rag        = RAGPipeline()
 _tools      = Tools(_rag)
 _text2sql   = Text2SQLTool()
@@ -59,8 +62,9 @@ MAX_ITER      = 3
 # Planner: inject text2sql tool between doc_summary and web_search
 _PLANNER_SYSTEM_V2 = _PLANNER_SYSTEM.replace(
     "  web_search(query)       — searches the internet (last resort fallback)",
-    "  text2sql(query)         — query structured sales database (regions/products/amounts)\n"
-    "                            PREFERRED when intent is data_query\n"
+    "  text2sql(query)         — query structured energy database (company financials,\n"
+    "                            capacity stats, price index) PREFERRED for data_query\n"
+    "                            and market_analysis intents\n"
     "  web_search(query)       — searches the internet (last resort fallback)",
 )
 
@@ -72,24 +76,24 @@ _REFLECTOR_SYSTEM_V2 = _REFLECTOR_SYSTEM.replace(
 
 # Router system prompt
 _ROUTER_SYSTEM = """\
-You are an intent classifier. Classify the user question into exactly one of:
-  data_query  — questions about sales figures, revenue, product rankings, regional data
-  analysis    — questions about documents, knowledge base content, document summaries
-  research    — questions requiring web search or broad research, OR the user is sharing
-                personal background / role / preferences / career changes (so the agent
-                can remember this via the research pipeline)
-  general     — ONLY pure greetings ("hi", "hello", "how are you"), small talk with
-                zero information content, or completely off-topic chitchat (e.g. weather)
+你是能源行业研究助手的意图分类器。将用户问题分类为以下5种意图之一：
 
-IMPORTANT rules:
-- If the user mentions their job title, region, interests, tools, or any personal/work context
-  → classify as "research" (NOT "general") so the memory layer can capture this.
-- If the user describes a career/role change ("我换岗位了", "I moved to a new team")
-  → classify as "research".
-- If the user asks to analyse sales data or generate reports → "data_query".
-- Only classify as "general" when there is truly no useful information to extract or store.
+- policy_query：政策法规查询（碳中和、新能源补贴、电力市场改革、能源安全等政策）
+- market_analysis：市场分析（光伏/风电/储能市场规模、价格趋势、竞争格局）
+- data_query：结构化数据查询（企业财务数据、电力装机数据、需要SQL查询的数字）
+- research：深度研究（需要多步搜索和综合分析的复杂问题）
+- general：一般问答（不需要检索的简单对话）
 
-Return ONLY valid JSON: {"intent": "<one of the four values above>"}
+分类规则：
+- 含"政策"、"补贴"、"法规"、"碳"关键词 → policy_query
+- 含"市场"、"规模"、"价格"、"竞争"关键词 → market_analysis
+- 含"数据"、"多少"、"查询"、"统计"且涉及具体数字 → data_query
+- 复杂综合性问题、需要多来源验证 → research
+- 其他 → general
+
+IMPORTANT: 如果用户提到自己的职位、公司、地区、兴趣方向等个人/工作背景 → 归为 research（便于记忆层捕捉）。
+
+输出JSON：{"intent": "policy_query|market_analysis|data_query|research|general", "reason": "一句话说明"}
 """
 
 # Critic system prompt
@@ -127,7 +131,7 @@ def router_node(state: AgentState) -> dict:
     result = _llm.chat_json(_ROUTER_SYSTEM, state["question"], temperature=0.1)
     intent = result.get("intent", "research")
     # Validate
-    if intent not in ("data_query", "analysis", "research", "general"):
+    if intent not in ("policy_query", "market_analysis", "data_query", "research", "general"):
         intent = "research"
     logger.info("[Router]    intent=%s", intent)
     print(f"[Router]    intent={intent}")
@@ -390,7 +394,7 @@ def _route_reflector(state: AgentState) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Graph construction
+# Graph 1: Legacy 5-node graph (for /chat endpoint)
 # ---------------------------------------------------------------------------
 
 def build_graph():
@@ -416,3 +420,233 @@ def build_graph():
     g.add_edge("critic", END)
 
     return g.compile()
+
+
+# ---------------------------------------------------------------------------
+# Graph 2: Multi-agent deep research nodes
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# SSE event helper (pushes progress events to Redis for /research/stream)
+# ---------------------------------------------------------------------------
+
+def _push_sse_event(session_id: str, event_type: str, content: str,
+                    step: int = 0, tool: str | None = None) -> None:
+    """Push one SSE progress event to Redis list sse_events:{session_id}."""
+    key = f"sse_events:{session_id}"
+    try:
+        event = {
+            "type":    event_type,
+            "content": content,
+            "step":    step,
+            "tool":    tool,
+            "t_ms":    int(time.time() * 1000),
+        }
+        payload = json.dumps(event, ensure_ascii=False)
+        _redis_conn.rpush(key, payload)
+        _redis_conn.expire(key, 3600)
+        logger.info("[SSE] PUSHED type=%s to %s (step=%d)", event_type, key, step)
+        print(f"[SSE] PUSHED type={event_type} to {key}", flush=True)
+    except Exception as _exc:
+        # LOUD logging — this was previously silently swallowed, causing 300s SSE delay
+        logger.error("[SSE] PUSH FAILED for %s: %s", key, _exc)
+        print(f"[SSE] *** PUSH FAILED *** key={key} error={_exc}", flush=True)
+
+
+def chief_architect_node(state: AgentState) -> dict:
+    sid = state.get("session_id", "")
+    logger.info("[ChiefArchitect] START session=%s", sid)
+    t0 = time.time()
+    _push_sse_event(sid, "thinking", "正在规划研究大纲...", step=1)
+    from agents.chief_architect import run as ca_run
+    result = ca_run(dict(state), make_llm("chief_architect"))
+    logger.info("[ChiefArchitect] END duration=%.1fs outline=%d questions=%d",
+                time.time() - t0,
+                len(result.get("outline", [])),
+                len(result.get("research_questions", [])))
+    return result
+
+
+def deep_scout_node(state: AgentState) -> dict:
+    sid = state.get("session_id", "")
+    logger.info("[DeepScout] START session=%s", sid)
+    t0 = time.time()
+    _push_sse_event(sid, "searching", "并行搜索子问题...", step=2)
+    from agents.deep_scout import run as ds_run
+    result = ds_run(dict(state), make_llm("deep_scout"))
+    logger.info("[DeepScout] END duration=%.1fs facts=%d sources=%d",
+                time.time() - t0,
+                len(result.get("facts", [])),
+                len(result.get("raw_sources", [])))
+    return result
+
+
+def data_analyst_node(state: AgentState) -> dict:
+    sid = state.get("session_id", "")
+    logger.info("[DataAnalyst] START session=%s", sid)
+    t0 = time.time()
+    _push_sse_event(sid, "analyzing", "查询能源数据库，生成图表...", step=3)
+    from agents.data_analyst import run as da_run
+    result = da_run(dict(state), make_llm("data_analyst"))
+    logger.info("[DataAnalyst] END duration=%.1fs charts=%d",
+                time.time() - t0,
+                len(result.get("charts_data", [])))
+    return result
+
+
+def lead_writer_node(state: AgentState) -> dict:
+    sid = state.get("session_id", "")
+    logger.info("[LeadWriter] START session=%s", sid)
+    t0 = time.time()
+    _push_sse_event(sid, "writing", "撰写研究报告各章节...", step=4)
+    from agents.lead_writer import run as lw_run
+    result = lw_run(dict(state), make_llm("lead_writer"))
+    draft = result.get("draft_sections", {})
+    logger.info("[LeadWriter] END duration=%.1fs sections=%d summary_len=%d",
+                time.time() - t0,
+                len([k for k in draft if k != "summary"]),
+                len(draft.get("summary", "")))
+    return result
+
+
+def critic_master_node(state: AgentState) -> dict:
+    sid = state.get("session_id", "")
+    iteration = state.get("iteration", 0)
+    logger.info("[CriticMaster] START session=%s iteration=%d", sid, iteration)
+    t0 = time.time()
+    _push_sse_event(sid, "reviewing", f"审核报告质量（第{iteration+1}轮）...", step=5)
+    from agents.critic_master import run as cm_run
+    result = cm_run(dict(state), make_llm("critic_master"))
+
+    # Increment iteration if CriticMaster triggers RE_RESEARCHING
+    if result.get("phase") == "re_researching":
+        result["iteration"] = iteration + 1
+        logger.info("[CriticMaster] RE_RESEARCHING → iteration bumped to %d", iteration + 1)
+
+    logger.info("[CriticMaster] END duration=%.1fs score=%.2f phase=%s issues=%d iter=%d",
+                time.time() - t0,
+                result.get("quality_score", 0.0),
+                result.get("phase", "?"),
+                len(result.get("critic_issues", [])),
+                result.get("iteration", iteration))
+    return result
+
+
+def synthesizer_node(state: AgentState) -> dict:
+    sid = state.get("session_id", "")
+    logger.info("[Synthesizer] START session=%s", sid)
+    t0 = time.time()
+    _push_sse_event(sid, "done", "报告生成完成", step=6)
+    from agents.synthesizer import run as syn_run
+    result = syn_run(dict(state), make_llm("synthesizer"))
+    logger.info("[Synthesizer] END duration=%.1fs answer_len=%d",
+                time.time() - t0,
+                len(result.get("final_answer", "")))
+    return result
+
+
+def _route_critic_master(state: AgentState) -> str:
+    """Route after CriticMaster: re_researching loop or synthesizer.
+
+    Hard limit: after 3 RE_RESEARCHING iterations, force Synthesizer
+    regardless of quality_score to prevent infinite loops.
+    """
+    phase     = state.get("phase", "done")
+    iteration = state.get("iteration", 0)
+
+    if phase == "re_researching" and iteration < 3:
+        logger.info("[CriticMaster] RE_RESEARCHING loop #%d triggered", iteration)
+        return "deep_scout"
+
+    if phase == "re_researching" and iteration >= 3:
+        logger.warning("[CriticMaster] Max iterations reached (%d), forcing Synthesizer", iteration)
+    return "synthesizer"
+
+
+# Graph 2: 7-node deep research pipeline
+def build_research_graph():
+    g = StateGraph(AgentState)
+
+    g.add_node("router",          router_node)
+    g.add_node("chief_architect", chief_architect_node)
+    g.add_node("deep_scout",      deep_scout_node)
+    g.add_node("data_analyst",    data_analyst_node)
+    g.add_node("lead_writer",     lead_writer_node)
+    g.add_node("critic_master",   critic_master_node)
+    g.add_node("synthesizer",     synthesizer_node)
+
+    g.set_entry_point("router")
+    g.add_edge("router",          "chief_architect")
+    g.add_edge("chief_architect", "deep_scout")
+    g.add_edge("deep_scout",      "data_analyst")
+    g.add_edge("data_analyst",    "lead_writer")
+    g.add_edge("lead_writer",     "critic_master")
+    g.add_conditional_edges(
+        "critic_master", _route_critic_master,
+        {"deep_scout": "deep_scout", "synthesizer": "synthesizer"},
+    )
+    g.add_edge("synthesizer", END)
+
+    return g.compile()
+
+
+# ---------------------------------------------------------------------------
+# Convenience: run deep research pipeline with proper initial state
+# ---------------------------------------------------------------------------
+
+def _make_initial_state(question: str, session_id: str, demo_mode: bool = False) -> dict:
+    """Build a valid initial AgentState for the research graph."""
+    return {
+        # Part 1 fields
+        "question":       question,
+        "intent":         "research",
+        "plan":           [],
+        "steps_executed": [],
+        "reflection":     "",
+        "confidence":     0.0,
+        "final_answer":   "",
+        "iteration":      0,
+        "session_id":     session_id,
+        # Part 2 fields
+        "outline":             [],
+        "hypotheses":          [],
+        "research_questions":  [],
+        "facts":               [],
+        "raw_sources":         [],
+        "data_points":         [],
+        "draft_sections":      {},
+        "charts_data":         [],
+        "references":          [],
+        "critic_issues":       [],
+        "pending_queries":     [],
+        "quality_score":       0.0,
+        "phase":               "planning",
+        "demo_mode":           demo_mode,
+    }
+
+
+def run_deep_research(question: str, session_id: str | None = None,
+                      demo_mode: bool = False) -> dict:
+    """
+    Run the full multi-agent deep research pipeline.
+
+    Returns the final AgentState dict.
+    """
+    if session_id is None:
+        session_id = str(uuid.uuid4())[:8]
+
+    # Clear previous SSE events for this session
+    try:
+        _redis_conn.delete(f"sse_events:{session_id}")
+    except Exception:
+        pass
+
+    research_graph = build_research_graph()
+    initial_state  = _make_initial_state(question, session_id, demo_mode)
+
+    logger.info("[DeepResearch] Starting for question='%s' session=%s demo_mode=%s",
+                question[:60], session_id, demo_mode)
+    print(f"[DeepResearch] question='{question[:60]}' session={session_id} demo_mode={demo_mode}")
+
+    final_state = research_graph.invoke(initial_state)
+    return dict(final_state)

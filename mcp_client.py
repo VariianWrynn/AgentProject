@@ -26,7 +26,7 @@ class MCPClient:
         "doc_summary": 30,
     }
 
-    def __init__(self, base_url: str = "http://localhost:8000") -> None:
+    def __init__(self, base_url: str = "http://localhost:8002") -> None:
         self.base_url = base_url.rstrip("/")
         self.session  = requests.Session()
 
