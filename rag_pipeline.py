@@ -27,7 +27,7 @@ from pymilvus import (
     utility,
 )
 from sentence_transformers import SentenceTransformer
-import PyPDF2
+import fitz  # pymupdf — better CJK/table PDF extraction than PyPDF2
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -61,13 +61,12 @@ def load_txt(file_path: str) -> str:
 
 
 def load_pdf(file_path: str) -> str:
-    """Extract text from a PDF file."""
+    """Extract text from a PDF file using pymupdf (handles CJK fonts and tables)."""
     text_parts: list[str] = []
-    with open(file_path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
+    with fitz.open(file_path) as doc:
+        for page in doc:
+            page_text = page.get_text()
+            if page_text.strip():
                 text_parts.append(page_text)
     return "\n".join(text_parts)
 
@@ -104,11 +103,19 @@ def clean_text(text: str) -> str:
 # ===================================================================
 # 3. Chunking (token-level, with overlap)
 # ===================================================================
-class TokenChunker:
-    """Split text into chunks of roughly `chunk_size` tokens with overlap.
+class ParagraphChunker:
+    """Paragraph-aware chunker that respects semantic boundaries.
 
-    Uses the tokenizer from the embedding model for accurate token counts.
-    Falls back to whitespace splitting if no tokenizer is available.
+    Algorithm:
+    1. Split text at paragraph breaks (double newlines).
+    2. Merge consecutive paragraphs greedily up to `chunk_size` tokens.
+    3. Only split *within* a paragraph when it alone exceeds `chunk_size`.
+    4. Carry a `chunk_overlap`-token tail into the next chunk.
+
+    Benefits over pure token-sliding:
+    - Table rows and numbered lists stay in one chunk.
+    - Sentence boundaries are not cut mid-way.
+    - Numerical context (column headers + data rows) is preserved.
     """
 
     def __init__(
@@ -117,14 +124,13 @@ class TokenChunker:
         chunk_overlap: int = CHUNK_OVERLAP,
         tokenizer=None,
     ):
-        self.chunk_size = chunk_size
+        self.chunk_size    = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.tokenizer = tokenizer
+        self.tokenizer     = tokenizer
 
     def _tokenize(self, text: str) -> list[str]:
         if self.tokenizer is not None:
             return self.tokenizer.tokenize(text)
-        # Fallback: whitespace tokens
         return text.split()
 
     def _detokenize(self, tokens: list[str]) -> str:
@@ -133,22 +139,49 @@ class TokenChunker:
         return " ".join(tokens)
 
     def chunk(self, text: str) -> list[str]:
-        tokens = self._tokenize(text)
-        if not tokens:
+        # Split into paragraphs on two-or-more consecutive newlines
+        paragraphs = re.split(r"\n{2,}", text)
+        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+        if not paragraphs:
             return []
 
         chunks: list[str] = []
-        start = 0
-        while start < len(tokens):
-            end = start + self.chunk_size
-            chunk_tokens = tokens[start:end]
-            chunk_text = self._detokenize(chunk_tokens).strip()
+        buf: list[str] = []   # token buffer for current chunk
+
+        for para in paragraphs:
+            para_tokens = self._tokenize(para)
+            if not para_tokens:
+                continue
+
+            # Would adding this paragraph overflow the chunk?
+            if buf and len(buf) + len(para_tokens) > self.chunk_size:
+                # Flush buffer
+                chunk_text = self._detokenize(buf).strip()
+                if chunk_text:
+                    chunks.append(chunk_text)
+                # Overlap: carry the last N tokens forward
+                buf = buf[-self.chunk_overlap:] if self.chunk_overlap else []
+
+            buf.extend(para_tokens)
+
+            # If a single paragraph is larger than chunk_size, slice it
+            while len(buf) > self.chunk_size:
+                chunk_text = self._detokenize(buf[: self.chunk_size]).strip()
+                if chunk_text:
+                    chunks.append(chunk_text)
+                buf = buf[self.chunk_size - self.chunk_overlap :]
+
+        # Flush remaining tokens
+        if buf:
+            chunk_text = self._detokenize(buf).strip()
             if chunk_text:
                 chunks.append(chunk_text)
-            if end >= len(tokens):
-                break
-            start = end - self.chunk_overlap
+
         return chunks
+
+
+# Keep old name as alias so external code that imports TokenChunker still works
+TokenChunker = ParagraphChunker
 
 
 # ===================================================================
@@ -268,22 +301,52 @@ class RAGPipeline:
             logger.warning("Empty document after cleaning: %s", source)
             return 0
 
-        # Chunk & deduplicate
+        # Chunk & deduplicate within batch
         chunks = self.chunker.chunk(cleaned)
         chunks = deduplicate(chunks)
         logger.info("  %d unique chunks after splitting.", len(chunks))
         if not chunks:
             return 0
 
+        # Compute IDs first so we can cross-check against Milvus
+        ids = [content_hash(c)[:32] for c in chunks]
+
+        # Skip chunks whose content already exists in the collection (global ID check)
+        if self.collection.num_entities > 0:
+            id_expr = "id in [" + ", ".join(f'"{i}"' for i in ids) + "]"
+            existing = self.collection.query(
+                expr=id_expr,
+                output_fields=["id", "source"],
+                limit=len(ids),
+            )
+            existing_by_id = {r["id"]: r["source"] for r in existing}
+            new_indices = [i for i, id_ in enumerate(ids) if id_ not in existing_by_id]
+            if not new_indices:
+                other_sources = set(existing_by_id.values()) - {source}
+                if other_sources:
+                    logger.warning(
+                        "  All %d chunks from '%s' already exist in KB under: %s — skipping.",
+                        len(chunks), source, ", ".join(sorted(other_sources)),
+                    )
+                else:
+                    logger.info(
+                        "  All %d chunks already indexed for '%s'. Skipping.", len(chunks), source
+                    )
+                return 0
+            skipped = len(chunks) - len(new_indices)
+            if skipped:
+                logger.info("  Skipped %d already-indexed chunks.", skipped)
+            chunks = [chunks[i] for i in new_indices]
+            ids    = [ids[i]    for i in new_indices]
+
         # Embed
         embeddings = self.embed(chunks)
 
         # Prepare rows
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        ids = [content_hash(c)[:32] for c in chunks]  # 32-char hex ids
-        chunk_ids = list(range(len(chunks)))
-        sources = [source] * len(chunks)
-        created_ats = [now] * len(chunks)
+        chunk_ids    = list(range(len(chunks)))
+        sources      = [source] * len(chunks)
+        created_ats  = [now]    * len(chunks)
 
         # Insert
         self.collection.insert([ids, chunks, embeddings, sources, chunk_ids, created_ats])
@@ -360,9 +423,28 @@ class RAGPipeline:
     # Utility
     # ------------------------------------------------------------------
     def count(self) -> int:
-        """Return total number of entities in the collection."""
+        """Return number of queryable (non-deleted) entities in the collection.
+
+        Uses a query rather than num_entities because Milvus MVCC keeps
+        tombstoned records in num_entities until the next compaction cycle,
+        causing stale counts immediately after delete().
+        """
         self.collection.flush()
-        return self.collection.num_entities
+        results = self.collection.query(
+            expr="chunk_id >= 0",
+            output_fields=["id"],
+            limit=16384,   # Milvus max per query window
+        )
+        return len(results)
+
+    def list_sources(self) -> list[str]:
+        """Return distinct source filenames stored in the collection."""
+        results = self.collection.query(
+            expr="chunk_id >= 0",
+            output_fields=["source"],
+            limit=16384,   # same cap used by count()
+        )
+        return sorted({r["source"] for r in results})
 
     def drop_collection(self) -> None:
         """Drop the entire collection (destructive)."""
@@ -370,63 +452,3 @@ class RAGPipeline:
         logger.info("Dropped collection '%s'.", self.collection_name)
 
 
-# ===================================================================
-# 6. CLI Entry Point
-# ===================================================================
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(description="RAG Knowledge Base Pipeline")
-    sub = parser.add_subparsers(dest="command")
-
-    # --- ingest ---
-    p_ingest = sub.add_parser("ingest", help="Ingest files or a directory")
-    p_ingest.add_argument("path", help="File or directory to ingest")
-
-    # --- query ---
-    p_query = sub.add_parser("query", help="Query the knowledge base")
-    p_query.add_argument("question", help="Natural-language query")
-    p_query.add_argument("-k", type=int, default=TOP_K, help="Top-K results")
-
-    # --- delete ---
-    p_delete = sub.add_parser("delete", help="Delete chunks by source filename")
-    p_delete.add_argument("source", help="Source filename to delete")
-
-    # --- count ---
-    sub.add_parser("count", help="Show total chunk count")
-
-    args = parser.parse_args()
-    if not args.command:
-        parser.print_help()
-        return
-
-    pipeline = RAGPipeline()
-
-    if args.command == "ingest":
-        p = Path(args.path)
-        if p.is_dir():
-            n = pipeline.ingest_directory(str(p))
-        else:
-            n = pipeline.ingest_file(str(p))
-        print(f"Ingested {n} chunks.")
-
-    elif args.command == "query":
-        results = pipeline.query(args.question, top_k=args.k)
-        for i, r in enumerate(results, 1):
-            print(f"\n{'='*60}")
-            print(f"[{i}] score={r['score']:.4f}  source={r['source']}  "
-                  f"chunk_id={r['chunk_id']}")
-            print(f"    created_at={r['created_at']}")
-            print(f"{'-'*60}")
-            print(r["content"][:500])
-
-    elif args.command == "delete":
-        pipeline.delete_by_source(args.source)
-        print(f"Deleted all chunks from source '{args.source}'.")
-
-    elif args.command == "count":
-        print(f"Total chunks: {pipeline.count()}")
-
-
-if __name__ == "__main__":
-    main()

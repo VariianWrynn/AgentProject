@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+.env
+*.db
+test_files/
+checkpoints/
+troubleshooting-log/

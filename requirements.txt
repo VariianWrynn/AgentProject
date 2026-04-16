@@ -1,4 +1,13 @@
 pymilvus>=2.4.0,<3.0.0
 sentence-transformers>=2.7.0
-PyPDF2>=3.0.0
+pymupdf>=1.24.0
 torch>=2.0.0
+openai>=1.0.0
+redis>=5.0.0
+duckduckgo-search>=6.0.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+requests>=2.31.0
+langgraph>=1.0.0
+langchain-core>=0.1.0
+jieba>=0.42.1

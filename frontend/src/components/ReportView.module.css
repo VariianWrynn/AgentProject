@@ -1,0 +1,189 @@
+.container {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.intentBadge {
+  padding: 3px 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.latency {
+  padding: 3px 10px;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.cached {
+  background: #fef9c3;
+  color: #854d0e;
+  font-weight: 600;
+}
+
+.quality {
+  padding: 3px 10px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sections {
+  padding: 0 24px;
+}
+
+.section {
+  padding: 20px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sectionContent {
+  color: #374151;
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+.sectionContent p {
+  margin: 0 0 10px;
+}
+
+.sectionContent p:last-child {
+  margin-bottom: 0;
+}
+
+.sources {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.sourceLink {
+  color: #2563eb;
+  font-size: 12px;
+  text-decoration: none;
+  padding: 2px 6px;
+  background: #eff6ff;
+  border-radius: 4px;
+}
+
+.sourceLink:hover {
+  background: #dbeafe;
+}
+
+.chartsSection {
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #fafafa;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.references {
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.refList {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.8;
+}
+
+.refList a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.refList a:hover {
+  text-decoration: underline;
+}
+
+.refDate {
+  color: #94a3b8;
+}
+
+/* Executive summary block */
+.summaryBlock {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f0f9ff;
+}
+
+/* Markdown rendering inside section content */
+.sectionContent h1,
+.sectionContent h2,
+.sectionContent h3 {
+  margin: 14px 0 6px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.sectionContent h2 { font-size: 15px; }
+.sectionContent h3 { font-size: 14px; }
+
+.sectionContent ul,
+.sectionContent ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.sectionContent li { margin: 4px 0; }
+
+.sectionContent strong { font-weight: 700; color: #0f172a; }
+.sectionContent em { font-style: italic; }
+
+.sectionContent code {
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 13px;
+}

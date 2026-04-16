@@ -1,0 +1,55 @@
+{
+  "tables": {
+    "company_finance": {
+      "description": "能源企业财务数据表，存储各大能源集团按季度的营收、净利润和资产负债率",
+      "columns": {
+        "id":              {"type": "INTEGER", "meaning": "主键",                          "example": "1"},
+        "company_name":    {"type": "TEXT",    "meaning": "企业名称",                      "example": "国家电网"},
+        "year":            {"type": "INTEGER", "meaning": "财务年度",                      "example": "2023"},
+        "quarter":         {"type": "INTEGER", "meaning": "季度 1-4",                      "example": "2"},
+        "revenue_billion": {"type": "REAL",    "meaning": "营收（亿元）",                  "example": "3200.5"},
+        "profit_billion":  {"type": "REAL",    "meaning": "净利润（亿元）",                "example": "128.2"},
+        "debt_ratio":      {"type": "REAL",    "meaning": "资产负债率，取值 0.0–1.0",      "example": "0.65"},
+        "region":          {"type": "TEXT",    "meaning": "企业主营区域",                  "example": "华东"}
+      }
+    },
+    "capacity_stats": {
+      "description": "能源装机容量统计表，记录各企业不同能源类型的年度装机规模（兆瓦）",
+      "columns": {
+        "id":           {"type": "INTEGER", "meaning": "主键",                             "example": "1"},
+        "company_name": {"type": "TEXT",    "meaning": "企业名称",                         "example": "三峡能源"},
+        "energy_type":  {"type": "TEXT",    "meaning": "能源类型：火电/水电/风电/光伏/核电/储能", "example": "风电"},
+        "installed_mw": {"type": "REAL",    "meaning": "装机容量（兆瓦）",                 "example": "12500.0"},
+        "year":         {"type": "INTEGER", "meaning": "统计年度",                         "example": "2023"},
+        "province":     {"type": "TEXT",    "meaning": "所在省份",                         "example": "内蒙古"}
+      }
+    },
+    "price_index": {
+      "description": "电力价格指数表，记录各地区不同能源类型的月度电价数据（元/度）",
+      "columns": {
+        "id":             {"type": "INTEGER", "meaning": "主键",                           "example": "1"},
+        "date":           {"type": "TEXT",    "meaning": "日期 YYYY-MM-DD（月度快照）",    "example": "2023-06-01"},
+        "energy_type":    {"type": "TEXT",    "meaning": "能源类型",                       "example": "光伏"},
+        "region":         {"type": "TEXT",    "meaning": "地区",                           "example": "华东"},
+        "price_yuan_kwh": {"type": "REAL",    "meaning": "综合电价（元/度）",              "example": "0.52"},
+        "spot_price":     {"type": "REAL",    "meaning": "现货电价（元/度）",              "example": "0.48"},
+        "forward_price":  {"type": "REAL",    "meaning": "中长期合约价（元/度）",          "example": "0.55"}
+      }
+    }
+  },
+  "term_dict": {
+    "营收":       "SUM(revenue_billion)",
+    "总营收":     "SUM(revenue_billion)",
+    "净利润":     "SUM(profit_billion)",
+    "总利润":     "SUM(profit_billion)",
+    "装机容量":   "SUM(installed_mw)",
+    "总装机":     "SUM(installed_mw)",
+    "电价":       "AVG(price_yuan_kwh)",
+    "平均电价":   "AVG(price_yuan_kwh)",
+    "去年":       "year = CAST(strftime('%Y', date('now', '-1 year')) AS INTEGER)",
+    "今年":       "year = CAST(strftime('%Y', date('now')) AS INTEGER)",
+    "新能源":     "energy_type IN ('风电','光伏','储能')",
+    "可再生能源": "energy_type IN ('水电','风电','光伏')",
+    "高负债":     "debt_ratio > 0.7"
+  }
+}
