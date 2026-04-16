@@ -127,6 +127,13 @@ def _free_port(port: int) -> None:
 if _args.kill:
     _free_port(_args.port)
 
+# Load .env before any module that reads env vars at import time (llm_router, react_engine)
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except ImportError:
+    pass  # python-dotenv not installed; rely on shell environment
+
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware

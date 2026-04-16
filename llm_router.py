@@ -17,18 +17,20 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = os.getenv("LLM_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://api.scnet.cn/api/llm/v1"))
 
-# Key distribution: spread concurrency across 4 keys
-# KEY_1: Router, ChiefArchitect, Synthesizer  — 1 call at a time
-# KEY_2: DeepScout                            — parallel Bocha/RAG calls
-# KEY_3: DataAnalyst, CriticMaster            — medium concurrency
-# KEY_4: LeadWriter                           — parallel section writes
+# Key distribution: spread concurrency across 6 keys
+# KEY_1: Router, ChiefArchitect              — 1 call at a time
+# KEY_2: DeepScout                           — parallel Bocha/RAG calls
+# KEY_3: DataAnalyst                         — medium concurrency
+# KEY_4: LeadWriter                          — parallel section writes
+# KEY_5: CriticMaster                        — split from KEY_3
+# KEY_6: Synthesizer                         — split from KEY_1
 ROLE_TO_KEY_ENV: dict[str, str] = {
     "router":          "LLM_KEY_1",
     "chief_architect": "LLM_KEY_1",
-    "synthesizer":     "LLM_KEY_1",
+    "synthesizer":     "LLM_KEY_6",
     "deep_scout":      "LLM_KEY_2",
     "data_analyst":    "LLM_KEY_3",
-    "critic_master":   "LLM_KEY_3",
+    "critic_master":   "LLM_KEY_5",
     "lead_writer":     "LLM_KEY_4",
 }
 
@@ -47,6 +49,8 @@ FALLBACK_KEY: dict[str, str] = {
     "LLM_KEY_2": "LLM_KEY_1",
     "LLM_KEY_3": "LLM_KEY_1",
     "LLM_KEY_4": "LLM_KEY_1",
+    "LLM_KEY_5": "LLM_KEY_1",
+    "LLM_KEY_6": "LLM_KEY_1",
     "LLM_KEY_1": "OPENAI_API_KEY",
 }
 

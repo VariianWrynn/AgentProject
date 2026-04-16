@@ -25,7 +25,7 @@ import requests
 import sqlite3
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 # ── CLI args (parsed before heavy imports) ────────────────────────────────────
@@ -398,7 +398,7 @@ def health() -> dict:
         "text2sql_keys":   _cache_count("text2sql"),
     }
 
-    status["timestamp"] = datetime.utcnow().isoformat()
+    status["timestamp"] = datetime.now(timezone.utc).isoformat()
     print(f"[MCP] GET /tools/health → {status}")
     return status
 
