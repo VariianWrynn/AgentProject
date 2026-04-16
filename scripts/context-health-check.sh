@@ -15,8 +15,8 @@ RESET='\033[0m'
 
 # ── Resolve project root relative to this script ─────────
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TROUBLESHOOT_DIR="$PROJECT_ROOT/troubleshooting-log"
-CHECKPOINT_DIR="$PROJECT_ROOT/checkpoints"
+TROUBLESHOOT_DIR="$PROJECT_ROOT/docs/troubleshooting-log"
+CHECKPOINT_DIR="$PROJECT_ROOT/docs/checkpoints"
 SCRIPTS_DIR="$PROJECT_ROOT/scripts"
 
 issue_count=$(ls "$TROUBLESHOOT_DIR"/issue-*.md 2>/dev/null | wc -l)
@@ -134,7 +134,7 @@ fi
 echo ""
 echo -e "${BOLD}── Quick Reference ────────────────────────────${RESET}"
 echo -e "  Create bug log:        ${CYAN}bash scripts/extract-troubleshooting.sh${RESET}"
-echo -e "  View day3 checkpoint:  ${CYAN}cat checkpoints/day3-checkpoint.md${RESET}"
+echo -e "  View day3 checkpoint:  ${CYAN}cat docs/checkpoints/day3-checkpoint.md${RESET}"
 echo -e "  Export resume data:    ${CYAN}bash resume-data/export-resume-data.sh${RESET}"
 echo -e "  Temp query (no context cost): use ${CYAN}/btw <question>${RESET} in Claude Code"
 echo ""

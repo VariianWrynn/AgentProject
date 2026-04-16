@@ -2,10 +2,10 @@
 Ingest energy industry documents into the RAG knowledge base.
 
 Run from the project root:
-    HF_HUB_OFFLINE=1 python data/ingest_energy_docs.py
+    HF_HUB_OFFLINE=1 python resources/data/ingest_energy_docs.py
 
 This script:
-1. Lists all .txt and .pdf files in data/energy_docs/
+1. Lists all .txt and .pdf files in resources/data/energy_docs/
 2. Ingests each file into the Milvus-backed RAG pipeline
 3. Reports chunk counts before and after
 """
@@ -13,7 +13,8 @@ This script:
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# File lives at resources/data/ingest_energy_docs.py — three dirname() calls to reach project root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from rag_pipeline import RAGPipeline
 

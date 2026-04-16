@@ -297,7 +297,7 @@ def ensure_ingested():
     kb_names = [s for s in sources]
     for fname in needed:
         if fname not in sources:
-            path = os.path.join(_PROJECT_DIR, "test_files", fname)
+            path = os.path.join(_PROJECT_DIR, "resources", "test_files", fname)
             if os.path.exists(path):
                 n = _rag.ingest_file(path)
                 print(f"[INIT] Ingested {fname} ({n} chunks)")

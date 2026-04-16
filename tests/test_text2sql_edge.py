@@ -22,13 +22,13 @@ logging.basicConfig(
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.text2sql_tool import Text2SQLTool
+from backend.tools.text2sql_tool import Text2SQLTool
 
 SEP  = "=" * 60
 THIN = "-" * 60
 
-BADCASES_PATH = "data/badcases.jsonl"
-DB_PATH       = "data/sales.db"
+BADCASES_PATH = "resources/data/badcases.jsonl"
+DB_PATH       = "resources/data/sales.db"
 
 
 # ---------------------------------------------------------------------------

@@ -21,7 +21,7 @@ echo "Warmup result: $WARMUP"
 
 # Step 4: Start frontend dev server
 echo "[4/4] Starting frontend dev server..."
-cd "$(dirname "$0")/frontend"
+cd "$(dirname "$0")/../frontend"
 npm run dev &
 
 echo ""

@@ -8,7 +8,7 @@ Converts natural-language questions into SQLite queries via a 3-LLM-call pipelin
   3. Summarization        — narrate results in natural language
 
 Usage:
-    from tools.text2sql_tool import Text2SQLTool
+    from backend.tools.text2sql_tool import Text2SQLTool
     tool = Text2SQLTool()
     result = tool.run("华东地区上个月的总销售额是多少？")
     print(result["summary"])
@@ -159,10 +159,10 @@ _SUMMARY_SYSTEM = """\
 class Text2SQLTool:
     def __init__(
         self,
-        db_path: str = "data/energy.db",
-        metadata_path: str = "data/schema_metadata.json",
+        db_path: str = "resources/data/energy.db",
+        metadata_path: str = "resources/data/schema_metadata.json",
         llm_client=None,
-        badcase_path: str = "data/badcases.jsonl",
+        badcase_path: str = "resources/data/badcases.jsonl",
     ) -> None:
         self.db_path = db_path
         self.badcase_path = badcase_path

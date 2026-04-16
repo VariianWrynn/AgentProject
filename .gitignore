@@ -41,3 +41,4 @@ record/
 
 # Binary test documents (recreated manually)
 test_files/*.pdf
+resources/test_files/*.pdf

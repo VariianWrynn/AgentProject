@@ -75,7 +75,7 @@ def cmd_list(pipeline: RAGPipeline) -> None:
 
     # ── Archival memory summary (Week 4) ─────────────────────────────────────
     try:
-        from memory.memgpt_memory import MemGPTMemory
+        from backend.memory.memgpt_memory import MemGPTMemory
         memgpt = MemGPTMemory(rag=pipeline)
         archival_count = memgpt._archival.num_entities
         print(f"MemGPT archival memory: {archival_count} entries")
@@ -140,9 +140,9 @@ def cmd_remove(pipeline: RAGPipeline, names: list[str]) -> None:
 # ---------------------------------------------------------------------------
 def cmd_archival_list(pipeline: RAGPipeline) -> None:
     try:
-        from memory.memgpt_memory import MemGPTMemory
+        from backend.memory.memgpt_memory import MemGPTMemory
     except ImportError:
-        print("ERROR: memory.memgpt_memory not found. Is Week 4 code present?")
+        print("ERROR: backend.memory.memgpt_memory not found. Is Week 4 code present?")
         return
 
     memgpt = MemGPTMemory(rag=pipeline)
@@ -180,10 +180,10 @@ def cmd_archival_list(pipeline: RAGPipeline) -> None:
 # ---------------------------------------------------------------------------
 def cmd_archival_clear(pipeline: RAGPipeline) -> None:
     try:
-        from memory.memgpt_memory import MemGPTMemory, ARCHIVAL_COLLECTION
+        from backend.memory.memgpt_memory import MemGPTMemory, ARCHIVAL_COLLECTION
         from pymilvus import utility
     except ImportError:
-        print("ERROR: memory.memgpt_memory not found. Is Week 4 code present?")
+        print("ERROR: backend.memory.memgpt_memory not found. Is Week 4 code present?")
         return
 
     memgpt = MemGPTMemory(rag=pipeline)

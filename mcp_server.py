@@ -138,7 +138,7 @@ except ImportError:
 
 from rag_pipeline import RAGPipeline
 from react_engine import Tools, REDIS_HOST, REDIS_PORT
-from tools.text2sql_tool import Text2SQLTool
+from backend.tools.text2sql_tool import Text2SQLTool
 
 # ── Bocha API config ──────────────────────────────────────────────────────────
 _BOCHA_API_KEY = os.getenv("BOCHA_API_KEY", "")
@@ -372,7 +372,7 @@ def health() -> dict:
 
     # SQLite
     try:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "energy.db")
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources", "data", "energy.db")
         conn = sqlite3.connect(db_path)
         conn.execute("SELECT 1")
         conn.close()

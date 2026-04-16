@@ -19,7 +19,7 @@ from rag_pipeline import RAGPipeline
 
 # Use an isolated collection so production KB is untouched
 TEST_COLLECTION = "ingest_test_collection"
-TEST_FILES_DIR  = Path("test_files")
+TEST_FILES_DIR  = Path("resources/test_files")
 
 SEP  = "=" * 60
 THIN = "-" * 60
@@ -56,8 +56,8 @@ def run_tests() -> None:
     # =========================================================================
     _header("Test 1 — Import from project root")
     try:
-        from tools.ingest_files import cmd_list, cmd_add, cmd_remove
-        print("  [OK]  from tools.ingest_files import cmd_list, cmd_add, cmd_remove")
+        from backend.tools.ingest_files import cmd_list, cmd_add, cmd_remove
+        print("  [OK]  from backend.tools.ingest_files import cmd_list, cmd_add, cmd_remove")
         passed += 1
     except ImportError as e:
         print(f"  [FAIL] Import error: {e}")
@@ -178,8 +178,8 @@ def run_tests() -> None:
     # =========================================================================
     _header("Test 8 — archival-list command (MemGPT integration)")
     try:
-        from tools.ingest_files import cmd_archival_list
-        from memory.memgpt_memory import MemGPTMemory
+        from backend.tools.ingest_files import cmd_archival_list
+        from backend.memory.memgpt_memory import MemGPTMemory
         memgpt = MemGPTMemory(rag=pipeline)
         archival_count = memgpt._archival.num_entities
         print(f"  Archival memory entries: {archival_count}")

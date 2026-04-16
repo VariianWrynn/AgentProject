@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.WARNING)
 
 print("Loading modules (BGE-m3 + Milvus + Redis)…")
 import langgraph_agent as _lga
-from tools.rag_evaluator import RAGEvaluator
+from backend.tools.rag_evaluator import RAGEvaluator
 
 _rag   = _lga._rag
 graph  = _lga.build_graph()

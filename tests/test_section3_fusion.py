@@ -116,7 +116,7 @@ class CapturePrompts:
 
 
 def write_checkpoint(content: str,
-                     filepath: str = "checkpoints/day3-checkpoint.md") -> None:
+                     filepath: str = "docs/checkpoints/day3-checkpoint.md") -> None:
     tag = "SECTION3_FUSION_RESULTS"
     start_marker = f"<!-- {tag}_START -->"
     end_marker   = f"<!-- {tag}_END -->"
@@ -293,7 +293,7 @@ def build_checkpoint_content(results: list[dict]) -> str:
 
 
 def print_overall_summary(s3_results: list[dict],
-                          checkpoint_path: str = "checkpoints/day3-checkpoint.md") -> None:
+                          checkpoint_path: str = "docs/checkpoints/day3-checkpoint.md") -> None:
     """尝试从 checkpoint 文件读取 S1/S2 得分，打印总体汇总。"""
     s3_pass = sum(1 for r in s3_results if r["verdict"] == "PASS")
 
@@ -348,5 +348,5 @@ if __name__ == "__main__":
     write_checkpoint(content)
     print_overall_summary(results)
     print("\n" + "=" * 60)
-    print("全部测试完成！请查阅 checkpoints/day3-checkpoint.md")
+    print("全部测试完成！请查阅 docs/checkpoints/day3-checkpoint.md")
     print("=" * 60)

@@ -7,7 +7,7 @@ Implements the MemGPT paper's two-layer memory architecture:
   Archival Memory (out-of-context) — Milvus, retrieved on demand by LLM decision
 
 Usage in langgraph_agent.py:
-    from memory.memgpt_memory import MemGPTMemory
+    from backend.memory.memgpt_memory import MemGPTMemory
     memgpt = MemGPTMemory(rag=_rag)   # pass already-loaded RAGPipeline to reuse BGE-m3
 """
 
