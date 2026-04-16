@@ -20,8 +20,8 @@ import requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-MCP_URL = os.getenv("MCP_URL", "http://localhost:8000")
-API_URL = os.getenv("API_URL", "http://localhost:8001")
+MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
+API_URL = os.getenv("API_URL", "http://localhost:8003")
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ def _verdict(name: str, passed: bool, detail: str = "") -> None:
 # ── tests ─────────────────────────────────────────────────────────────────────
 
 def test1_health_check() -> bool:
-    """GET :8000/tools/health → milvus/redis/sqlite all 'ok'"""
+    """GET :8002/tools/health → milvus/redis/sqlite all 'ok'"""
     print("\n--- Test 1: MCP Server health check ---")
     try:
         data = _get(f"{MCP_URL}/tools/health", timeout=30)

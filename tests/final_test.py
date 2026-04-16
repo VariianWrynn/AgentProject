@@ -40,8 +40,8 @@ memgpt = _lga.memgpt
 _rag   = _lga._rag
 _redis = _lga._redis_conn
 
-MCP_URL = os.getenv("MCP_URL", "http://localhost:8000")
-API_URL = os.getenv("API_URL", "http://localhost:8001")
+MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
+API_URL = os.getenv("API_URL", "http://localhost:8003")
 FAIL_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "final_test_fail_log.log")
 
 _SCORE_RE = re.compile(r"score=(\d+\.\d+)")

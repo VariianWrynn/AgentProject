@@ -22,10 +22,10 @@
 
 ### Test A: Key路由逻辑
 ```
-router/chief_architect/synthesizer -> KEY_1 (sk-NDcz...)
-deep_scout                         -> KEY_2 (sk-Mzc3...)
-data_analyst/critic_master         -> KEY_3 (sk-NzE0...)
-lead_writer                        -> KEY_4 (sk-NDQ5...)
+router/chief_architect/synthesizer -> KEY_1 
+deep_scout                         -> KEY_2
+data_analyst/critic_master         -> KEY_3 
+lead_writer                        -> KEY_4
 Unique keys used: 4
 Fallback KEY_2->KEY_1: PASS
 make_llm() returns correct model: PASS

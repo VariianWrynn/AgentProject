@@ -102,28 +102,28 @@ class LLMClient:
 # ---------------------------------------------------------------------------
 _FEW_SHOTS = """\
 示例 1:
-问题: 华东总销售额是多少？
+问题: 华东地区2023年各企业总营收排名
 SQL:
-SELECT SUM(amount) AS total_amount
-FROM sales
-WHERE region = '华东'
+SELECT company_name, SUM(revenue_billion) AS total_revenue
+FROM company_finance
+WHERE region = '华东' AND year = 2023
+GROUP BY company_name ORDER BY total_revenue DESC
 
 示例 2:
-问题: 哪个产品类别的营收最高？
+问题: 风电装机容量最大的省份
 SQL:
-SELECT p.category, SUM(s.amount) AS rev
-FROM sales s
-JOIN products p ON s.product = p.product_name
-GROUP BY p.category
-ORDER BY rev DESC
+SELECT province, SUM(installed_mw) AS total_mw
+FROM capacity_stats
+WHERE energy_type = '风电'
+GROUP BY province ORDER BY total_mw DESC
 
 示例 3:
-问题: 最近30天的销售记录
+问题: 2023年光伏电价月度走势
 SQL:
-SELECT *
-FROM sales
-WHERE sale_date >= date('now', '-30 days')
-ORDER BY sale_date DESC
+SELECT date, region, AVG(price_yuan_kwh) AS avg_price
+FROM price_index
+WHERE energy_type = '光伏' AND date >= '2023-01-01' AND date < '2024-01-01'
+GROUP BY date, region ORDER BY date ASC
 """
 
 _SQL_SYSTEM = """\
@@ -132,8 +132,8 @@ _SQL_SYSTEM = """\
 - 只生成 SELECT 语句，不要有其他 SQL 语句
 - 不要添加 LIMIT（系统会自动添加）
 - 只输出裸 SQL，不要加 Markdown 代码块或任何解释
-- 如果需要 JOIN，使用 sales.product = products.product_name 关联
-- 日期字段 sale_date 为文本格式 YYYY-MM-DD，使用 SQLite 日期函数处理
+- 跨表查询时，可用 company_name 字段关联 company_finance 和 capacity_stats
+- 日期字段 date 为文本格式 YYYY-MM-DD，使用 SQLite strftime() 处理
 
 """ + _FEW_SHOTS
 
@@ -159,7 +159,7 @@ _SUMMARY_SYSTEM = """\
 class Text2SQLTool:
     def __init__(
         self,
-        db_path: str = "data/sales.db",
+        db_path: str = "data/energy.db",
         metadata_path: str = "data/schema_metadata.json",
         llm_client=None,
         badcase_path: str = "data/badcases.jsonl",
@@ -292,7 +292,7 @@ class Text2SQLTool:
             "inner", "left", "right", "outer", "cross", "sum", "count", "avg",
             "min", "max", "distinct", "case", "when", "then", "else", "end",
             "like", "in", "between", "is", "null", "strftime", "date", "now",
-            "start", "month", "year", "day", "rev", "total_amount", "rev",
+            "start", "month", "year", "day", "rev", "total_amount", "total_revenue",
         }
         # Table names are not column names
         table_names = set(self._metadata["tables"].keys())
