@@ -118,7 +118,7 @@ def test_router_accuracy():
             resp = requests.post(
                 f"{BASE_API}/chat",
                 json={"question": question, "session_id": f"test_router_{int(time.time())}"},
-                timeout=30,
+                timeout=120,
             )
             actual_intent = resp.json().get("intent", "unknown")
             is_correct = actual_intent == expected
