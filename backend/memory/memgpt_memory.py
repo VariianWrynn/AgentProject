@@ -64,8 +64,15 @@ class MemGPTMemory:
             self._embed_fn = _embed
 
         # ── Milvus (archival memory) ──────────────────────────────────────
-        # The `default` Milvus alias is already connected by RAGPipeline.
-        # We just create/load the archival collection.
+        # Normally the `default` alias is connected by RAGPipeline.
+        # When used standalone (rag=None), connect ourselves.
+        from pymilvus import connections
+        milvus_host = os.getenv("MILVUS_HOST", "localhost")
+        milvus_port = os.getenv("MILVUS_PORT", "19530")
+        try:
+            connections.connect(alias="default", host=milvus_host, port=milvus_port)
+        except Exception:
+            pass  # already connected — ignore duplicate connect
         self._ensure_archival_collection()
 
     # =========================================================================
