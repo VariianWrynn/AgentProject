@@ -42,7 +42,7 @@ def ensure_ingested() -> None:
         if fname in sources:
             print(f"  [OK] {fname}：已在知识库")
         else:
-            path = os.path.join("test_files", fname)
+            path = os.path.join("resources", "test_files", fname)
             if os.path.exists(path):
                 print(f"  → 正在 ingest {fname} …")
                 n = _rag.ingest_file(path)

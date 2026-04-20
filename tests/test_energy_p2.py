@@ -55,7 +55,7 @@ def test_deep_scout_parallel():
     try:
         import asyncio as _asyncio
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from agents.deep_scout import _search_all, _deduplicate
+        from backend.agents.deep_scout import _search_all, _deduplicate
 
         questions = [
             "中国光伏2023装机容量",
@@ -180,7 +180,7 @@ def test_critic_master_loop():
     print("\n[Test 3] CriticMaster RE_RESEARCHING Loop Detection")
 
     try:
-        from agents.critic_master import run as cm_run
+        from backend.agents.critic_master import run as cm_run
         from react_engine import LLMClient
 
         llm = LLMClient()

@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.WARNING)
 # ─────────────────────────────────────────────────────────────────────────────
 # Test 2 & 3 use MemGPTMemory directly (no LangGraph, no LLM)
 # ─────────────────────────────────────────────────────────────────────────────
-from memory.memgpt_memory import MemGPTMemory
+from backend.memory.memgpt_memory import MemGPTMemory
 from rag_pipeline import RAGPipeline
 
 print("Initialising shared RAGPipeline (loads BGE-m3 once) …")

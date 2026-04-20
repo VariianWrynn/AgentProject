@@ -35,8 +35,8 @@ from react_engine import (
     REDIS_HOST,
     REDIS_PORT,
 )
-from tools.text2sql_tool import Text2SQLTool
-from memory.memgpt_memory import MemGPTMemory
+from backend.tools.text2sql_tool import Text2SQLTool
+from backend.memory.memgpt_memory import MemGPTMemory
 from llm_router import make_llm
 
 logger = logging.getLogger("langgraph_agent")
@@ -458,7 +458,7 @@ def chief_architect_node(state: AgentState) -> dict:
     logger.info("[ChiefArchitect] START session=%s", sid)
     t0 = time.time()
     _push_sse_event(sid, "thinking", "正在规划研究大纲...", step=1)
-    from agents.chief_architect import run as ca_run
+    from backend.agents.chief_architect import run as ca_run
     result = ca_run(dict(state), make_llm("chief_architect"))
     logger.info("[ChiefArchitect] END duration=%.1fs outline=%d questions=%d",
                 time.time() - t0,
@@ -472,7 +472,7 @@ def deep_scout_node(state: AgentState) -> dict:
     logger.info("[DeepScout] START session=%s", sid)
     t0 = time.time()
     _push_sse_event(sid, "searching", "并行搜索子问题...", step=2)
-    from agents.deep_scout import run as ds_run
+    from backend.agents.deep_scout import run as ds_run
     result = ds_run(dict(state), make_llm("deep_scout"))
     logger.info("[DeepScout] END duration=%.1fs facts=%d sources=%d",
                 time.time() - t0,
@@ -486,7 +486,7 @@ def data_analyst_node(state: AgentState) -> dict:
     logger.info("[DataAnalyst] START session=%s", sid)
     t0 = time.time()
     _push_sse_event(sid, "analyzing", "查询能源数据库，生成图表...", step=3)
-    from agents.data_analyst import run as da_run
+    from backend.agents.data_analyst import run as da_run
     result = da_run(dict(state), make_llm("data_analyst"))
     logger.info("[DataAnalyst] END duration=%.1fs charts=%d",
                 time.time() - t0,
@@ -499,7 +499,7 @@ def lead_writer_node(state: AgentState) -> dict:
     logger.info("[LeadWriter] START session=%s", sid)
     t0 = time.time()
     _push_sse_event(sid, "writing", "撰写研究报告各章节...", step=4)
-    from agents.lead_writer import run as lw_run
+    from backend.agents.lead_writer import run as lw_run
     result = lw_run(dict(state), make_llm("lead_writer"))
     draft = result.get("draft_sections", {})
     logger.info("[LeadWriter] END duration=%.1fs sections=%d summary_len=%d",
@@ -515,7 +515,7 @@ def critic_master_node(state: AgentState) -> dict:
     logger.info("[CriticMaster] START session=%s iteration=%d", sid, iteration)
     t0 = time.time()
     _push_sse_event(sid, "reviewing", f"审核报告质量（第{iteration+1}轮）...", step=5)
-    from agents.critic_master import run as cm_run
+    from backend.agents.critic_master import run as cm_run
     result = cm_run(dict(state), make_llm("critic_master"))
 
     # Increment iteration if CriticMaster triggers RE_RESEARCHING
@@ -537,7 +537,7 @@ def synthesizer_node(state: AgentState) -> dict:
     logger.info("[Synthesizer] START session=%s", sid)
     t0 = time.time()
     _push_sse_event(sid, "done", "报告生成完成", step=6)
-    from agents.synthesizer import run as syn_run
+    from backend.agents.synthesizer import run as syn_run
     result = syn_run(dict(state), make_llm("synthesizer"))
     logger.info("[Synthesizer] END duration=%.1fs answer_len=%d",
                 time.time() - t0,

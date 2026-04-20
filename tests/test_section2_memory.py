@@ -101,7 +101,7 @@ class CapturePrompts:
 
 
 def write_checkpoint(content: str,
-                     filepath: str = "checkpoints/day3-checkpoint.md") -> None:
+                     filepath: str = "docs/checkpoints/day3-checkpoint.md") -> None:
     tag = "SECTION2_MEMORY_RESULTS"
     start_marker = f"<!-- {tag}_START -->"
     end_marker   = f"<!-- {tag}_END -->"
@@ -311,6 +311,6 @@ if __name__ == "__main__":
     content = build_checkpoint_content(results)
     write_checkpoint(content)
     print("\n" + "=" * 60)
-    print("Section 2 完成，结果已写入 checkpoints/day3-checkpoint.md")
+    print("Section 2 完成，结果已写入 docs/checkpoints/day3-checkpoint.md")
     print("请运行下一个测试脚本: python tests/test_section3_fusion.py")
     print("=" * 60)

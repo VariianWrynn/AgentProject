@@ -13,12 +13,17 @@ venv/
 # Context management — personal data, not for public repo
 resume-data/
 troubleshooting-log/
+docs/troubleshooting-log/
 
 # Generated / runtime files
 data/sales.db
 data/badcases.jsonl
+resources/data/sales.db
+resources/data/badcases.jsonl
 logs/
+front_end_log/
 reports/
+test_output/
 
 # API keys and secrets — NEVER commit
 LLM_API.txt
@@ -36,3 +41,4 @@ record/
 
 # Binary test documents (recreated manually)
 test_files/*.pdf
+resources/test_files/*.pdf

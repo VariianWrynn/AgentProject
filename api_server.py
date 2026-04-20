@@ -573,7 +573,7 @@ def knowledge_sources() -> dict:
 def knowledge_ingest(req: IngestRequest) -> dict:
     """Ingest raw text content as a new document into the RAG knowledge base."""
     import tempfile
-    docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "energy_docs")
+    docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources", "data", "energy_docs")
     os.makedirs(docs_dir, exist_ok=True)
     # Write to a deterministic path so Milvus source label matches req.source_name
     dest_path = os.path.join(docs_dir, f"{req.source_name}.txt")

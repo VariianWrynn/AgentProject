@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TROUBLESHOOT_DIR="$PROJECT_ROOT/troubleshooting-log"
+TROUBLESHOOT_DIR="$PROJECT_ROOT/docs/troubleshooting-log"
 TODAY=$(date +%Y%m%d)
 
 # ── Auto-increment issue number ───────────────────────────

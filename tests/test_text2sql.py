@@ -20,7 +20,7 @@ logging.basicConfig(
 # Ensure project root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.text2sql_tool import Text2SQLTool
+from backend.tools.text2sql_tool import Text2SQLTool
 
 SEP  = "=" * 60
 THIN = "-" * 60
