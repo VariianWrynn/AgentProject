@@ -23,6 +23,7 @@ resources/data/badcases.jsonl
 logs/
 front_end_log/
 reports/
+!docs/reports/
 test_output/
 
 # API keys and secrets — NEVER commit

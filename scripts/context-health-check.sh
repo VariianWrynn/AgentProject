@@ -91,8 +91,8 @@ if [ "$STATUS" = "CRITICAL" ]; then
 - Skill工具调用的完整参数（agent-resume-builder, rag-viz）
 
 【提取到文件后保留引用】
-- 每个完整的Bug排查过程 → 提取到 troubleshooting-log/issue-YYYYMMDD-NNN.md
-- 对话中只保留：[已提取到 troubleshooting-log/issue-YYYYMMDD-NNN.md — 问题：<标题>]
+- 每个完整的Bug排查过程 → 提取到 docs/troubleshooting-log/issue-YYYYMMDD-NNN.md
+- 对话中只保留：[已提取到 docs/troubleshooting-log/issue-YYYYMMDD-NNN.md — 问题：<标题>]
 
 【压缩为一行】
 - 环境配置："已安装: milvus-lite==2.4.0, langchain==0.1.x, redis==5.x"
@@ -116,7 +116,7 @@ elif [ "$STATUS" = "WARNING" ]; then
     echo ""
     echo "────────────────────────────────────────────────────"
     cat << 'COMPACT_CMD'
-/compact 预防性压缩。保留所有测试结果、性能指标、Bug排查记录（含失败尝试）、API契约。将完整Bug记录提取到 troubleshooting-log/ 后在对话中只保留文件引用。压缩环境配置和研究过程为一行。删除成功的常规操作和重复调试循环。
+/compact 预防性压缩。保留所有测试结果、性能指标、Bug排查记录（含失败尝试）、API契约。将完整Bug记录提取到 docs/troubleshooting-log/ 后在对话中只保留文件引用。压缩环境配置和研究过程为一行。删除成功的常规操作和重复调试循环。
 COMPACT_CMD
     echo "────────────────────────────────────────────────────"
 
