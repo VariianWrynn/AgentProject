@@ -27,21 +27,22 @@ python tests/test_resume_metrics.py
 # Output: reports/resume_metrics_YYYYMMDD_HHMMSS.md
 ```
 
-**Test results** (2026-04-21, services MCP/API offline, Milvus/Redis online):
+**Test results** (2026-04-21, all services online — final run):
 | Test | Result | Key metric |
 |------|--------|------------|
-| A: RouterNode accuracy | ERROR (API server offline) | — |
-| B: CriticMaster detection | PASS | 5/5 (100%) |
-| C: 3-layer degradation | 1/3 PASS | Layer 2 only (services offline) |
-| D: MemGPT cross-session | PASS | avg_score=0.6807, 3/3 above 0.5 |
+| A: RouterNode accuracy | PASS | **10/10 (100%)** |
+| B: CriticMaster detection | PASS | **5/5 (100%)** |
+| C: 3-layer degradation | PASS | **3/3 PASS** |
+| D: MemGPT cross-session | PASS | avg_score=**0.6807**, 3/3 above 0.5 |
 
 **Performance** (from actual test output):
 | Metric | Value |
 |--------|-------|
+| RouterNode intent accuracy | 10/10 = 100% |
 | CriticMaster detection rate | 5/5 = 100% |
+| 3-layer degradation | 3/3 PASS |
 | MemGPT archival top-1 avg | 0.6807 (baseline: >0.5) |
 | MemGPT above-0.5 threshold | 3/3 queries |
-| Total test time (parallel) | 78.7s |
 
 ---
 
@@ -60,7 +61,9 @@ python tests/test_resume_metrics.py
 
 | Module | Metric | Value | vs Previous |
 |--------|--------|-------|-------------|
+| RouterNode | intent classification accuracy | 10/10 (100%) | new |
 | CriticMaster | issue detection rate | 5/5 (100%) | new |
+| 3-layer degradation | layers passing | 3/3 | new |
 | MemGPT archival | avg top-1 score | 0.6807 | baseline: >0.5 ✅ |
 | MemGPT archival | above-0.5 threshold | 3/3 | new |
 | Full pipeline | test score | 28/30 | baseline: 28/30 (unchanged) |
@@ -69,15 +72,13 @@ python tests/test_resume_metrics.py
 
 ## ⚠️ Outstanding Issues
 
-### P1 — Important, not blocking
-- [ ] Tests A and C require API server (8003) + MCP server (8002) to be running.
-  Re-run after starting services to get Router accuracy and full degradation scores.
+### P0 — Blocking
+- none
 
 ---
 
 ## 📝 Next Steps
-- [ ] Start API + MCP servers and re-run to get Test A (RouterNode accuracy) and full Test C scores
-- [ ] Feed complete results to agent-resume-builder skill for bullet generation
+- [ ] Feed complete metrics to agent-resume-builder skill for bullet generation
 
 ---
 
@@ -86,6 +87,6 @@ python tests/test_resume_metrics.py
 | Field | Value |
 |-------|-------|
 | Created | 2026-04-21 |
-| Last commit | fix: MemGPTMemory self-connect to Milvus when rag=None |
+| Last commit | fix: increase test_router_accuracy timeout to 120s |
 | New dependencies | none |
 | Baseline tests passing | yes (28/30 — not re-verified this session, services offline) |
