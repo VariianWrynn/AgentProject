@@ -1,28 +1,30 @@
-# DeepResearch — Energy Industry AI Agent
+# DeepResearch — 能源行业 AI 智能体
 
-A LangGraph-powered multi-agent research system that produces structured, cited research reports on energy industry topics. Ask a question in Chinese or English — the pipeline plans, searches, queries data, writes, critiques, and delivers a full report with charts.
+> [English version → README_EN.md](README_EN.md)
 
-## What You Get
+基于 LangGraph 的多智能体研究系统，可针对能源行业问题生成结构化、带引用的深度研究报告。支持中英文提问——流程自动完成规划、检索、数据查询、撰写、审核，最终输出附图表的完整报告。
 
-- **Multi-agent research pipeline** — 6 specialist roles: ChiefArchitect, DeepScout, DataAnalyst, LeadWriter, CriticMaster, Synthesizer
-- **Real-time SSE streaming frontend** — React/TypeScript UI shows agent progress live
-- **Energy industry knowledge base** — RAG over curated energy documents (Milvus + BGE-m3)
-- **Text2SQL on energy financial data** — natural language → SQL on `energy.db` with Chinese term support
-- **Redis-cached tool layer** — MCP server caches heavy tool calls for fast repeat queries
-- **Adversarial review loop** — CriticMaster triggers re-research if confidence < 0.7
+## 功能概览
 
-## Prerequisites
+- **多智能体研究流水线** — 6 个专业角色：ChiefArchitect（规划）、DeepScout（检索）、DataAnalyst（数据分析）、LeadWriter（撰写）、CriticMaster（审核）、Synthesizer（汇总）
+- **实时 SSE 流式前端** — React/TypeScript 界面实时显示各智能体执行进度
+- **能源行业知识库** — 基于 Milvus + BGE-m3 的 RAG 检索，覆盖精选能源行业文献
+- **Text2SQL 能源数据查询** — 自然语言直接转 SQL，支持中文业务术语（如"营收"→ `SUM(amount)`）
+- **Redis 缓存工具层** — MCP 服务端缓存高频工具调用，重复查询速度大幅提升
+- **对抗式审核循环** — CriticMaster 在置信度 < 0.7 时自动触发重新研究
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Docker Desktop | ≥ 4.x | Required for Milvus + Redis stack |
-| Python | 3.11+ | Backend and ingestion scripts |
-| Node.js | 18+ | Frontend only |
-| RAM | 16 GB minimum | 32 GB recommended (Milvus + embedding model) |
+## 环境要求
 
-## Quick Start (< 15 minutes)
+| 工具 | 版本 | 说明 |
+|------|------|------|
+| Docker Desktop | ≥ 4.x | 用于启动 Milvus + Redis 基础服务 |
+| Python | 3.11+ | 后端及数据导入脚本 |
+| Node.js | 18+ | 仅前端需要 |
+| 内存 | 最低 16 GB | 推荐 32 GB（Milvus + 向量模型） |
 
-### 1. Clone and configure
+## 快速部署（< 15 分钟）
+
+### 1. 克隆项目并初始化配置
 
 ```bash
 git clone https://github.com/VariianWrynn/AgentProject.git
@@ -30,81 +32,81 @@ cd AgentProject
 cp .env.example .env
 ```
 
-### 2. Install Python dependencies
+### 2. 安装 Python 依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set your API keys — the only thing you must change
+### 3. 配置 API Key — 唯一必须修改的步骤
 
-Open `.env` and fill in:
+打开 `.env` 填写以下内容：
 
 ```bash
-# Required — get from api.scnet.cn
-OPENAI_API_KEY=sk-...        # Main key (fallback for all roles)
+# 必填 — 从 api.scnet.cn 获取
+OPENAI_API_KEY=sk-...        # 主密钥（所有角色的兜底 key）
 OPENAI_BASE_URL=https://api.scnet.cn/api/llm/v1
 LLM_MODEL=MiniMax-M2.5
 
-# Required — get from bochaai.com
-BOCHA_API_KEY=sk-...         # Chinese web search
+# 必填 — 从 bochaai.com 获取
+BOCHA_API_KEY=sk-...         # 中文网页搜索
 
-# Optional multi-key setup (gives ~3x speed via parallel agents)
+# 可选：多 Key 配置（并行提速约 3 倍）
 LLM_KEY_1=sk-...             # ChiefArchitect + Router
-LLM_KEY_2=sk-...             # DeepScout (high concurrency)
+LLM_KEY_2=sk-...             # DeepScout（高并发检索）
 LLM_KEY_3=sk-...             # DataAnalyst + CriticMaster
-LLM_KEY_4=sk-...             # LeadWriter (parallel sections)
+LLM_KEY_4=sk-...             # LeadWriter（并行章节撰写）
 LLM_KEY_5=sk-...             # Synthesizer
-LLM_KEY_6=sk-...             # Spare / overflow
+LLM_KEY_6=sk-...             # 备用 / 溢出
 ```
 
-> **Minimum viable:** set only `OPENAI_API_KEY` and `BOCHA_API_KEY`.
-> Multi-key setup is optional but gives ~3x throughput improvement.
+> **最简启动：** 只填 `OPENAI_API_KEY` 和 `BOCHA_API_KEY` 即可运行。
+> 多 Key 配置为可选项，但可带来约 3 倍吞吐提升。
 
-### 4. Start backend services
+### 4. 启动后端基础服务
 
 ```bash
 docker compose -f docker-compose.yml up -d
 ```
 
-Wait ~45 seconds for Milvus to initialize, then verify:
+等待约 45 秒让 Milvus 完成初始化，然后验证：
 
 ```bash
 curl http://localhost:8002/tools/health
 ```
 
-Expected: `{"milvus": "ok", "redis": "ok", "sqlite": "ok", "bocha": "ok"}`
+期望返回：`{"milvus": "ok", "redis": "ok", "sqlite": "ok", "bocha": "ok"}`
 
-> **Note:** `compose.yaml` in the project root is a minimal image-build-only file.
-> Always use `-f docker-compose.yml` to get the full infrastructure stack.
+> **注意：** 项目根目录的 `compose.yaml` 仅用于镜像构建，不包含完整服务栈。
+> 务必使用 `-f docker-compose.yml` 以启动全套基础设施。
 
-### 5. Load the energy knowledge base
+### 5. 导入能源知识库
 
 ```bash
 python backend/tools/ingest_files.py
 ```
 
-Ingests energy industry documents into Milvus (~30 seconds, one-time setup).
+将能源行业文档导入 Milvus（约 30 秒，仅需执行一次）。
 
-### 6. Start the API and MCP servers
+### 6. 启动 API 服务与 MCP 服务
 
-If `mcp-server` and `api-server` are not already running via Docker Compose, start them manually:
+若 Docker Compose 未包含 `mcp-server` / `api-server`，请手动启动：
 
 ```bash
-# Terminal 1
+# 终端 1
 python mcp_server.py
 
-# Terminal 2
+# 终端 2
 python api_server.py
 ```
 
-Verify:
+验证：
 ```bash
-curl http://localhost:8002/tools/health   # MCP server
-curl http://localhost:8003/health         # API server
+curl http://localhost:8002/tools/health   # MCP 服务
+curl http://localhost:8003/health         # API 服务
 ```
 
-### 7. Start the frontend
+### 7. 启动前端
 
 ```bash
 cd frontend
@@ -112,50 +114,50 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173**
+浏览器打开 **http://localhost:5173**
 
 ---
 
-## Architecture Overview
+## 系统架构
 
 ```
-Frontend (React/TypeScript :5173)
+前端 React/TypeScript :5173
     │ SSE + REST
     ▼
-API Server (FastAPI :8003)  api_server.py
+API 服务器 FastAPI :8003  api_server.py
     │
     ▼
-LangGraph Multi-Agent Pipeline  langgraph_agent.py
+LangGraph 多智能体流水线  langgraph_agent.py
   ChiefArchitect → DeepScout → DataAnalyst
   → LeadWriter → CriticMaster → Synthesizer
     │
     ▼
-MCP Tool Server (FastAPI :8002)  mcp_server.py  [Redis-cached]
+MCP 工具服务器 FastAPI :8002  mcp_server.py  [Redis 缓存]
     │
-    ├─── Milvus :19530       RAG knowledge base (BGE-m3 embeddings)
-    ├─── SQLite energy.db    Text2SQL on energy financial data
-    └─── Bocha Web Search    Chinese web search (HTTPS)
+    ├─── Milvus :19530       RAG 知识库（BGE-m3 向量嵌入）
+    ├─── SQLite energy.db    Text2SQL 能源财务数据
+    └─── Bocha 网页搜索      中文互联网检索（HTTPS）
 ```
 
-**Agent roles:**
+**智能体角色说明：**
 
-| Agent | Role |
-|-------|------|
-| ChiefArchitect | Research planning, hypothesis generation |
-| DeepScout | Parallel async RAG + web search |
-| DataAnalyst | Text2SQL queries + matplotlib charts |
-| LeadWriter | Section-by-section parallel report writing |
-| CriticMaster | Adversarial review, triggers re-research if needed |
-| Synthesizer | Final report assembly and formatting |
+| 智能体 | 职责 |
+|--------|------|
+| ChiefArchitect | 研究规划、假设生成 |
+| DeepScout | 异步并行 RAG + 网页检索 |
+| DataAnalyst | Text2SQL 查询 + matplotlib 图表 |
+| LeadWriter | 按章节并行撰写报告 |
+| CriticMaster | 对抗式审核，置信度不足时触发重研究 |
+| Synthesizer | 最终报告汇总与格式化 |
 
 ---
 
-## Partial Rebuild
+## 部分重建
 
-### Rebuild knowledge base from scratch
+### 重建知识库
 
 ```bash
-# Clear existing vectors and re-ingest
+# 清空已有向量后重新导入
 python -c "
 from rag_pipeline import RAGPipeline
 r = RAGPipeline()
@@ -165,83 +167,83 @@ for src in r.list_sources():
 python backend/tools/ingest_files.py
 ```
 
-### Rebuild energy database
+### 重建能源数据库
 
 ```bash
 python resources/data/create_energy_db.py
 ```
 
-### Reset Redis cache
+### 清空 Redis 缓存
 
 ```bash
 python backend/tools/clean_redis.py
 ```
 
-### Full reset (destroys all Milvus data)
+### 全量重置（危险操作，会清空所有 Milvus 数据）
 
 ```bash
-docker compose -f docker-compose.yml down -v   # WARNING: deletes all vector data
+docker compose -f docker-compose.yml down -v   # 警告：将删除全部向量数据
 docker compose -f docker-compose.yml up -d
-# Wait 45s
+# 等待 45 秒
 python backend/tools/ingest_files.py
 ```
 
 ---
 
-## Ports Reference
+## 端口说明
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| MCP Server | 8002 | Tool endpoints (RAG, SQL, web search) |
-| API Server | 8003 | User-facing `/chat` + `/research/*` |
-| Frontend (dev) | 5173 | React dev server |
-| Milvus | 19530 | Vector database |
-| Redis | 6379 | Session cache + agent memory |
-| etcd | 2379 | Milvus metadata (internal) |
-| MinIO | 9000 | Object storage for Milvus (internal) |
+| 服务 | 端口 | 用途 |
+|------|------|------|
+| MCP 服务器 | 8002 | 工具接口（RAG、SQL、网页搜索） |
+| API 服务器 | 8003 | 用户接口 `/chat` + `/research/*` |
+| 前端（开发） | 5173 | React 开发服务器 |
+| Milvus | 19530 | 向量数据库 |
+| Redis | 6379 | 会话缓存 + 智能体记忆 |
+| etcd | 2379 | Milvus 元数据（内部） |
+| MinIO | 9000 | Milvus 对象存储（内部） |
 
-## Running Tests
+## 运行测试
 
 ```bash
-python tests/test_energy_p1.py   # Energy domain baseline (5/5)
-python tests/test_energy_p2.py   # Multi-agent baseline (5/5)
-python tests/final_test.py       # Full pipeline eval (28/30)
+python tests/test_energy_p1.py   # 能源领域基线（5/5）
+python tests/test_energy_p2.py   # 多智能体基线（5/5）
+python tests/final_test.py       # 全流程评估（28/30）
 ```
 
-Component tests:
+组件测试：
 ```bash
-python tests/test_text2sql.py    # Text2SQL accuracy
-python tests/test_rag.py         # RAG retrieval
-python tests/test_mcp_api.py     # MCP tool endpoints
+python tests/test_text2sql.py    # Text2SQL 准确率
+python tests/test_rag.py         # RAG 检索效果
+python tests/test_mcp_api.py     # MCP 工具接口
 ```
 
 ---
 
-## Troubleshooting
+## 常见问题
 
-| Symptom | Fix |
-|---------|-----|
-| `milvus: error` in health check | Wait 45s after `docker compose up` — Milvus is slow to initialize |
-| `bocha: http_401` | Check `BOCHA_API_KEY` in `.env` |
-| MCP health shows timeout (3–5s) | Normal — MCP calls Bocha on every health check |
-| Frontend shows API error | API server not running — start `python api_server.py` |
-| Report stuck at "审核报告质量" | CriticMaster loop bug (fixed) — restart `api_server.py` |
-| Chinese text in charts shows □□□ | Run `pip install matplotlib` then restart `api_server.py` |
-| `docker compose up` starts wrong services | Use `-f docker-compose.yml` — `compose.yaml` is image-only |
-
----
-
-## Key Files
-
-| File | Purpose |
+| 现象 | 解决方案 |
 |------|---------|
-| `api_server.py` | User-facing FastAPI server (port 8003) |
-| `mcp_server.py` | Tool service with Redis cache (port 8002) |
-| `langgraph_agent.py` | LangGraph orchestration (dual-graph pipeline) |
-| `llm_router.py` | Routes agent roles to API keys |
-| `rag_pipeline.py` | BGE-m3 embeddings → Milvus |
-| `backend/agents/` | 6 specialist agent modules |
-| `backend/tools/` | text2sql, ingest, rag_evaluator, clean_redis |
-| `resources/data/energy.db` | SQLite energy financial database |
-| `resources/data/energy_docs/` | RAG knowledge base source documents |
-| `docs/AGENT_CONTEXT.md` | Full developer context — read this first |
+| 健康检查返回 `milvus: error` | `docker compose up` 后等待 45 秒，Milvus 启动较慢 |
+| `bocha: http_401` | 检查 `.env` 中的 `BOCHA_API_KEY` |
+| MCP 健康检查超时（3–5 秒） | 正常现象，MCP 每次健康检查都会调用 Bocha |
+| 前端显示 API 错误 | API 服务未启动，执行 `python api_server.py` |
+| 报告卡在"审核报告质量" | CriticMaster 循环 bug（已修复），重启 `api_server.py` |
+| 图表中文显示方块 □□□ | 执行 `pip install matplotlib` 后重启 `api_server.py` |
+| `docker compose up` 服务不全 | 务必使用 `-f docker-compose.yml`，`compose.yaml` 仅构建镜像 |
+
+---
+
+## 关键文件
+
+| 文件 | 用途 |
+|------|------|
+| `api_server.py` | 用户接口 FastAPI 服务器（端口 8003） |
+| `mcp_server.py` | 带 Redis 缓存的工具服务（端口 8002） |
+| `langgraph_agent.py` | LangGraph 编排（双图流水线） |
+| `llm_router.py` | 按智能体角色路由 API Key |
+| `rag_pipeline.py` | BGE-m3 向量嵌入 → Milvus |
+| `backend/agents/` | 6 个专业智能体模块 |
+| `backend/tools/` | text2sql、ingest、rag_evaluator、clean_redis |
+| `resources/data/energy.db` | SQLite 能源财务数据库 |
+| `resources/data/energy_docs/` | RAG 知识库原始文档 |
+| `docs/AGENT_CONTEXT.md` | 完整开发者上下文——请优先阅读 |
