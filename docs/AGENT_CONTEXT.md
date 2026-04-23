@@ -21,7 +21,7 @@ AgentProject/                  ← project root (run all commands from here)
 │   ├── data/                  ← energy.db, energy_docs/, schema_metadata.json
 │   └── test_files/            ← HR + VectorDB test PDFs
 ├── tests/                     ← all test files
-├── scripts/                   ← demo_prep.sh, extract-troubleshooting.sh
+├── scripts/                   ← extract-troubleshooting.sh, context_health_check.py
 ├── reports/                   ← generated research reports (auto-created)
 └── logs/                      ← runtime logs (auto-created)
 
