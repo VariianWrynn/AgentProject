@@ -6,7 +6,7 @@
 
 ## Checkpoint Format
 
-Use this format when creating a new checkpoint file in `checkpoints/`.
+Use this format when creating a new checkpoint file in `docs/checkpoints/`.
 File naming: `part1-energy-checkpoint.md`, `part2-multiagent-checkpoint.md`, etc.
 
 ```markdown

@@ -49,10 +49,10 @@ Read `AGENT_CONTEXT.md` for the full development workflow guide, including:
 ## TROUBLESHOOTING EXTRACTION RULE
 
 When compacting, if troubleshooting content exists in the conversation:
-1. Extract each bug/issue to `[project-root]/troubleshooting-log/issue-YYYYMMDD-NNN.md`
-2. Use the template in `[project-root]/troubleshooting-log/README.md`
+1. Extract each bug/issue to `[project-root]/docs/troubleshooting-log/issue-YYYYMMDD-NNN.md`
+2. Use the template in `[project-root]/docs/troubleshooting-log/README.md`
 3. Replace the full troubleshooting content in conversation with:
-   `[Extracted to troubleshooting-log/issue-YYYYMMDD-NNN.md — Issue: <brief title>]`
+   `[Extracted to docs/troubleshooting-log/issue-YYYYMMDD-NNN.md — Issue: <brief title>]`
 4. NEVER delete troubleshooting content without extracting it first
 
 ---
@@ -60,7 +60,7 @@ When compacting, if troubleshooting content exists in the conversation:
 ## CHECKPOINT REFERENCE RULE
 
 When compacting:
-- Keep checkpoint file references: `[Day N checkpoint: checkpoints/dayN-checkpoint.md]`
+- Keep checkpoint file references: `[Day N checkpoint: docs/checkpoints/dayN-checkpoint.md]`
 - Keep one-line module status summary from the checkpoint
 - Delete detailed content already captured in the checkpoint file
 
