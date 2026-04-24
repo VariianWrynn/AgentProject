@@ -26,7 +26,7 @@
 |--------|-------|-----------|-------|------|------|--------|
 | OPT-01 | CriticMaster consistency guard | test_opt01_consistency_guard.py | 15 | 15 | 0 | ✅ PASS |
 | OPT-05 | Layer 3 mock-based fallback | test_opt05_layer3_fallback.py | 12 | 12 | 0 | ✅ PASS |
-| OPT-02 | PDF table-aware extraction | — | — | — | — | ⏳ PENDING |
+| OPT-02 | PDF table-aware extraction | test_opt02_pdf_table.py | 23 | 23 | 0 | ✅ PASS |
 | OPT-04 | Router misclassification fix | — | — | — | — | ⏳ PENDING |
 | OPT-03 | HITL gate at CriticMaster | — | — | — | — | ⏳ PENDING |
 
@@ -93,14 +93,41 @@
 
 ## OPT-02 — PDF Table-Aware Extraction
 
-**Branch**: `OPT-02` | **Commit**: `bea65db`
-**File changed**: `rag_pipeline.py` — `load_pdf()` replaced with table-aware version (lines 63–148)
+**Branch**: `OPT-02` | **Commit**: `bea65db` (fix) + `fe5cbec` (test file)
+**File changed**: `rag_pipeline.py` — `_rects_overlap()`, `_table_to_markdown()`, `load_pdf()` (lines 63–149)
+**Test file**: `tests/test_opt02_pdf_table.py` (new, committed on OPT-02)
+**fitz version**: 1.27.2.2 (PyMuPDF)
 
-### Results: ⏳ NOT YET RUN
+### Results: 23/23 PASS
 
 | # | Test case | Result |
 |---|-----------|--------|
-| — | — | PENDING |
+| 1 | _rects_overlap: full containment | PASS |
+| 2 | _rects_overlap: partial overlap | PASS |
+| 3 | _rects_overlap: no overlap (left) | PASS |
+| 4 | _rects_overlap: no overlap (above) | PASS |
+| 5 | _rects_overlap: touching within tol=2 → overlap | PASS |
+| 6 | _rects_overlap: gap > tol → no overlap | PASS |
+| 7 | _rects_overlap: identical rects → overlap | PASS |
+| 8 | _table_to_markdown: has pipe chars | PASS |
+| 9 | _table_to_markdown: header row present | PASS |
+| 10 | _table_to_markdown: separator row after header | PASS |
+| 11 | _table_to_markdown: data row 1 present | PASS |
+| 12 | _table_to_markdown: data row 2 present | PASS |
+| 13 | _table_to_markdown: 4 lines (header+sep+2 data) | PASS |
+| 14 | _table_to_markdown: None cell → empty string | PASS |
+| 15 | _table_to_markdown: empty rows → empty string | PASS |
+| 16 | _table_to_markdown: single-row (header+sep only) | PASS |
+| 17 | load_pdf: returns non-empty string (len=3766) | PASS |
+| 18 | load_pdf: returns str type | PASS |
+| 19 | load_pdf: content > 50 chars | PASS |
+| 20 | load_pdf: no raw 'None' string in output | PASS |
+| 21 | fallback: find_tables() raises → still returns string | PASS |
+| 22 | fallback: returned text non-empty | PASS |
+| 23 | fallback: find_tables patch was actually called | PASS |
+
+**Real PDF used**: `resources/test_files/vectorDB_test_document.pdf` (3766 chars extracted)
+**Fallback verified**: monkey-patched `fitz.Page.find_tables` to raise — `load_pdf()` fell back to `page.get_text()` correctly.
 
 ---
 
@@ -135,9 +162,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Branches tested | 2 / 5 |
-| Total cases run | 27 |
-| Total passed | 27 |
+| Branches tested | 3 / 5 |
+| Total cases run | 50 |
+| Total passed | 50 |
 | Total failed | 0 |
 | Overall pass rate | 100% (of cases run so far) |
 
@@ -145,7 +172,7 @@
 
 ## Next Steps
 
-- [ ] OPT-02: checkout, write/run tests, fill section above
+- [x] OPT-02: 23/23 PASS (test_opt02_pdf_table.py, commit fe5cbec)
 - [ ] OPT-04: checkout, run test_router_static.py on correct branch, fill section above
 - [ ] OPT-03: checkout, design test strategy (HITL requires Redis or mock), fill section above
 - [ ] Final: update Summary Table and Cumulative Score once all 5 complete
