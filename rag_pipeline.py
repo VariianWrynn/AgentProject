@@ -60,15 +60,93 @@ def load_txt(file_path: str) -> str:
         return f.read()
 
 
+def _rects_overlap(r1: tuple, r2: tuple, tol: float = 2.0) -> bool:
+    """Return True if two (x0, y0, x1, y1) rectangles overlap within tolerance."""
+    x0_1, y0_1, x1_1, y1_1 = r1
+    x0_2, y0_2, x1_2, y1_2 = r2
+    return not (
+        x1_1 < x0_2 - tol or x0_1 > x1_2 + tol or
+        y1_1 < y0_2 - tol or y0_1 > y1_2 + tol
+    )
+
+
+def _table_to_markdown(table) -> str:
+    """Convert a PyMuPDF TableFinder table to pipe-delimited markdown.
+
+    Preserves column-header → data-row associations so BGE-m3 can embed
+    "| JinkoSolar | 0.60 | 25% |" rather than the flat sequence
+    "JinkoSolar 0.60 25%" which loses which value belongs to which column.
+    """
+    rows = table.extract()  # list[list[str | None]]
+    if not rows:
+        return ""
+    cleaned = [
+        [str(cell).strip().replace("\n", " ") if cell is not None else "" for cell in row]
+        for row in rows
+    ]
+    lines: list[str] = []
+    for i, row in enumerate(cleaned):
+        lines.append("| " + " | ".join(row) + " |")
+        if i == 0:  # separator after header row
+            lines.append("|" + "|".join(" --- " for _ in row) + "|")
+    return "\n".join(lines)
+
+
 def load_pdf(file_path: str) -> str:
-    """Extract text from a PDF file using pymupdf (handles CJK fonts and tables)."""
-    text_parts: list[str] = []
+    """Extract text from a PDF, formatting detected tables as pipe-delimited markdown.
+
+    Algorithm per page:
+    1. Call page.find_tables() to detect table regions (PyMuPDF ≥ 1.23.0).
+    2. For each table: format rows as '| col | col |' markdown via _table_to_markdown().
+    3. Get remaining text blocks via get_text("blocks") and exclude any that
+       overlap with a table bounding box (already captured in step 2).
+    4. Merge formatted tables + non-table blocks sorted by y0 (reading order).
+    5. Fall back to plain page.get_text() if find_tables() is unavailable or raises.
+    """
+    page_texts: list[str] = []
+
     with fitz.open(file_path) as doc:
         for page in doc:
-            page_text = page.get_text()
+            # --- Attempt table-aware extraction ---
+            try:
+                tab_finder = page.find_tables()
+                tables = tab_finder.tables
+            except Exception:
+                tables = []
+
+            if not tables:
+                # No tables on this page — use original fast path
+                page_text = page.get_text()
+                if page_text.strip():
+                    page_texts.append(page_text)
+                continue
+
+            # Collect table bboxes and their markdown representations
+            table_bboxes = [t.bbox for t in tables]
+            segments: list[tuple[float, str]] = []  # (y0, text)
+
+            for t in tables:
+                md = _table_to_markdown(t)
+                if md:
+                    segments.append((t.bbox[1], md))
+
+            # Get text blocks with coordinates; skip those inside table regions
+            for block in page.get_text("blocks"):
+                bx0, by0, bx1, by1, text = block[:5]
+                if not text.strip():
+                    continue
+                block_rect = (bx0, by0, bx1, by1)
+                if any(_rects_overlap(block_rect, tb) for tb in table_bboxes):
+                    continue  # already captured in the formatted table
+                segments.append((by0, text.strip()))
+
+            # Sort by y0 to restore reading order, then join
+            segments.sort(key=lambda s: s[0])
+            page_text = "\n\n".join(text for _, text in segments)
             if page_text.strip():
-                text_parts.append(page_text)
-    return "\n".join(text_parts)
+                page_texts.append(page_text)
+
+    return "\n".join(page_texts)
 
 
 LOADERS = {
