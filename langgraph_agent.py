@@ -88,10 +88,14 @@ _ROUTER_SYSTEM = """\
 - 含"政策"、"补贴"、"法规"、"碳"关键词 → policy_query
 - 含"市场"、"规模"、"价格"、"竞争"关键词 → market_analysis
 - 含"数据"、"多少"、"查询"、"统计"且涉及具体数字 → data_query
+- 含技术概念（Vector Database、VDB、RAG、向量、Embedding、嵌入、架构、Agent、LLM、模型、算法、pipeline）→ research
+- 含比较性词语（区别、对比、vs、compare、difference、比较、优劣）→ research
+- 含参数/配置词（Top-K、阈值、threshold、chunk、参数、配置、设置）→ research
 - 复杂综合性问题、需要多来源验证 → research
-- 其他 → general
+- 仅闲聊、寒暄、无实质内容 → general
 
 IMPORTANT: 如果用户提到自己的职位、公司、地区、兴趣方向等个人/工作背景 → 归为 research（便于记忆层捕捉）。
+IMPORTANT: 不确定时优先选 research，而非 general。RAG 检索有额外成本但质量更好。
 
 输出JSON：{"intent": "policy_query|market_analysis|data_query|research|general", "reason": "一句话说明"}
 """
