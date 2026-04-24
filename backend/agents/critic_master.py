@@ -66,6 +66,39 @@ def _format_draft(draft_sections: dict, outline: list[dict]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
+def _consistency_guard(issues: list[dict], quality_score: float) -> float:
+    """
+    Cross-validate quality_score against the detected issues list.
+
+    LLMs sometimes report high-severity issues but still assign an inflated
+    quality_score, causing the report to bypass re-research. This guard
+    applies two deterministic caps before the score is returned.
+    """
+    high_count = sum(1 for i in issues if i.get("severity") == "high")
+
+    # Rule 1: any high-severity issue must pull the score below the "good" band
+    if high_count > 0 and quality_score > 0.7:
+        adjusted = min(quality_score, 0.65)
+        logger.warning(
+            "[CriticMaster] consistency guard fired (Rule 1): %d high-severity issue(s) "
+            "but quality_score=%.2f — capping at %.2f",
+            high_count, quality_score, adjusted,
+        )
+        return adjusted
+
+    # Rule 2: any issue at all should not yield a near-perfect score
+    if issues and quality_score > 0.85:
+        adjusted = 0.85
+        logger.warning(
+            "[CriticMaster] consistency guard fired (Rule 2): %d issue(s) present "
+            "but quality_score=%.2f — capping at %.2f",
+            len(issues), quality_score, adjusted,
+        )
+        return adjusted
+
+    return quality_score
+
+
 def run(state: dict, llm) -> dict:
     """
     Run CriticMaster to review draft sections.
@@ -125,6 +158,7 @@ def run(state: dict, llm) -> dict:
 
         # Validate and clamp score
         quality_score = max(0.0, min(1.0, quality_score))
+        quality_score = _consistency_guard(issues, quality_score)
 
         # Extract pending queries from high/medium severity issues
         pending_queries = []
