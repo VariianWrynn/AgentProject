@@ -95,9 +95,23 @@ All 5 OPT issues now have implementations on separate branches (OPT-01 through O
 
 ---
 
+## 🧪 Test Run Results (2026-04-24, agentPro env)
+
+| Test file | Cases | Passed | Failed | Notes |
+|-----------|-------|--------|--------|-------|
+| tests/test_opt05_layer3_fallback.py (new) | 12 | 12 | 0 | committed 676c5e1 |
+
+**Scenarios covered**:
+- Forced crash → fallback triggered → assert_called_once() both sides
+- Primary path success → fallback NOT called
+- Fallback return value passed through intact (all keys)
+- layer_results flags: crash_forced, fallback_triggered, has_answer, pass all True
+
+**Env note**: Direct agentPro Python executable used — conda run has GBK encoding issues on Windows.
+
 ## 📝 Next Steps
-- [ ] Run `python tests/test_resume_metrics.py` to confirm Layer 3 still PASS
-- [ ] Merge all OPT branches (review PRs #14–#17 + this one)
+- [x] Layer 3 isolated unit test passing: 12/12 (test_opt05_layer3_fallback.py, commit 676c5e1)
+- [ ] Run full python tests/test_resume_metrics.py when services are live (Layers 1+2 need server)
 
 ---
 
