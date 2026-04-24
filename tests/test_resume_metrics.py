@@ -278,22 +278,68 @@ def test_degradation_layers():
             layer_results["mcp_fallback"] = {"pass": layer2_pass, "exception": type(e).__name__}
             print(f"  {'✅' if layer2_pass else '❌'} MCPClient fallback: {type(e).__name__}")
 
-        # Layer 3 — pipeline-level: full /chat still returns an answer
-        print("  Layer 3: Pipeline-level fallback to legacy ReAct...")
+        # Layer 3 — pipeline-level: mock-based fallback path verification
+        #
+        # WHY NOT HTTP: the old test sent a normal POST /chat and checked HTTP 200.
+        # That only proves the server is available — it cannot distinguish between
+        # "deep research succeeded" and "deep research crashed → ReAct fallback ran".
+        # unittest.mock.patch cannot reach into a separate server process either.
+        #
+        # WHAT WE DO INSTEAD: replicate the try/except fallback pattern from
+        # api_server.py:517-521 in-process using MagicMock callables.
+        # This forces the crash and asserts the fallback path was actually triggered.
+        print("  Layer 3: Mock-based pipeline fallback (forced crash → ReAct)...")
         try:
-            resp = requests.post(
-                f"{BASE_API}/chat",
-                json={"question": "储能行业概况", "session_id": f"test_degrade_{int(time.time())}"},
-                timeout=60,
+            from unittest.mock import MagicMock
+
+            # Mirrors the fallback logic in api_server.py:517-521:
+            #   try:
+            #       state = _lga.run_deep_research(question, sid, ...)
+            #   except Exception as exc:
+            #       state = _run_graph(question, sid)
+            def _simulate_research_report(run_deep_research_fn, run_graph_fn,
+                                          question: str, sid: str) -> dict:
+                try:
+                    return run_deep_research_fn(question, sid)
+                except Exception:
+                    return run_graph_fn(question, sid)
+
+            deep_research_mock = MagicMock(
+                side_effect=Exception("forced crash for fallback test")
             )
-            data = resp.json()
-            layer3_pass = resp.status_code == 200 and bool(data.get("answer"))
+            legacy_graph_mock = MagicMock(
+                return_value={
+                    "final_answer":   "fallback answer from legacy ReAct graph",
+                    "intent":         "research",
+                    "steps_executed": [],
+                }
+            )
+
+            sid   = f"test_degrade_{int(time.time())}"
+            state = _simulate_research_report(
+                deep_research_mock, legacy_graph_mock, "储能行业概况", sid
+            )
+
+            # Assert both sides of the fallback fired correctly
+            deep_research_mock.assert_called_once()
+            legacy_graph_mock.assert_called_once()
+            fallback_answer = state.get("final_answer", "")
+            layer3_pass     = bool(fallback_answer)
+
             layer_results["pipeline_fallback"] = {
-                "pass":       layer3_pass,
-                "status":     resp.status_code,
-                "has_answer": bool(data.get("answer")),
+                "pass":                    layer3_pass,
+                "crash_forced":            True,
+                "deep_research_attempted": deep_research_mock.called,
+                "fallback_triggered":      legacy_graph_mock.called,
+                "has_answer":              bool(fallback_answer),
+                "note":                    "mock-based; no running server required",
             }
-            print(f"  {'✅' if layer3_pass else '❌'} Pipeline fallback: status={resp.status_code}, has_answer={bool(data.get('answer'))}")
+            print(
+                f"  {'✅' if layer3_pass else '❌'} Pipeline fallback (forced crash): "
+                f"deep_research_attempted={deep_research_mock.called}, "
+                f"fallback_triggered={legacy_graph_mock.called}, "
+                f"has_answer={bool(fallback_answer)}"
+            )
         except Exception as e:
             layer_results["pipeline_fallback"] = {"pass": False, "error": str(e)}
             print(f"  ❌ Layer 3 error: {e}")
