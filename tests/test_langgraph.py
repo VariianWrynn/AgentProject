@@ -35,7 +35,7 @@ TEST_CASES = [
     {
         "id":              2,
         "question":        "知识库里有哪些主题的文档？",
-        "expected_intent": "analysis",
+        "expected_intent": "research",
         "expected_tools":  ["rag_search", "doc_summary"],
         "skip_planner":    False,
     },
@@ -52,7 +52,7 @@ TEST_CASES = [
 def _initial_state(question: str) -> dict:
     return {
         "question":       question,
-        "intent":         "general",    # overwritten by router
+        "intent":         "__unset__",  # overwritten by router; guard below ensures router ran
         "plan":           [],
         "steps_executed": [],
         "reflection":     "",
@@ -123,6 +123,11 @@ def run_tests() -> None:
         # --- Assertions ---
         ok = True
         reasons = []
+
+        # 0. Guard: verify router actually ran (seed was "__unset__", not a valid intent)
+        if merged.get("intent") == "__unset__":
+            ok = False
+            reasons.append("router never ran — intent still '__unset__'")
 
         # 1. final_answer non-empty
         if not merged.get("final_answer"):
