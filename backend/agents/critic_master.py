@@ -151,23 +151,32 @@ def run(state: dict, llm) -> dict:
         # Determine next phase with iteration-aware convergence
         iteration = state.get("iteration", 0)
         if state.get("demo_mode", False):
-            # demo_mode: always skip RE_RESEARCHING loop
+            # demo_mode: always skip human gate
             next_phase = "done"
         elif iteration >= 2:
             # After 2 iterations, accept anything — prevent perfectionism loop
             logger.info("[CriticMaster] iteration=%d, forcing done (convergence guard)", iteration)
             next_phase = "done"
-        elif pending_queries and quality_score < 0.6:
-            # Only re-research on genuinely low scores (was 0.75 — too strict)
-            next_phase = "re_researching"
+        elif quality_score < 0.7:
+            # Quality below threshold — pause for human review (OPT-003)
+            next_phase = "awaiting_human"
         else:
             next_phase = "done"
 
+        # Build a concise issue summary for the HITL SSE event
+        issue_lines = [
+            f"[{i.get('severity','?')}] {i.get('type','?')}: {i.get('description','')}"
+            for i in issues[:5]
+        ]
+        issue_summary = "\n".join(issue_lines) if issue_lines else "No specific issues listed."
+
         return {
-            "critic_issues":  issues,
-            "quality_score":  quality_score,
+            "critic_issues":   issues,
+            "quality_score":   quality_score,
             "pending_queries": pending_queries,
             "phase":           next_phase,
+            "awaiting_human":  next_phase == "awaiting_human",
+            "issue_summary":   issue_summary,
         }
 
     except Exception as exc:

@@ -139,6 +139,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from typing import Literal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -199,6 +200,11 @@ class ReportRequest(BaseModel):
 class IngestRequest(BaseModel):
     source_name: str
     content: str
+
+
+class DecisionRequest(BaseModel):
+    session_id: str
+    decision:   Literal["approve", "reject"]
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -536,6 +542,28 @@ def research_report(req: ReportRequest) -> dict:
         _api_logger.warning("[Report] Markdown save failed: %s", _md_exc)
 
     return result
+
+
+@app.post("/research/decision")
+def research_decision(req: DecisionRequest) -> dict:
+    """Submit a human approve/reject decision for a paused research pipeline.
+
+    Called by the frontend (or directly via API) when the user reviews the
+    CriticMaster's quality report and chooses whether to accept the current
+    draft or trigger a supplementary research loop.
+
+    Writes the decision to Redis key hitl_decision:{session_id}. The
+    human_gate_node in langgraph_agent.py polls this key and unblocks
+    within HITL_POLL_INTERVAL seconds.
+
+    Example:
+        POST /research/decision
+        {"session_id": "abc123", "decision": "approve"}
+    """
+    hitl_key = f"hitl_decision:{req.session_id}"
+    _redis.setex(hitl_key, 3600, req.decision)
+    _api_logger.info("[HITL] decision=%s written for session=%s", req.decision, req.session_id)
+    return {"session_id": req.session_id, "decision": req.decision, "status": "ok"}
 
 
 @app.post("/demo/warmup")
