@@ -28,7 +28,7 @@
 | OPT-05 | Layer 3 mock-based fallback | test_opt05_layer3_fallback.py | 12 | 12 | 0 | ✅ PASS |
 | OPT-02 | PDF table-aware extraction | test_opt02_pdf_table.py | 23 | 23 | 0 | ✅ PASS |
 | OPT-04 | Router misclassification fix | test_opt04_router_static.py | 27 | 27 | 0 | ✅ PASS |
-| OPT-03 | HITL gate at CriticMaster | — | — | — | — | ⏳ PENDING |
+| OPT-03 | HITL gate at CriticMaster | test_opt03_hitl.py | 45 | 45 | 0 | ✅ PASS |
 
 ---
 
@@ -173,14 +173,22 @@
 
 ## OPT-03 — HITL Gate at CriticMaster
 
-**Branch**: `OPT-03` | **Commit**: `22a3ffd`
-**Files changed**: `langgraph_agent.py` (human_gate_node + routing), `agent_state.py` (3 new fields), `api_server.py` (POST /research/decision endpoint)
+**Branch**: `OPT-03` | **Commit**: `22a3ffd` (fix) + `c48a501` (test file)
+**Files changed**: `langgraph_agent.py` (human_gate_node + _route_human_gate + routing), `agent_state.py` (3 new TypedDict fields), `api_server.py` (DecisionRequest + POST /research/decision)
+**Test file**: `tests/test_opt03_hitl.py` (new, committed on OPT-03)
 
-### Results: ⏳ NOT YET RUN
+### Results: 45/45 PASS
 
 | # | Test case | Result |
 |---|-----------|--------|
-| — | — | PENDING |
+| 1–18 | Static: HITL_POLL_INTERVAL, HITL_TIMEOUT, human_gate_node, _route_human_gate, Redis key pattern, auto-approve, SSE event, graph wiring, awaiting_human routing, 3 AgentState fields, phase comment, DecisionRequest, Literal decision, endpoint, Redis key in endpoint, setex+TTL | PASS ×18 |
+| 19–26 | _route_human_gate logic: reject iter 0/1/2 → deep_scout; iter 3/4 → synthesizer; approve → synthesizer; timeout → synthesizer; missing phase → synthesizer | PASS ×8 |
+| 27–41 | human_gate_node mock — approve path: user_decision, phase=done, awaiting_human=False, iteration unchanged, SSE pushed, Redis deleted | PASS ×6 |
+| 32–40 | human_gate_node mock — reject path: user_decision=reject, phase=re_researching, awaiting_human=False, iteration+1, Redis deleted | PASS ×5 |
+| 41–45 | human_gate_node mock — timeout path: auto-approve, phase=done, Redis.get never called, SSE pushed | PASS ×4 |
+| 46–49 | DecisionRequest contract: session_id, Literal decision, response shape, setex 3600s TTL | PASS ×4 |
+
+**Test strategy**: static AST for all new symbols (no torch import), inline replica of `_route_human_gate()` for pure logic, mocked Redis+SSE for `human_gate_node()` approve/reject/timeout paths — no real Redis, no network, no 300s wait.
 
 ---
 
@@ -188,11 +196,11 @@
 
 | Metric | Value |
 |--------|-------|
-| Branches tested | 4 / 5 |
-| Total cases run | 77 |
-| Total passed | 77 |
+| Branches tested | 5 / 5 — COMPLETE |
+| Total cases run | 122 |
+| Total passed | 122 |
 | Total failed | 0 |
-| Overall pass rate | 100% (of cases run so far) |
+| Overall pass rate | 100% ✅ |
 
 ---
 
@@ -200,5 +208,5 @@
 
 - [x] OPT-02: 23/23 PASS (test_opt02_pdf_table.py, commit fe5cbec)
 - [x] OPT-04: 27/27 PASS (test_opt04_router_static.py, commit fec3cd4)
-- [ ] OPT-03: checkout, design test strategy (HITL requires Redis or mock), fill section above
-- [ ] Final: update Summary Table and Cumulative Score once all 5 complete
+- [x] OPT-03: 45/45 PASS (test_opt03_hitl.py, commit c48a501)
+- [x] Final: all 5 branches tested, 122/122 cases passed, checkpoint complete
