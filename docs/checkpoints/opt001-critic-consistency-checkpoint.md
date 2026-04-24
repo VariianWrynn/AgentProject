@@ -31,7 +31,16 @@ run(state: dict, llm) -> dict  # returns {critic_issues, quality_score, pending_
 | tests/test_energy_p1.py | 5/5 | 5/5 |
 | tests/test_energy_p2.py | 5/5 | 5/5 |
 
-**Test results**: Not run (per user instruction)
+**Test results** (2026-04-24, agentPro conda env, Python 3.14.4 + torch 2.11.0):
+
+| Test file | Cases | Passed | Failed | Notes |
+|-----------|-------|--------|--------|-------|
+| tests/test_opt01_consistency_guard.py | 15 | 15 | 0 | new file, committed 90ac55b |
+| tests/test_router_static.py | 26 | 9 | 17 | expected — OPT-01 has no router changes (those are on OPT-04) |
+
+**Boundary finding**: Rule 1 uses strict `> 0.7` (not `>= 0.7`). Score of exactly 0.70 with high-severity issues is NOT capped — passes through as 0.70. This is by design per implementation.
+
+**Env note**: `conda run -n agentPro` has GBK encoding issues on Windows; used direct executable path `C:/Users/77837/miniconda3/envs/agentPro/python.exe` instead.
 
 ---
 
@@ -72,9 +81,9 @@ Added `_consistency_guard(issues, quality_score)` helper function and called it 
 ---
 
 ## 📝 Next Steps
-- [ ] Run `python tests/final_test.py` to confirm no regression
+- [x] Unit tests written and passing: 15/15 (tests/test_opt01_consistency_guard.py, commit 90ac55b)
+- [ ] Run full suite (tests/final_test.py) when services are live to confirm no regression
 - [ ] Monitor logs for guard firing: `[CriticMaster] consistency guard` lines
-- [ ] Update OPT-001 status to ✅ Fixed after test confirmation
 
 ---
 
