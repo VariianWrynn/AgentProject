@@ -2,7 +2,7 @@
 # AgentProject — Energy Industry AI Agent
 # Location: docs/AGENT_CONTEXT.md
 # READ THIS FILE FIRST at the start of every session.
-
+# ALSO READ docs/troubleshooting-log/readme.md for issue logging.
 ---
 
 ## ⚠️ Project Structure
