@@ -27,7 +27,7 @@
 | OPT-01 | CriticMaster consistency guard | test_opt01_consistency_guard.py | 15 | 15 | 0 | ✅ PASS |
 | OPT-05 | Layer 3 mock-based fallback | test_opt05_layer3_fallback.py | 12 | 12 | 0 | ✅ PASS |
 | OPT-02 | PDF table-aware extraction | test_opt02_pdf_table.py | 23 | 23 | 0 | ✅ PASS |
-| OPT-04 | Router misclassification fix | — | — | — | — | ⏳ PENDING |
+| OPT-04 | Router misclassification fix | test_opt04_router_static.py | 27 | 27 | 0 | ✅ PASS |
 | OPT-03 | HITL gate at CriticMaster | — | — | — | — | ⏳ PENDING |
 
 ---
@@ -133,15 +133,41 @@
 
 ## OPT-04 — Router Misclassification Fix
 
-**Branch**: `OPT-04` | **Commit**: `d337e1b`
+**Branch**: `OPT-04` | **Commit**: `d337e1b` (fix) + `fec3cd4` (test file)
 **Files changed**: `langgraph_agent.py` (`_ROUTER_SYSTEM` prompt), `tests/test_langgraph.py` (intent seed + guard assertion)
-**Test file**: `tests/test_router_static.py` (new, created on OPT-01 branch, checks OPT-04 changes)
+**Test file**: `tests/test_opt04_router_static.py` (new, committed on OPT-04; uses `ast.parse()` — no torch)
 
-### Results: ⏳ NOT YET RUN
+### Results: 27/27 PASS
 
 | # | Test case | Result |
 |---|-----------|--------|
-| — | — | PENDING |
+| 1 | tech rule: 'RAG' keyword present | PASS |
+| 2 | tech rule: 'Embedding' / '嵌入' present | PASS |
+| 3 | tech rule: 'VDB' / 'Vector Database' present | PASS |
+| 4 | tech rule: 'LLM' present | PASS |
+| 5 | tech rule: '向量' present | PASS |
+| 6 | tech rule: maps to research | PASS |
+| 7 | comparison rule: '区别' present | PASS |
+| 8 | comparison rule: '对比' present | PASS |
+| 9 | comparison rule: 'compare' present | PASS |
+| 10 | param rule: 'Top-K' present | PASS |
+| 11 | param rule: '阈值' present | PASS |
+| 12 | param rule: 'threshold' present | PASS |
+| 13 | param rule: 'chunk' present | PASS |
+| 14 | tiebreaker: '优先选 research' IMPORTANT line present | PASS |
+| 15 | general narrowed: '仅闲聊' / '寒暄' restricts to small talk | PASS |
+| 16 | original: policy_query rule preserved | PASS |
+| 17 | original: market_analysis rule preserved | PASS |
+| 18 | original: data_query rule preserved | PASS |
+| 19 | intent spec: policy_query declared | PASS |
+| 20 | intent spec: market_analysis declared | PASS |
+| 21 | intent spec: data_query declared | PASS |
+| 22 | intent spec: research declared | PASS |
+| 23 | intent spec: general declared | PASS |
+| 24 | test_langgraph.py: invalid intent 'analysis' removed | PASS |
+| 25 | test_langgraph.py: seed is '__unset__' (not 'general') | PASS |
+| 26 | test_langgraph.py: guard assertion for '__unset__' present | PASS |
+| 27 | test_langgraph.py: expected_intent for doc-topics → 'research' | PASS |
 
 ---
 
@@ -162,9 +188,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Branches tested | 3 / 5 |
-| Total cases run | 50 |
-| Total passed | 50 |
+| Branches tested | 4 / 5 |
+| Total cases run | 77 |
+| Total passed | 77 |
 | Total failed | 0 |
 | Overall pass rate | 100% (of cases run so far) |
 
@@ -173,6 +199,6 @@
 ## Next Steps
 
 - [x] OPT-02: 23/23 PASS (test_opt02_pdf_table.py, commit fe5cbec)
-- [ ] OPT-04: checkout, run test_router_static.py on correct branch, fill section above
+- [x] OPT-04: 27/27 PASS (test_opt04_router_static.py, commit fec3cd4)
 - [ ] OPT-03: checkout, design test strategy (HITL requires Redis or mock), fill section above
 - [ ] Final: update Summary Table and Cumulative Score once all 5 complete
