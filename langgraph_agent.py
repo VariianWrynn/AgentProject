@@ -52,8 +52,10 @@ _redis_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=Tru
 memgpt      = MemGPTMemory(rag=_rag)   # reuses already-loaded BGE-m3
 mcp         = MCPClient()              # MCP tool server client (fallback to direct on error)
 
-LANGGRAPH_TTL = 7200   # 2 h Redis TTL
-MAX_ITER      = 3
+LANGGRAPH_TTL      = 7200   # 2 h Redis TTL
+MAX_ITER           = 3
+HITL_POLL_INTERVAL = 2     # seconds between Redis polls in human_gate_node
+HITL_TIMEOUT       = 300   # seconds before auto-approving when no user response
 
 # ---------------------------------------------------------------------------
 # Prompt variants
@@ -549,20 +551,96 @@ def synthesizer_node(state: AgentState) -> dict:
     return result
 
 
-def _route_critic_master(state: AgentState) -> str:
-    """Route after CriticMaster: re_researching loop or synthesizer.
+def human_gate_node(state: AgentState) -> dict:
+    """Pause the pipeline and wait for a human approve/reject decision.
 
-    Hard limit: after 3 RE_RESEARCHING iterations, force Synthesizer
+    Pushes an 'awaiting_review' SSE event so the frontend can render a
+    decision UI. Polls Redis key hitl_decision:{session_id} at
+    HITL_POLL_INTERVAL-second intervals until the user responds or
+    HITL_TIMEOUT seconds elapse. On timeout, auto-approves to prevent
+    the pipeline from hanging indefinitely.
+
+    User submits decision via POST /research/decision (see api_server.py).
+    """
+    sid       = state.get("session_id", "")
+    score     = state.get("quality_score", 0.0)
+    issues    = state.get("critic_issues", [])
+    summary   = state.get("issue_summary", "")
+    iteration = state.get("iteration", 0)
+
+    high_count = sum(1 for i in issues if i.get("severity") == "high")
+
+    _push_sse_event(
+        sid, "awaiting_review",
+        f"质量评分 {score:.2f}，发现 {len(issues)} 个问题（{high_count} 高危）。"
+        f"请审阅草稿并选择：approve（通过）或 reject（补充研究）。",
+        step=5,
+    )
+    logger.info("[HumanGate] Awaiting decision session=%s score=%.2f issues=%d timeout=%ds",
+                sid, score, len(issues), HITL_TIMEOUT)
+    print(f"[HumanGate] session={sid} score={score:.2f} issues={len(issues)} "
+          f"timeout={HITL_TIMEOUT}s", flush=True)
+
+    hitl_key = f"hitl_decision:{sid}"
+    deadline = time.time() + HITL_TIMEOUT
+
+    while time.time() < deadline:
+        decision = _redis_conn.get(hitl_key)
+        if decision:
+            _redis_conn.delete(hitl_key)
+            logger.info("[HumanGate] Decision='%s' received for session=%s", decision, sid)
+            print(f"[HumanGate] decision={decision} session={sid}", flush=True)
+            new_phase = "re_researching" if decision == "reject" else "done"
+            return {
+                "user_decision":  decision,
+                "awaiting_human": False,
+                "phase":          new_phase,
+                "iteration":      iteration + 1 if decision == "reject" else iteration,
+            }
+        time.sleep(HITL_POLL_INTERVAL)
+
+    # Timeout — auto-approve so the pipeline can finish
+    logger.warning("[HumanGate] Timeout (%ds) for session=%s — auto-approving", HITL_TIMEOUT, sid)
+    print(f"[HumanGate] TIMEOUT session={sid} — auto-approving", flush=True)
+    _push_sse_event(sid, "reviewing", f"等待超时（{HITL_TIMEOUT}s），自动通过审核", step=5)
+    return {
+        "user_decision":  "approve",
+        "awaiting_human": False,
+        "phase":          "done",
+    }
+
+
+def _route_human_gate(state: AgentState) -> str:
+    """Route from HumanGate based on user decision.
+
+    reject + iterations remaining → deep_scout (re-research)
+    approve / timeout / max iterations  → synthesizer
+    """
+    phase     = state.get("phase", "done")
+    iteration = state.get("iteration", 0)
+    if phase == "re_researching" and iteration < MAX_ITER:
+        logger.info("[HumanGate] Routing to deep_scout (reject, iter=%d)", iteration)
+        return "deep_scout"
+    return "synthesizer"
+
+
+def _route_critic_master(state: AgentState) -> str:
+    """Route after CriticMaster: human gate, re_researching loop, or synthesizer.
+
+    Hard limit: after MAX_ITER RE_RESEARCHING iterations, force Synthesizer
     regardless of quality_score to prevent infinite loops.
     """
     phase     = state.get("phase", "done")
     iteration = state.get("iteration", 0)
 
-    if phase == "re_researching" and iteration < 3:
+    if phase == "awaiting_human":
+        return "human_gate"
+
+    if phase == "re_researching" and iteration < MAX_ITER:
         logger.info("[CriticMaster] RE_RESEARCHING loop #%d triggered", iteration)
         return "deep_scout"
 
-    if phase == "re_researching" and iteration >= 3:
+    if phase == "re_researching" and iteration >= MAX_ITER:
         logger.warning("[CriticMaster] Max iterations reached (%d), forcing Synthesizer", iteration)
     return "synthesizer"
 
@@ -577,6 +655,7 @@ def build_research_graph():
     g.add_node("data_analyst",    data_analyst_node)
     g.add_node("lead_writer",     lead_writer_node)
     g.add_node("critic_master",   critic_master_node)
+    g.add_node("human_gate",      human_gate_node)
     g.add_node("synthesizer",     synthesizer_node)
 
     g.set_entry_point("router")
@@ -587,6 +666,10 @@ def build_research_graph():
     g.add_edge("lead_writer",     "critic_master")
     g.add_conditional_edges(
         "critic_master", _route_critic_master,
+        {"deep_scout": "deep_scout", "synthesizer": "synthesizer", "human_gate": "human_gate"},
+    )
+    g.add_conditional_edges(
+        "human_gate", _route_human_gate,
         {"deep_scout": "deep_scout", "synthesizer": "synthesizer"},
     )
     g.add_edge("synthesizer", END)
@@ -626,6 +709,10 @@ def _make_initial_state(question: str, session_id: str, demo_mode: bool = False)
         "quality_score":       0.0,
         "phase":               "planning",
         "demo_mode":           demo_mode,
+        # OPT-003: HITL fields
+        "user_decision":       None,
+        "awaiting_human":      False,
+        "issue_summary":       "",
     }
 
 

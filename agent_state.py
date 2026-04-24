@@ -9,7 +9,7 @@ Part 1 fields are preserved unchanged for backward compatibility.
 Part 2 fields are Optional with default None so existing code doesn't break.
 """
 
-from typing import Literal, Optional, TypedDict
+from typing import Literal, Optional, TypedDict  # noqa: F401 — Optional used below
 
 
 class AgentState(TypedDict):
@@ -47,5 +47,10 @@ class AgentState(TypedDict):
     quality_score:       float          # 0.0–1.0
 
     # Flow control
-    phase:               str            # planning/researching/analyzing/writing/reviewing/done
+    phase:               str            # planning/researching/analyzing/writing/reviewing/awaiting_human/done
     demo_mode:           bool           # True = limit scope (2 questions, 2 sections, skip re-research)
+
+    # Human-in-the-loop (OPT-003)
+    user_decision:   Optional[str]      # "approve" | "reject" | None (not yet decided)
+    awaiting_human:  bool               # True while human_gate_node is polling for decision
+    issue_summary:   str                # rendered issue list pushed to SSE for UI display
