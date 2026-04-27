@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -184,13 +185,26 @@ def run(state: dict, llm) -> dict:
     charts_data: list[dict] = []
     all_rows: list[dict]    = []
 
-    print(f"[DataAnalyst] Running {len(queries)} SQL queries ...")
+    print(f"[DataAnalyst] Running {len(queries)} SQL queries in parallel ...")
     t0 = time.time()
 
+    # Phase 1 — parallel SQL fetch (network/LLM bound, safe to parallelise)
+    sql_results: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+        futures = {pool.submit(_run_text2sql, q): q for q in queries}
+        for future in as_completed(futures):
+            q = futures[future]
+            try:
+                sql_results[q] = future.result()
+            except Exception as exc:
+                logger.warning("[DataAnalyst] query '%s' raised: %s", q[:40], exc)
+                sql_results[q] = {}
+
+    # Phase 2 — sequential processing + chart generation (matplotlib Agg not thread-safe)
     for query in queries:
-        result = _run_text2sql(query)
-        rows   = result.get("result", [])
-        sql    = result.get("sql", "")
+        result  = sql_results.get(query, {})
+        rows    = result.get("result", [])
+        sql     = result.get("sql", "")
         summary = result.get("summary", "")
 
         if rows:

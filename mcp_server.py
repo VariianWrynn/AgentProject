@@ -132,7 +132,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Load .env so BOCHA_API_KEY and other secrets are available when running directly
 try:
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
 except ImportError:
     pass
 
