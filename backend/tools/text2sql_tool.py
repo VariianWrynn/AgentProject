@@ -26,6 +26,13 @@ from typing import Optional
 
 from openai import OpenAI
 
+# Load .env so this module works when instantiated outside api_server / mcp_server
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"), override=True)
+except ImportError:
+    pass
+
 logger = logging.getLogger("text2sql_tool")
 
 # Reject DML/DDL before any LLM call
@@ -37,14 +44,31 @@ _DML_RE = re.compile(
 # ---------------------------------------------------------------------------
 # LLM Client (inline — avoids importing react_engine.py and its heavy deps)
 # ---------------------------------------------------------------------------
-_API_KEY  = os.getenv("OPENAI_API_KEY",  "sk-NDczLTExODQxMjQ0ODQ2LTE3NzUxMjg3NzYyNjY=")
-_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.scnet.cn/api/llm/v1")
-_MODEL    = os.getenv("LLM_MODEL",       "MiniMax-M2.5")
+_API_KEY  = os.getenv("OPENAI_API_KEY", "")
+_BASE_URL = os.getenv("OPENAI_BASE_URL")
+_MODEL    = os.getenv("LLM_MODEL")
 
 
 class LLMClient:
     def __init__(self) -> None:
-        self._client = OpenAI(api_key=_API_KEY, base_url=_BASE_URL)
+        if not _API_KEY:
+            raise EnvironmentError(
+                "OPENAI_API_KEY is not set — add it to your .env file"
+            )
+        if not _BASE_URL:
+            raise EnvironmentError(
+                "OPENAI_BASE_URL is not set — add it to your .env file"
+            )
+        if not _MODEL:
+            raise EnvironmentError(
+                "LLM_MODEL is not set — add it to your .env file"
+            )
+        self._client = OpenAI(
+            api_key=_API_KEY,
+            base_url=_BASE_URL,
+            timeout=60.0,
+            max_retries=1,
+        )
         self._model  = _MODEL
 
     def chat_json(self, system: str, user: str, temperature: float = 0.2) -> dict:

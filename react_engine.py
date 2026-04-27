@@ -31,9 +31,16 @@ from typing import Optional
 
 import redis
 from openai import OpenAI
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 from rag_pipeline import RAGPipeline
+
+# Load .env when run directly (api_server.py / mcp_server.py already do this)
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -47,9 +54,9 @@ logger = logging.getLogger("react_engine")
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY", "sk-NDczLTExODQxMjQ0ODQ2LTE3NzUxMjg3NzYyNjY=")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.scnet.cn/api/llm/v1")
-LLM_MODEL       = os.getenv("LLM_MODEL", "MiniMax-M2.5")
+OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
+LLM_MODEL       = os.getenv("LLM_MODEL")
 REDIS_HOST      = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT      = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_TTL       = int(os.getenv("REDIS_TTL", "3600"))   # seconds
@@ -132,11 +139,28 @@ class Memory:
 # ===========================================================================
 class LLMClient:
     def __init__(self, api_key: str = None, model: str = None, base_url: str = None) -> None:
+        _key = api_key or OPENAI_API_KEY
+        _url = base_url or OPENAI_BASE_URL
+        _model = model or LLM_MODEL
+        if not _key:
+            raise EnvironmentError(
+                "OPENAI_API_KEY is not set — add it to your .env file"
+            )
+        if not _url:
+            raise EnvironmentError(
+                "OPENAI_BASE_URL is not set — add it to your .env file"
+            )
+        if not _model:
+            raise EnvironmentError(
+                "LLM_MODEL is not set — add it to your .env file"
+            )
         self._client = OpenAI(
-            api_key=api_key or OPENAI_API_KEY,
-            base_url=base_url or OPENAI_BASE_URL,
+            api_key=_key,
+            base_url=_url,
+            timeout=60.0,   # fail after 60s per attempt instead of SDK default 600s
+            max_retries=1,  # one SDK retry; LeadWriter has its own loop on top
         )
-        self.model = model or LLM_MODEL
+        self.model = _model
 
     def chat_json(self, system: str, user: str, temperature: float = 0.2) -> dict:
         """Call LLM expecting a JSON response. Falls back to regex extraction."""

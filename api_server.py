@@ -130,9 +130,24 @@ if _args.kill:
 # Load .env before any module that reads env vars at import time (llm_router, react_engine)
 try:
     from dotenv import load_dotenv as _load_dotenv
-    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
 except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
+
+# Suppress third-party deprecation warnings that are not actionable from this codebase:
+#   - FastAPI uses asyncio.iscoroutinefunction() deprecated in Python 3.14 (fix is upstream)
+#   - uvicorn uses websockets.legacy deprecated in websockets 14+ (fix is upstream)
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message=".*iscoroutinefunction.*",
+    category=DeprecationWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=".*websockets.legacy.*",
+    category=DeprecationWarning,
+)
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
@@ -280,13 +295,21 @@ def delete_memory(session_id: str) -> dict:
     return {"deleted": deleted, "session_id": session_id}
 
 
+_health_cache: dict = {}
+_health_cache_ts: float = 0.0
+_HEALTH_TTL = 5.0   # seconds; avoids hitting MCP on every frontend poll
+
 @app.get("/health")
 def health() -> dict:
+    global _health_cache, _health_cache_ts
+    if time.time() - _health_cache_ts < _HEALTH_TTL:
+        return _health_cache
+
     status: dict[str, str] = {"api": "ok"}
 
     # MCP Server
     try:
-        r = requests.get(f"{MCP_URL}/tools/health", timeout=10)
+        r = requests.get(f"{MCP_URL}/tools/health", timeout=3)
         mcp_data = r.json()
         status["mcp_server"] = "ok" if r.status_code == 200 else "error"
         status["milvus"] = mcp_data.get("milvus", "unknown")
@@ -305,6 +328,8 @@ def health() -> dict:
         except Exception as e:
             status["redis"] = f"error: {e}"
 
+    _health_cache = status
+    _health_cache_ts = time.time()
     return status
 
 
@@ -351,7 +376,7 @@ async def research_stream(question: str, session_id: str = None):
 
         # Real-time: poll Redis as pipeline pushes events
         last_index = 0
-        deadline   = time.time() + 600   # 10-minute timeout (pipeline can take ~210s)
+        deadline   = time.time() + 900   # 15-minute timeout (RE_RESEARCHING + rate-limit retries can hit 600s+)
         heartbeat_counter = 0
         _api_logger.info("[SSE] Starting real-time poll for events_key=%s", events_key)
         while time.time() < deadline:
@@ -374,7 +399,7 @@ async def research_stream(question: str, session_id: str = None):
             await asyncio.sleep(0.5)
 
         # Timeout — proper SSE format so browser can parse it
-        _api_logger.warning("[SSE] Stream timeout (600s) for sid=%s, events_seen=%d", sid, last_index)
+        _api_logger.warning("[SSE] Stream timeout (900s) for sid=%s, events_seen=%d", sid, last_index)
         timeout_payload = json.dumps({"type": "error", "content": "stream timeout"}, ensure_ascii=False)
         yield f"data: {timeout_payload}\n\n"
 

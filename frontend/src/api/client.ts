@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { ResearchReport, SourceList, HealthStatus } from '../types/api'
+import type { ResearchReport, SourceList, HealthStatus, DecisionResponse } from '../types/api'
 
 const BASE = '/api'
 
@@ -31,6 +31,13 @@ export const api = {
 
   // Health
   getHealth: () => axios.get<HealthStatus>(`${BASE}/health`),
+
+  // HITL: submit human approve/reject decision
+  submitDecision: (sessionId: string, decision: 'approve' | 'reject') =>
+    axios.post<DecisionResponse>(`${BASE}/research/decision`, {
+      session_id: sessionId,
+      decision,
+    }),
 
   // Demo warmup — pre-runs pipeline and caches result
   warmup: (question?: string) =>

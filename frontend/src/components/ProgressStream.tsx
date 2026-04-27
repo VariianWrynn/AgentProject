@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { SSEEvent, SSEEventType } from '../types/api'
+import { HITLDecisionCard } from './HITLDecisionCard'
 import styles from './ProgressStream.module.css'
 
 interface Props {
@@ -17,17 +18,18 @@ interface DisplayEvent {
 }
 
 const EVENT_ICONS: Record<string, string> = {
-  thinking:  '🧠',
-  searching: '🔍',
-  analyzing: '📊',
-  writing:   '✍️',
-  reviewing: '🔎',
-  done:      '✅',
-  intent:    'ℹ️',
-  plan:      'ℹ️',
-  step:      'ℹ️',
-  answer:    'ℹ️',
-  error:     '❌',
+  thinking:        '🧠',
+  searching:       '🔍',
+  analyzing:       '📊',
+  writing:         '✍️',
+  reviewing:       '🔎',
+  done:            '✅',
+  intent:          'ℹ️',
+  plan:            'ℹ️',
+  step:            'ℹ️',
+  answer:          'ℹ️',
+  error:           '❌',
+  awaiting_review: '⚠️',
 }
 
 function eventLabel(ev: SSEEvent): string {
@@ -43,6 +45,11 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
   const [events, setEvents] = useState<DisplayEvent[]>([])
   const [connected, setConnected] = useState(false)
   const [done, setDone] = useState(false)
+  const [pendingDecision, setPendingDecision] = useState<{
+    content: string
+    draftSections: Record<string, string>
+    issueSummary: string
+  } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const startTimeRef = useRef(Date.now())
   const esRef = useRef<EventSource | null>(null)
@@ -74,6 +81,17 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
             elapsedMs,
           },
         ])
+
+        if (ev.type === 'awaiting_review') {
+          // Pipeline paused waiting for human decision — show decision card.
+          // Do NOT close stream or call onComplete; stream must stay open to
+          // receive subsequent events after the user submits their decision.
+          setPendingDecision({
+            content: ev.content ?? '',
+            draftSections: ev.draft_sections ?? {},
+            issueSummary: ev.issue_summary ?? '',
+          })
+        }
 
         if (ev.type === 'done') {
           setDone(true)
@@ -131,6 +149,29 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
             <span className={styles.elapsed}>{(ev.elapsedMs / 1000).toFixed(1)}s</span>
           </div>
         ))}
+        {pendingDecision && (
+          <HITLDecisionCard
+            content={pendingDecision.content}
+            draftSections={pendingDecision.draftSections}
+            issueSummary={pendingDecision.issueSummary}
+            sessionId={sessionId}
+            onDecisionSubmitted={(decision) => {
+              setPendingDecision(null)
+              setEvents((prev) => [
+                ...prev,
+                {
+                  id: counterRef.current++,
+                  type: decision === 'approve' ? 'reviewing' : 'searching',
+                  label:
+                    decision === 'approve'
+                      ? '已通过审核，继续生成报告...'
+                      : '已提交补充研究请求，重新搜索...',
+                  elapsedMs: Date.now() - startTimeRef.current,
+                },
+              ])
+            }}
+          />
+        )}
         <div ref={bottomRef} />
       </div>
     </div>

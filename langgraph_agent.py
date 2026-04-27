@@ -437,8 +437,12 @@ def build_graph():
 # ---------------------------------------------------------------------------
 
 def _push_sse_event(session_id: str, event_type: str, content: str,
-                    step: int = 0, tool: str | None = None) -> None:
-    """Push one SSE progress event to Redis list sse_events:{session_id}."""
+                    step: int = 0, tool: str | None = None, **extra) -> None:
+    """Push one SSE progress event to Redis list sse_events:{session_id}.
+
+    Extra keyword arguments are merged into the JSON payload so callers can
+    attach arbitrary data (e.g. draft_sections, issue_summary for HITL).
+    """
     key = f"sse_events:{session_id}"
     try:
         event = {
@@ -447,6 +451,7 @@ def _push_sse_event(session_id: str, event_type: str, content: str,
             "step":    step,
             "tool":    tool,
             "t_ms":    int(time.time() * 1000),
+            **extra,
         }
         payload = json.dumps(event, ensure_ascii=False)
         _redis_conn.rpush(key, payload)
@@ -542,9 +547,10 @@ def synthesizer_node(state: AgentState) -> dict:
     sid = state.get("session_id", "")
     logger.info("[Synthesizer] START session=%s", sid)
     t0 = time.time()
-    _push_sse_event(sid, "done", "报告生成完成", step=6)
+    _push_sse_event(sid, "writing", "正在修订并整合报告...", step=6)
     from backend.agents.synthesizer import run as syn_run
     result = syn_run(dict(state), make_llm("synthesizer"))
+    _push_sse_event(sid, "done", "报告生成完成", step=6)
     logger.info("[Synthesizer] END duration=%.1fs answer_len=%d",
                 time.time() - t0,
                 len(result.get("final_answer", "")))
@@ -570,11 +576,20 @@ def human_gate_node(state: AgentState) -> dict:
 
     high_count = sum(1 for i in issues if i.get("severity") == "high")
 
+    # Build a titled draft preview — full content, human-readable section titles
+    draft_sections = state.get("draft_sections", {})
+    outline        = state.get("outline", [])
+    title_map: dict[str, str] = {sec.get("id", ""): sec.get("title", "") for sec in outline}
+    title_map["summary"] = "执行摘要"
+    draft_preview = {title_map.get(k, k) or k: v for k, v in draft_sections.items()}
+
     _push_sse_event(
         sid, "awaiting_review",
         f"质量评分 {score:.2f}，发现 {len(issues)} 个问题（{high_count} 高危）。"
         f"请审阅草稿并选择：approve（通过）或 reject（补充研究）。",
         step=5,
+        draft_sections=draft_preview,
+        issue_summary=summary,
     )
     logger.info("[HumanGate] Awaiting decision session=%s score=%.2f issues=%d timeout=%ds",
                 sid, score, len(issues), HITL_TIMEOUT)

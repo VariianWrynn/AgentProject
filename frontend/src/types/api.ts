@@ -55,6 +55,7 @@ export type SSEEventType =
   | 'step'
   | 'answer'
   | 'error'
+  | 'awaiting_review'
 
 export interface SSEEvent {
   type: SSEEventType
@@ -66,6 +67,9 @@ export interface SSEEvent {
   action?: string
   query?: string
   session_id?: string
+  // HITL fields — present only on awaiting_review events
+  draft_sections?: Record<string, string>
+  issue_summary?: string
 }
 
 // GET /knowledge/sources returns {sources: [{source: str}], total: int}
@@ -92,4 +96,10 @@ export interface WarmupResult {
   session_id?: string
   sections?: number
   summary_length?: number
+}
+
+export interface DecisionResponse {
+  session_id: string
+  decision: string
+  status: string
 }
