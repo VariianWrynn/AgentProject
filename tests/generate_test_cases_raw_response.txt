@@ -1,0 +1,3 @@
+# Generation failed — raw LLM output below
+
+LLM did not produce valid JSON after 3 attempts. Last parse error: Unterminated string starting at: line 1 column 59324 (char 59323)

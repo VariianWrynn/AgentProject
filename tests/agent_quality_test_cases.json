@@ -1,0 +1,2851 @@
+{
+  "metadata": {
+    "generated_date": "2026-04-30",
+    "total_cases": 75,
+    "agents_covered": [
+      "ChiefArchitect",
+      "DeepScout",
+      "DataAnalyst",
+      "LeadWriter",
+      "CriticMaster",
+      "Synthesizer"
+    ],
+    "schema_version": "1.0"
+  },
+  "test_cases": [
+    {
+      "test_id": "CA-PLAN-001",
+      "agent": "ChiefArchitect",
+      "category": "plan",
+      "difficulty": "medium",
+      "description": "Verifies that the agent generates exactly 3 hypotheses with numeric targets for energy research queries",
+      "input": {
+        "query": "2024年中国储能行业发展趋势如何",
+        "context": "用户想了解储能行业的市场规模、技术路线和竞争格局",
+        "agent_state_fields": {
+          "question": "2024年中国储能行业发展趋势如何",
+          "intent": "research"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [
+          "假设2024年光伏组件成本将降至0.7元/W以下",
+          "假设2025年新型储能装机将超过50GWh",
+          "假设钠离子电池储能成本将降至0.5元/Wh"
+        ],
+        "required_sub_questions": [
+          "中国储能行业2024年新增装机容量是多少",
+          "储能技术路线中磷酸铁锂和钠离子电池的成本对比",
+          "主要储能企业市场份额分布"
+        ]
+      },
+      "scoring": {
+        "metric_name": "hypothesis_completeness",
+        "formula": "len([h for h in hypotheses if any(c.isdigit() for c in h)]) / 3",
+        "evaluation_method": "Count hypotheses containing numeric values (years, percentages, costs) and divide by 3",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Each hypothesis must contain at least one numeric value (year, percentage, or cost)"
+    },
+    {
+      "test_id": "CA-PLAN-002",
+      "agent": "ChiefArchitect",
+      "category": "plan",
+      "difficulty": "easy",
+      "description": "Verifies outline contains exactly 6 sections with required keywords",
+      "input": {
+        "query": "光伏组件价格走势分析",
+        "context": "需要分析2023-2024年光伏组件价格变化",
+        "agent_state_fields": {
+          "question": "光伏组件价格走势分析",
+          "intent": "market_analysis"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "outline_structure_score",
+        "formula": "len([s for s in outline if 'title' in s and 'keywords' in s and len(s.get('keywords',[])) >= 3]) / 6",
+        "evaluation_method": "Count sections with both title and at least 3 keywords, divide by 6",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "All 6 sections must have title and at least 3 keywords each"
+    },
+    {
+      "test_id": "CA-PLAN-003",
+      "agent": "ChiefArchitect",
+      "category": "plan",
+      "difficulty": "medium",
+      "description": "Verifies research questions are decomposed into 5-8 specific sub-questions",
+      "input": {
+        "query": "中国能源政策对光伏行业的影响",
+        "context": "分析2024年最新能源政策",
+        "agent_state_fields": {
+          "question": "中国能源政策对光伏行业的影响",
+          "intent": "policy_query"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [
+          "强制配储政策对光伏项目成本的影响",
+          "绿电交易政策对光伏运营商收益的影响",
+          "分布式光伏备案制政策的变化"
+        ]
+      },
+      "scoring": {
+        "metric_name": "sub_question_coverage",
+        "formula": "len(research_questions) if 5 <= len(research_questions) <= 8 else 0",
+        "evaluation_method": "Count research_questions, should be between 5-8",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 5,
+        "max": 8
+      },
+      "notes": "Sub-questions must be specific and searchable, not generic"
+    },
+    {
+      "test_id": "CA-PLAN-004",
+      "agent": "ChiefArchitect",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies fallback to default outline when LLM returns empty",
+      "input": {
+        "query": "风电行业分析",
+        "context": "需要完整的行业分析报告",
+        "agent_state_fields": {
+          "question": "风电行业分析",
+          "intent": "research",
+          "demo_mode": false
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "fallback_outline_quality",
+        "formula": "len(outline) / 6",
+        "evaluation_method": "Count outline sections, should fallback to 6 default sections",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.67,
+        "max": 1.0
+      },
+      "notes": "When LLM fails, should use default 6-section structure"
+    },
+    {
+      "test_id": "CA-PLAN-005",
+      "agent": "ChiefArchitect",
+      "category": "rob",
+      "difficulty": "medium",
+      "description": "Verifies hypothesis generation with numeric targets for different energy types",
+      "input": {
+        "query": "新能源汽车动力电池成本趋势",
+        "context": "分析动力电池行业成本变化",
+        "agent_state_fields": {
+          "question": "新能源汽车动力电池成本趋势",
+          "intent": "research"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [
+          "假设2024年磷酸铁锂电芯成本将降至0.5元/Wh以下",
+          "假设2025年动力电池装机将超过500GWh",
+          "假设三元锂电池能量密度将提升至300Wh/kg"
+        ],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "numeric_hypothesis_ratio",
+        "formula": "sum(1 for h in hypotheses if any(c.isdigit() for c in h)) / max(len(hypotheses),1)",
+        "evaluation_method": "Calculate proportion of hypotheses with numeric values",
+        "threshold": 0.8,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.7,
+        "max": 1.0
+      },
+      "notes": "Hypotheses must include specific numbers or years"
+    },
+    {
+      "test_id": "CA-PLAN-006",
+      "agent": "ChiefArchitect",
+      "category": "plan",
+      "difficulty": "hard",
+      "description": "Verifies keywords are relevant to each section's content domain",
+      "input": {
+        "query": "电力市场化改革对可再生能源消纳的影响",
+        "context": "分析电力现货市场和绿电交易",
+        "agent_state_fields": {
+          "question": "电力市场化改革对可再生能源消纳的影响",
+          "intent": "policy_query"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "keyword_relevance_score",
+        "formula": "sum(1 for s in outline if any(kw in s.get('description','') for kw in s.get('keywords',[]))) / len(outline)",
+        "evaluation_method": "Check if keywords appear in section description",
+        "threshold": 0.8,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.7,
+        "max": 1.0
+      },
+      "notes": "Keywords should be semantically related to section content"
+    },
+    {
+      "test_id": "CA-PLAN-007",
+      "agent": "ChiefArchitect",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies demo_mode produces minimal output (1 section, 1 question)",
+      "input": {
+        "query": "储能技术对比",
+        "context": "快速分析",
+        "agent_state_fields": {
+          "question": "储能技术对比",
+          "intent": "research",
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_efficiency",
+        "formula": "len(outline) + len(research_questions)",
+        "evaluation_method": "Sum of outline sections and research questions in demo_mode",
+        "threshold": 2.0,
+        "direction": "lower_is_better"
+      },
+      "expected_output_range": {
+        "min": 1,
+        "max": 2
+      },
+      "notes": "demo_mode should produce minimal output to save time"
+    },
+    {
+      "test_id": "CA-PLAN-008",
+      "agent": "ChiefArchitect",
+      "category": "plan",
+      "difficulty": "medium",
+      "description": "Verifies hypotheses are verifiable (not vague statements)",
+      "input": {
+        "query": "核电发展前景分析",
+        "context": "分析核电在双碳目标下的作用",
+        "agent_state_fields": {
+          "question": "核电发展前景分析",
+          "intent": "research"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "hypothesis_verifiability",
+        "formula": "sum(1 for h in hypotheses if any(w in h for w in ['假设','预计','将','到'])) / max(len(hypotheses),1)",
+        "evaluation_method": "Count hypotheses with verifiable language patterns",
+        "threshold": 0.8,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Hypotheses should use conditional language indicating testability"
+    },
+    {
+      "test_id": "CA-PLAN-009",
+      "agent": "ChiefArchitect",
+      "category": "rob",
+      "difficulty": "hard",
+      "description": "Verifies outline adapts to different intent types",
+      "input": {
+        "query": "宁德时代财务数据分析",
+        "context": "需要详细的财务指标",
+        "agent_state_fields": {
+          "question": "宁德时代财务数据分析",
+          "intent": "data_query"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "intent_adaptation_score",
+        "formula": "1.0 if any('数据' in s.get('title','') or '财务' in s.get('title','') for s in outline) else 0.0",
+        "evaluation_method": "Check if outline includes data/finance related sections for data_query intent",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "For data_query intent, outline should emphasize data sections"
+    },
+    {
+      "test_id": "CA-PLAN-010",
+      "agent": "ChiefArchitect",
+      "category": "edge",
+      "difficulty": "medium",
+      "description": "Verifies minimum 4 sections when outline is too short",
+      "input": {
+        "query": "储能",
+        "context": "简短查询",
+        "agent_state_fields": {
+          "question": "储能",
+          "intent": "general"
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "minimum_section_enforcement",
+        "formula": "len(outline) / 4",
+        "evaluation_method": "Ensure at least 4 sections are generated",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.5
+      },
+      "notes": "Outline must have at least 4 sections even for short queries"
+    },
+    {
+      "test_id": "DS-RET-001",
+      "agent": "DeepScout",
+      "category": "ret",
+      "difficulty": "medium",
+      "description": "Verifies retrieval precision against known-relevant energy storage document",
+      "input": {
+        "query": "磷酸铁锂储能成本 2024",
+        "context": "需要从energy_storage_overview.txt获取数据",
+        "agent_state_fields": {
+          "question": "磷酸铁锂储能成本 2024",
+          "research_questions": [
+            "磷酸铁锂储能系统成本是多少"
+          ],
+          "demo_mode": false
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "retrieval_precision",
+        "formula": "sum(1 for r in raw_sources if '储能' in r.get('title','') or '储能' in r.get('snippet','')) / max(len(raw_sources),1)",
+        "evaluation_method": "Count sources containing query terms, divide by total sources",
+        "threshold": 0.6,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "notes": "Precision measures fraction of retrieved docs relevant to query"
+    },
+    {
+      "test_id": "DS-RET-002",
+      "agent": "DeepScout",
+      "category": "ret",
+      "difficulty": "hard",
+      "description": "Verifies recall against multiple relevant documents",
+      "input": {
+        "query": "光伏组件价格 2024年",
+        "context": "需要从solar_market_report.txt和energy_docs获取信息",
+        "agent_state_fields": {
+          "question": "光伏组件价格 2024年",
+          "research_questions": [
+            "2024年光伏组件价格走势",
+            "TOPCon电池效率数据"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "retrieval_recall",
+        "formula": "len([r for r in raw_sources if r.get('source_type') == 'rag']) / max(len(research_questions),1)",
+        "evaluation_method": "Count RAG sources retrieved per research question",
+        "threshold": 0.8,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.5,
+        "max": 2.0
+      },
+      "notes": "Recall measures if all research questions get RAG results"
+    },
+    {
+      "test_id": "DS-RET-003",
+      "agent": "DeepScout",
+      "category": "ret",
+      "difficulty": "medium",
+      "description": "Verifies deduplication removes duplicate URLs",
+      "input": {
+        "query": "储能企业 宁德时代 比亚迪",
+        "context": "搜索多家储能企业",
+        "agent_state_fields": {
+          "question": "储能企业 宁德时代 比亚迪",
+          "research_questions": [
+            "宁德时代储能业务",
+            "比亚迪储能业务"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "deduplication_effectiveness",
+        "formula": "len(set(r.get('url','') for r in raw_sources if r.get('url'))) / max(len(raw_sources),1)",
+        "evaluation_method": "Calculate unique URL ratio after deduplication",
+        "threshold": 0.9,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Deduplication should remove near-duplicate sources"
+    },
+    {
+      "test_id": "DS-RET-004",
+      "agent": "DeepScout",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies graceful handling when no results returned",
+      "input": {
+        "query": "xyzabc123不存在的查询",
+        "context": "测试空结果处理",
+        "agent_state_fields": {
+          "question": "xyzabc123不存在的查询",
+          "research_questions": [
+            "不存在的查询"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "zero_result_handling",
+        "formula": "1.0 if len(raw_sources) == 0 else 0.0",
+        "evaluation_method": "Check if empty results are handled gracefully without errors",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "System should handle zero results without crashing"
+    },
+    {
+      "test_id": "DS-RET-005",
+      "agent": "DeepScout",
+      "category": "ret",
+      "difficulty": "medium",
+      "description": "Verifies credibility scoring prioritizes RAG sources",
+      "input": {
+        "query": "储能技术路线 钠离子电池",
+        "context": "需要高可信度的技术文档",
+        "agent_state_fields": {
+          "question": "储能技术路线 钠离子电池",
+          "research_questions": [
+            "钠离子电池技术优势",
+            "液流电池成本"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "rag_credibility_ranking",
+        "formula": "sum(1 for r in raw_sources[:5] if r.get('source_type') == 'rag') / 5",
+        "evaluation_method": "Check if top 5 results include RAG sources",
+        "threshold": 0.6,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.4,
+        "max": 1.0
+      },
+      "notes": "RAG sources should rank higher due to higher credibility score"
+    },
+    {
+      "test_id": "DS-RET-006",
+      "agent": "DeepScout",
+      "category": "rob",
+      "difficulty": "hard",
+      "description": "Verifies parallel search executes for multiple questions",
+      "input": {
+        "query": "光伏 风电 储能",
+        "context": "多主题并行搜索",
+        "agent_state_fields": {
+          "question": "光伏 风电 储能",
+          "research_questions": [
+            "光伏装机数据",
+            "风电装机数据",
+            "储能装机数据"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "parallel_search_coverage",
+        "formula": "len(set(r.get('query','') for r in raw_sources)) / max(len(research_questions),1)",
+        "evaluation_method": "Count unique queries covered in results",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "All research questions should get search results"
+    },
+    {
+      "test_id": "DS-RET-007",
+      "agent": "DeepScout",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies demo_mode limits to 1 question",
+      "input": {
+        "query": "储能成本",
+        "context": "快速模式",
+        "agent_state_fields": {
+          "question": "储能成本",
+          "research_questions": [
+            "储能成本是多少"
+          ],
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_limiting",
+        "formula": "len(research_questions)",
+        "evaluation_method": "Count research questions processed in demo_mode",
+        "threshold": 1.0,
+        "direction": "lower_is_better"
+      },
+      "expected_output_range": {
+        "min": 1,
+        "max": 1
+      },
+      "notes": "demo_mode should limit to 1 question for speed"
+    },
+    {
+      "test_id": "DS-RET-008",
+      "agent": "DeepScout",
+      "category": "ret",
+      "difficulty": "medium",
+      "description": "Verifies fact extraction from top results",
+      "input": {
+        "query": "2024年储能新增装机",
+        "context": "需要提取具体数据",
+        "agent_state_fields": {
+          "question": "2024年储能新增装机",
+          "research_questions": [
+            "2024年中国储能新增装机容量"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "fact_extraction_rate",
+        "formula": "len(facts) / max(len(raw_sources[:8]),1)",
+        "evaluation_method": "Count extracted facts from top 8 sources",
+        "threshold": 0.5,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.3,
+        "max": 1.0
+      },
+      "notes": "Facts should be extracted from high-scoring sources"
+    },
+    {
+      "test_id": "DS-RET-009",
+      "agent": "DeepScout",
+      "category": "rob",
+      "difficulty": "hard",
+      "description": "Verifies snippet content length provides sufficient context",
+      "input": {
+        "query": "电力市场化改革 现货市场",
+        "context": "需要详细上下文",
+        "agent_state_fields": {
+          "question": "电力市场化改革 现货市场",
+          "research_questions": [
+            "电力现货市场运行情况"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "snippet_context_adequacy",
+        "formula": "sum(len(r.get('snippet','')) for r in raw_sources) / max(len(raw_sources),1)",
+        "evaluation_method": "Average snippet length across all sources",
+        "threshold": 200.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 150,
+        "max": 500
+      },
+      "notes": "Snippets should provide sufficient context for fact extraction"
+    },
+    {
+      "test_id": "DS-RET-010",
+      "agent": "DeepScout",
+      "category": "edge",
+      "difficulty": "medium",
+      "description": "Verifies pending_queries are cleared after processing",
+      "input": {
+        "query": "光伏政策",
+        "context": "测试pending清理",
+        "agent_state_fields": {
+          "question": "光伏政策",
+          "research_questions": [
+            "光伏政策最新动态"
+          ],
+          "pending_queries": [
+            "补充查询1",
+            "补充查询2"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "pending_clearing",
+        "formula": "1.0 if len(pending_queries) == 0 else 0.0",
+        "evaluation_method": "Check if pending_queries are cleared after search",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "pending_queries should be cleared after processing"
+    },
+    {
+      "test_id": "DA-SQL-001",
+      "agent": "DataAnalyst",
+      "category": "sql",
+      "difficulty": "medium",
+      "description": "Verifies SQL query uses correct table and column names from schema",
+      "input": {
+        "query": "各能源企业2023年营收对比",
+        "context": "需要从company_finance表查询",
+        "agent_state_fields": {
+          "question": "各能源企业2023年营收对比",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "财务指标分析",
+              "keywords": [
+                "营收",
+                "利润",
+                "财务数据"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "correct_sql": "SELECT company_name, SUM(revenue_billion) FROM company_finance WHERE year = 2023 GROUP BY company_name",
+        "correct_result": []
+      },
+      "scoring": {
+        "metric_name": "sql_schema_correctness",
+        "formula": "1.0 if 'company_finance' in sql and 'revenue_billion' in sql and 'company_name' in sql else 0.0",
+        "evaluation_method": "Check if SQL uses correct table and column names from schema",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "SQL must use only table/column names from schema_metadata.json"
+    },
+    {
+      "test_id": "DA-SQL-002",
+      "agent": "DataAnalyst",
+      "category": "sql",
+      "difficulty": "hard",
+      "description": "Verifies SQL aggregation functions work correctly for capacity stats",
+      "input": {
+        "query": "各省份光伏装机容量统计",
+        "context": "需要按省份汇总",
+        "agent_state_fields": {
+          "question": "各省份光伏装机容量统计",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "装机数据分析",
+              "keywords": [
+                "装机容量",
+                "光伏",
+                "省份"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "correct_sql": "SELECT province, SUM(installed_mw) FROM capacity_stats WHERE energy_type = '光伏' GROUP BY province",
+        "correct_result": []
+      },
+      "scoring": {
+        "metric_name": "sql_aggregation_accuracy",
+        "formula": "1.0 if 'SUM' in sql and 'installed_mw' in sql and 'province' in sql and 'GROUP BY' in sql else 0.0",
+        "evaluation_method": "Check if SQL correctly aggregates by province",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "SQL should use SUM aggregation with GROUP BY"
+    },
+    {
+      "test_id": "DA-SQL-003",
+      "agent": "DataAnalyst",
+      "category": "sql",
+      "difficulty": "medium",
+      "description": "Verifies price index query with date filtering",
+      "input": {
+        "query": "2024年光伏电价走势",
+        "context": "需要按月份查询价格",
+        "agent_state_fields": {
+          "question": "2024年光伏电价走势",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "价格数据分析",
+              "keywords": [
+                "电价",
+                "价格指数",
+                "光伏"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "correct_sql": "SELECT date, AVG(price_yuan_kwh) FROM price_index WHERE energy_type = '光伏' AND date LIKE '2024%' GROUP BY date",
+        "correct_result": []
+      },
+      "scoring": {
+        "metric_name": "sql_date_filtering",
+        "formula": "1.0 if 'price_index' in sql and 'price_yuan_kwh' in sql and ('2024' in sql or 'date' in sql) else 0.0",
+        "evaluation_method": "Check if SQL correctly filters by date and energy type",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "SQL must filter by year and energy type correctly"
+    },
+    {
+      "test_id": "DA-SQL-004",
+      "agent": "DataAnalyst",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies demo_mode skips SQL and generates static chart",
+      "input": {
+        "query": "储能市场分析",
+        "context": "快速模式",
+        "agent_state_fields": {
+          "question": "储能市场分析",
+          "intent": "research",
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_chart_generation",
+        "formula": "len([c for c in charts_data if c.get('image_b64')])",
+        "evaluation_method": "Count charts with base64 image data in demo_mode",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1,
+        "max": 1
+      },
+      "notes": "demo_mode should generate 1 static chart without SQL"
+    },
+    {
+      "test_id": "DA-SQL-005",
+      "agent": "DataAnalyst",
+      "category": "sql",
+      "difficulty": "hard",
+      "description": "Verifies SQL handles JOIN-like queries across tables conceptually",
+      "input": {
+        "query": "营收最高的企业",
+        "context": "需要查询营收",
+        "agent_state_fields": {
+          "question": "营收最高的企业",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "企业财务对比",
+              "keywords": [
+                "营收",
+                "企业",
+                "对比"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "correct_sql": "SELECT company_name, SUM(revenue_billion) as total_revenue FROM company_finance GROUP BY company_name ORDER BY total_revenue DESC LIMIT 5",
+        "correct_result": []
+      },
+      "scoring": {
+        "metric_name": "sql_ordering_limit",
+        "formula": "1.0 if 'ORDER BY' in sql and 'DESC' in sql and 'LIMIT' in sql else 0.0",
+        "evaluation_method": "Check if SQL correctly orders and limits results",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "SQL should include ORDER BY and LIMIT for top-N queries"
+    },
+    {
+      "test_id": "DA-SQL-006",
+      "agent": "DataAnalyst",
+      "category": "edge",
+      "difficulty": "medium",
+      "description": "Verifies empty SQL results are handled gracefully",
+      "input": {
+        "query": "不存在的能源类型数据",
+        "context": "测试空结果",
+        "agent_state_fields": {
+          "question": "不存在的能源类型数据",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "数据查询",
+              "keywords": [
+                "数据"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "empty_result_handling",
+        "formula": "1.0 if len(data_points) == 0 and len(charts_data) == 0 else 0.0",
+        "evaluation_method": "Check if empty results are handled without errors",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "System should handle empty SQL results gracefully"
+    },
+    {
+      "test_id": "DA-SQL-007",
+      "agent": "DataAnalyst",
+      "category": "sql",
+      "difficulty": "medium",
+      "description": "Verifies chart type appropriateness for data distribution",
+      "input": {
+        "query": "各季度营收对比",
+        "context": "需要柱状图",
+        "agent_state_fields": {
+          "question": "各季度营收对比",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "季度对比",
+              "keywords": [
+                "营收",
+                "季度"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "chart_type_appropriateness",
+        "formula": "1.0 if any(c.get('type') in ['bar','line'] for c in charts_data) else 0.0",
+        "evaluation_method": "Check if chart type matches data distribution (bar for categorical, line for time series)",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Bar charts for categorical comparisons, line for trends"
+    },
+    {
+      "test_id": "DA-SQL-008",
+      "agent": "DataAnalyst",
+      "category": "rob",
+      "difficulty": "hard",
+      "description": "Verifies multiple SQL queries run in parallel",
+      "input": {
+        "query": "储能企业对比分析",
+        "context": "需要多维度查询",
+        "agent_state_fields": {
+          "question": "储能企业对比分析",
+          "intent": "market_analysis",
+          "outline": [
+            {
+              "id": "sec_3",
+              "title": "竞争格局",
+              "description": "企业对比",
+              "keywords": [
+                "企业",
+                "竞争"
+              ]
+            },
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "财务数据",
+              "keywords": [
+                "营收",
+                "利润"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "parallel_query_efficiency",
+        "formula": "len(set(dp.get('query','') for dp in data_points))",
+        "evaluation_method": "Count unique queries that produced data points",
+        "threshold": 2.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 2,
+        "max": 4
+      },
+      "notes": "Multiple SQL queries should execute in parallel"
+    },
+    {
+      "test_id": "DA-SQL-009",
+      "agent": "DataAnalyst",
+      "category": "sql",
+      "difficulty": "medium",
+      "description": "Verifies data points contain numeric values",
+      "input": {
+        "query": "企业利润数据",
+        "context": "需要数值型数据",
+        "agent_state_fields": {
+          "question": "企业利润数据",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "利润分析",
+              "keywords": [
+                "利润",
+                "财务"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "numeric_data_extraction",
+        "formula": "sum(1 for dp in data_points if isinstance(dp.get('value'),(int,float))) / max(len(data_points),1)",
+        "evaluation_method": "Count data points with numeric values",
+        "threshold": 0.9,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Data points must contain numeric values, not strings"
+    },
+    {
+      "test_id": "DA-SQL-010",
+      "agent": "DataAnalyst",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies Chinese font configuration for chart rendering",
+      "input": {
+        "query": "中国储能装机容量",
+        "context": "需要中文标签",
+        "agent_state_fields": {
+          "question": "中国储能装机容量",
+          "intent": "data_query",
+          "outline": [
+            {
+              "id": "sec_5",
+              "title": "数据分析",
+              "description": "装机数据",
+              "keywords": [
+                "装机",
+                "容量"
+              ]
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "chart_chinese_rendering",
+        "formula": "1.0 if any(c.get('image_b64') for c in charts_data) else 0.0",
+        "evaluation_method": "Check if charts render with Chinese characters",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Charts should render Chinese labels without boxes"
+    },
+    {
+      "test_id": "LW-WRITE-001",
+      "agent": "LeadWriter",
+      "category": "write",
+      "difficulty": "medium",
+      "description": "Verifies factual grounding - claims traceable to sources",
+      "input": {
+        "query": "2024年储能行业发展趋势",
+        "context": "需要基于facts生成报告",
+        "agent_state_fields": {
+          "question": "2024年储能行业发展趋势",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况",
+              "description": "行业规模分析",
+              "keywords": [
+                "市场规模",
+                "装机容量"
+              ]
+            },
+            {
+              "id": "sec_2",
+              "title": "政策环境",
+              "description": "政策分析",
+              "keywords": [
+                "政策",
+                "补贴"
+              ]
+            }
+          ],
+          "facts": [
+            {
+              "content": "2023年中国新增储能约44GWh",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.9
+            },
+            {
+              "content": "磷酸铁锂储能系统成本约0.8-1.0元/Wh",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.85
+            }
+          ],
+          "raw_sources": [
+            {
+              "title": "储能行业发展概览",
+              "snippet": "2023年中国新增储能约44GWh",
+              "url": "energy_storage_overview.txt"
+            }
+          ],
+          "hypotheses": [
+            "假设2024年储能装机同比增长超100%"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "factual_grounding_ratio",
+        "formula": "sum(1 for sec in draft_sections.values() if any(fact.get('content','')[:20] in sec for fact in facts)) / max(len(draft_sections),1)",
+        "evaluation_method": "Count sections containing content from facts",
+        "threshold": 0.85,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.7,
+        "max": 1.0
+      },
+      "notes": "At least 85% of claims should be traceable to source facts"
+    },
+    {
+      "test_id": "LW-WRITE-002",
+      "agent": "LeadWriter",
+      "category": "write",
+      "difficulty": "medium",
+      "description": "Verifies citation coverage - each section cites sources",
+      "input": {
+        "query": "光伏组件价格分析",
+        "context": "需要引用数据来源",
+        "agent_state_fields": {
+          "question": "光伏组件价格分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况",
+              "description": "价格走势",
+              "keywords": [
+                "价格",
+                "组件"
+              ]
+            }
+          ],
+          "facts": [
+            {
+              "content": "2024年Q2组件价格约0.72元/W",
+              "source": "solar_market_report.txt",
+              "credibility": 0.9
+            }
+          ],
+          "raw_sources": [
+            {
+              "title": "2024年中国光伏行业市场报告",
+              "snippet": "2024年Q2组件价格约0.72元/W",
+              "url": "solar_market_report.txt"
+            }
+          ],
+          "hypotheses": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "citation_coverage",
+        "formula": "sum(1 for sec in draft_sections.values() if '来源' in sec or '[' in sec) / max(len(draft_sections),1)",
+        "evaluation_method": "Count sections with citation markers",
+        "threshold": 0.8,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.6,
+        "max": 1.0
+      },
+      "notes": "Each section should cite at least 2 sources"
+    },
+    {
+      "test_id": "LW-WRITE-003",
+      "agent": "LeadWriter",
+      "category": "hal",
+      "difficulty": "hard",
+      "description": "Verifies hallucination detection - no invented facts",
+      "input": {
+        "query": "宁德时代储能业务",
+        "context": "需要基于真实数据",
+        "agent_state_fields": {
+          "question": "宁德时代储能业务",
+          "outline": [
+            {
+              "id": "sec_3",
+              "title": "竞争格局",
+              "description": "企业分析",
+              "keywords": [
+                "宁德时代",
+                "竞争"
+              ]
+            }
+          ],
+          "facts": [
+            {
+              "content": "宁德时代2023年储能业务营收约599亿元",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.9
+            }
+          ],
+          "raw_sources": [],
+          "hypotheses": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "hallucination_rate",
+        "formula": "1.0 - sum(1 for sec in draft_sections.values() if any(ph in sec for ph in ['虚构','编造','假设是','据传'])) / max(len(draft_sections),1)",
+        "evaluation_method": "Check for invented facts not in sources",
+        "threshold": 0.95,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.9,
+        "max": 1.0
+      },
+      "notes": "Hallucination rate should be below 5%"
+    },
+    {
+      "test_id": "LW-WRITE-004",
+      "agent": "LeadWriter",
+      "category": "write",
+      "difficulty": "easy",
+      "description": "Verifies demo_mode writes only 2 sections",
+      "input": {
+        "query": "储能技术对比",
+        "context": "快速模式",
+        "agent_state_fields": {
+          "question": "储能技术对比",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "技术趋势"
+            },
+            {
+              "id": "sec_3",
+              "title": "竞争格局"
+            }
+          ],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": [],
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_section_limit",
+        "formula": "len([s for s in draft_sections.keys() if s != 'summary'])",
+        "evaluation_method": "Count non-summary sections in demo_mode",
+        "threshold": 2.0,
+        "direction": "lower_is_better"
+      },
+      "expected_output_range": {
+        "min": 2,
+        "max": 2
+      },
+      "notes": "demo_mode should write only 2 sections"
+    },
+    {
+      "test_id": "LW-WRITE-005",
+      "agent": "LeadWriter",
+      "category": "cov",
+      "difficulty": "medium",
+      "description": "Verifies all outline sections get content",
+      "input": {
+        "query": "光伏行业完整分析",
+        "context": "需要覆盖所有章节",
+        "agent_state_fields": {
+          "question": "光伏行业完整分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "政策环境"
+            },
+            {
+              "id": "sec_3",
+              "title": "竞争格局"
+            },
+            {
+              "id": "sec_4",
+              "title": "技术趋势"
+            },
+            {
+              "id": "sec_5",
+              "title": "数据分析"
+            },
+            {
+              "id": "sec_6",
+              "title": "未来展望"
+            }
+          ],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "section_coverage_completeness",
+        "formula": "len([s for s in outline if s.get('id') in draft_sections and draft_sections.get(s.get('id'))]) / len(outline)",
+        "evaluation_method": "Count outline sections with generated content",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "All outline sections should have content"
+    },
+    {
+      "test_id": "LW-WRITE-006",
+      "agent": "LeadWriter",
+      "category": "write",
+      "difficulty": "medium",
+      "description": "Verifies summary generation from all sections",
+      "input": {
+        "query": "储能行业分析报告",
+        "context": "需要执行摘要",
+        "agent_state_fields": {
+          "question": "储能行业分析报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "政策环境"
+            }
+          ],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "summary_generation",
+        "formula": "1.0 if draft_sections.get('summary') and len(draft_sections.get('summary','')) > 100 else 0.0",
+        "evaluation_method": "Check if summary exists and has substantial content",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Summary should be 200-300 characters"
+    },
+    {
+      "test_id": "LW-WRITE-007",
+      "agent": "LeadWriter",
+      "category": "rob",
+      "difficulty": "hard",
+      "description": "Verifies parallel section writing completes all sections",
+      "input": {
+        "query": "完整行业分析",
+        "context": "多章节并行",
+        "agent_state_fields": {
+          "question": "完整行业分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "政策环境"
+            },
+            {
+              "id": "sec_3",
+              "title": "竞争格局"
+            },
+            {
+              "id": "sec_4",
+              "title": "技术趋势"
+            }
+          ],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "parallel_write_completion",
+        "formula": "len([s for s in draft_sections.values() if s and len(s) > 100]) / len(outline)",
+        "evaluation_method": "Count sections with substantial content (>100 chars)",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Parallel writing should complete all sections"
+    },
+    {
+      "test_id": "LW-WRITE-008",
+      "agent": "LeadWriter",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies fallback when outline is empty",
+      "input": {
+        "query": "测试查询",
+        "context": "无大纲",
+        "agent_state_fields": {
+          "question": "测试查询",
+          "outline": [],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "empty_outline_handling",
+        "formula": "1.0 if draft_sections else 0.0",
+        "evaluation_method": "Check if minimal draft is generated when outline is empty",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Should handle empty outline gracefully"
+    },
+    {
+      "test_id": "LW-WRITE-009",
+      "agent": "LeadWriter",
+      "category": "write",
+      "difficulty": "medium",
+      "description": "Verifies hypothesis inclusion in section writing",
+      "input": {
+        "query": "储能成本趋势",
+        "context": "需要包含假设",
+        "agent_state_fields": {
+          "question": "储能成本趋势",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况",
+              "description": "成本分析",
+              "keywords": [
+                "成本"
+              ]
+            }
+          ],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": [
+            "假设2024年储能成本将降至0.8元/Wh以下"
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "hypothesis_inclusion",
+        "formula": "1.0 if any('假设' in sec or '2024' in sec for sec in draft_sections.values()) else 0.0",
+        "evaluation_method": "Check if hypotheses are referenced in sections",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Hypotheses should be referenced in relevant sections"
+    },
+    {
+      "test_id": "LW-WRITE-010",
+      "agent": "LeadWriter",
+      "category": "edge",
+      "difficulty": "medium",
+      "description": "Verifies demo_mode skips summary LLM call",
+      "input": {
+        "query": "快速分析",
+        "context": "demo模式",
+        "agent_state_fields": {
+          "question": "快速分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "技术趋势"
+            }
+          ],
+          "facts": [],
+          "raw_sources": [],
+          "hypotheses": [],
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_summary_skip",
+        "formula": "1.0 if 'demo' in draft_sections.get('summary','').lower() or len(draft_sections.get('summary','')) < 50 else 0.0",
+        "evaluation_method": "Check if summary is auto-generated in demo_mode",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "demo_mode should skip LLM call for summary"
+    },
+    {
+      "test_id": "CM-HAL-001",
+      "agent": "CriticMaster",
+      "category": "hal",
+      "difficulty": "hard",
+      "description": "Verifies hallucination detection recall with injected errors",
+      "input": {
+        "query": "储能行业分析",
+        "context": "需要检测注入的幻觉",
+        "agent_state_fields": {
+          "question": "储能行业分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "技术趋势"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "2023年中国新增储能装机达到100GWh[来源1]，远超实际水平。",
+            "sec_2": "磷酸铁锂成本为0.5元/Wh[来源2]"
+          },
+          "facts": [
+            {
+              "content": "2023年中国新增储能约44GWh",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.9
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "injected_errors": [
+          {
+            "error_id": "ERR-001",
+            "location": "sec_1 paragraph 1",
+            "original_correct_fact": "2023年中国新增储能约44GWh",
+            "injected_wrong_value": "100GWh",
+            "detection_signal": "hallucination: 数字与事实不符"
+          }
+        ]
+      },
+      "scoring": {
+        "metric_name": "hallucination_recall",
+        "formula": "sum(1 for i in critic_issues if i.get('type') == 'hallucination') / max(len(injected_errors),1)",
+        "evaluation_method": "Count detected hallucination issues divided by total injected errors",
+        "threshold": 0.8,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "notes": "Should detect at least 80% of injected hallucinations"
+    },
+    {
+      "test_id": "CM-HAL-002",
+      "agent": "CriticMaster",
+      "category": "hal",
+      "difficulty": "hard",
+      "description": "Verifies hallucination detection precision",
+      "input": {
+        "query": "光伏行业报告",
+        "context": "测试精确度",
+        "agent_state_fields": {
+          "question": "光伏行业报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "2023年全球光伏新增装机390GW[来源1]，中国新增216GW[来源2]。"
+          },
+          "facts": [
+            {
+              "content": "2023年全球光伏新增装机390GW",
+              "source": "solar_market_report.txt",
+              "credibility": 0.9
+            },
+            {
+              "content": "2023年中国新增光伏216GW",
+              "source": "solar_market_report.txt",
+              "credibility": 0.9
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "injected_errors": []
+      },
+      "scoring": {
+        "metric_name": "hallucination_precision",
+        "formula": "1.0 - sum(1 for i in critic_issues if i.get('type') == 'hallucination') / max(len(critic_issues),1)",
+        "evaluation_method": "1 minus false positive rate for hallucination detection",
+        "threshold": 0.9,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Should not flag correct facts as hallucinations"
+    },
+    {
+      "test_id": "CM-HAL-003",
+      "agent": "CriticMaster",
+      "category": "hal",
+      "difficulty": "medium",
+      "description": "Verifies missing source detection",
+      "input": {
+        "query": "储能技术分析",
+        "context": "需要检测缺少来源的陈述",
+        "agent_state_fields": {
+          "question": "储能技术分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "技术趋势"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "钠离子电池将成为下一代主流技术，市场前景广阔。"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "injected_errors": [
+          {
+            "error_id": "ERR-002",
+            "location": "sec_1",
+            "original_correct_fact": "需要引用来源",
+            "injected_wrong_value": "无来源陈述",
+            "detection_signal": "missing_source: 重要观点没有引用来源"
+          }
+        ]
+      },
+      "scoring": {
+        "metric_name": "missing_source_detection",
+        "formula": "sum(1 for i in critic_issues if i.get('type') == 'missing_source') / max(len([s for s in draft_sections.values() if '来源' not in s]),1)",
+        "evaluation_method": "Count detected missing_source issues",
+        "threshold": 0.7,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "notes": "Should detect statements without sources"
+    },
+    {
+      "test_id": "CM-CAL-001",
+      "agent": "CriticMaster",
+      "category": "cal",
+      "difficulty": "hard",
+      "description": "Verifies OPT-001 guard - high severity caps quality_score at 0.65",
+      "input": {
+        "query": "测试质量评分",
+        "context": "验证评分上限",
+        "agent_state_fields": {
+          "question": "测试质量评分",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "这是测试内容，包含多个严重问题。"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "injected_errors": [
+          {
+            "error_id": "ERR-003",
+            "location": "sec_1",
+            "original_correct_fact": "正确事实",
+            "injected_wrong_value": "错误数值",
+            "detection_signal": "hallucination: 严重错误"
+          }
+        ]
+      },
+      "scoring": {
+        "metric_name": "opt001_guard_verification",
+        "formula": "1.0 if quality_score <= 0.65 and any(i.get('severity') == 'high' for i in critic_issues) else 0.0",
+        "evaluation_method": "Check if quality_score is capped at 0.65 when high-severity issues exist",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "OPT-001: quality_score must be <= 0.65 when high-severity issues exist"
+    },
+    {
+      "test_id": "CM-CAL-002",
+      "agent": "CriticMaster",
+      "category": "cal",
+      "difficulty": "medium",
+      "description": "Verifies quality_score calibration accuracy",
+      "input": {
+        "query": "储能行业报告",
+        "context": "测试评分校准",
+        "agent_state_fields": {
+          "question": "储能行业报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "技术趋势"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "2023年中国新增储能44GWh[来源1]，同比增长超200%[来源2]。",
+            "sec_2": "磷酸铁锂储能成本0.8-1.0元/Wh[来源3]。"
+          },
+          "facts": [
+            {
+              "content": "2023年中国新增储能约44GWh",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.9
+            },
+            {
+              "content": "同比增长超200%",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.85
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "calibration_error",
+        "formula": "abs(quality_score - 0.8)",
+        "evaluation_method": "Calculate absolute difference from expected good score (0.8)",
+        "threshold": 0.15,
+        "direction": "lower_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 0.2
+      },
+      "notes": "Quality score should be well-calibrated to report quality"
+    },
+    {
+      "test_id": "CM-CAL-003",
+      "agent": "CriticMaster",
+      "category": "cal",
+      "difficulty": "hard",
+      "description": "Verifies re-research trigger when quality_score < 0.7",
+      "input": {
+        "query": "低质量报告",
+        "context": "需要触发重新研究",
+        "agent_state_fields": {
+          "question": "低质量报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容很少且没有数据支撑。"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "reresearch_trigger_accuracy",
+        "formula": "1.0 if quality_score < 0.7 and len(pending_queries) > 0 else 0.0",
+        "evaluation_method": "Check if pending_queries are generated when quality is low",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Re-research should trigger when quality_score < 0.7"
+    },
+    {
+      "test_id": "CM-FP-001",
+      "agent": "CriticMaster",
+      "category": "fp",
+      "difficulty": "medium",
+      "description": "Verifies false positive rate for correct content",
+      "input": {
+        "query": "高质量报告",
+        "context": "无误报告",
+        "agent_state_fields": {
+          "question": "高质量报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "技术趋势"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "2023年中国新增储能44GWh[来源1]，同比增长超200%[来源1]。",
+            "sec_2": "磷酸铁锂储能成本0.8-1.0元/Wh[来源2]，循环寿命超6000次[来源2]。"
+          },
+          "facts": [
+            {
+              "content": "2023年中国新增储能约44GWh",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.9
+            },
+            {
+              "content": "磷酸铁锂成本0.8-1.0元/Wh",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.85
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "false_positive_rate",
+        "formula": "len([i for i in critic_issues if i.get('severity') in ['high','medium']]) / max(len(critic_issues),1)",
+        "evaluation_method": "Count high/medium severity issues in good report",
+        "threshold": 0.1,
+        "direction": "lower_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 0.2
+      },
+      "notes": "False positive rate should be below 10%"
+    },
+    {
+      "test_id": "CM-FP-002",
+      "agent": "CriticMaster",
+      "category": "fp",
+      "difficulty": "medium",
+      "description": "Verifies no bias detection in balanced report",
+      "input": {
+        "query": "平衡分析报告",
+        "context": "无偏见内容",
+        "agent_state_fields": {
+          "question": "平衡分析报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "竞争格局"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "宁德时代市场份额领先[来源1]，但比亚迪在某些细分领域具有优势[来源2]。两者各有优劣。"
+          },
+          "facts": [
+            {
+              "content": "宁德时代市场份额领先",
+              "source": "energy_storage_overview.txt",
+              "credibility": 0.9
+            }
+          ]
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "bias_false_positive",
+        "formula": "1.0 - sum(1 for i in critic_issues if i.get('type') == 'bias')",
+        "evaluation_method": "Check if balanced content is not flagged as biased",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Balanced analysis should not be flagged as biased"
+    },
+    {
+      "test_id": "CM-CONS-001",
+      "agent": "CriticMaster",
+      "category": "cons",
+      "difficulty": "hard",
+      "description": "Verifies consistency guard Rule 1 - high severity caps score",
+      "input": {
+        "query": "有严重问题的报告",
+        "context": "测试一致性保护",
+        "agent_state_fields": {
+          "question": "有严重问题的报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "包含严重幻觉内容"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "consistency_rule1",
+        "formula": "1.0 if quality_score <= 0.65 else 0.0",
+        "evaluation_method": "Check if score is capped when high-severity issues exist",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Rule 1: Any high-severity issue caps score at 0.65"
+    },
+    {
+      "test_id": "CM-CONS-002",
+      "agent": "CriticMaster",
+      "category": "cons",
+      "difficulty": "hard",
+      "description": "Verifies consistency guard Rule 2 - any issues cap at 0.85",
+      "input": {
+        "query": "有小问题的报告",
+        "context": "测试规则2",
+        "agent_state_fields": {
+          "question": "有小问题的报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容基本正确但有小问题"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "consistency_rule2",
+        "formula": "1.0 if quality_score <= 0.85 or len(critic_issues) == 0 else 0.0",
+        "evaluation_method": "Check if score is capped when issues exist but no high-severity",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Rule 2: Any issue caps score at 0.85 even without high-severity"
+    },
+    {
+      "test_id": "CM-CONS-003",
+      "agent": "CriticMaster",
+      "category": "cons",
+      "difficulty": "medium",
+      "description": "Verifies iteration convergence guard",
+      "input": {
+        "query": "多次迭代测试",
+        "context": "测试收敛",
+        "agent_state_fields": {
+          "question": "多次迭代测试",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容"
+          },
+          "iteration": 2
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "convergence_guard",
+        "formula": "1.0 if iteration >= 2 and phase == 'done' else 0.0",
+        "evaluation_method": "Check if phase becomes done after 2 iterations",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "After 2 iterations, should force done to prevent infinite loop"
+    },
+    {
+      "test_id": "CM-HAL-004",
+      "agent": "CriticMaster",
+      "category": "hal",
+      "difficulty": "medium",
+      "description": "Verifies outdated information detection",
+      "input": {
+        "query": "储能成本分析",
+        "context": "检测过时数据",
+        "agent_state_fields": {
+          "question": "储能成本分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "成本分析"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "2020年储能成本为1.5元/Wh[来源1]，目前已大幅下降。"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "injected_errors": [
+          {
+            "error_id": "ERR-004",
+            "location": "sec_1",
+            "original_correct_fact": "需要标注数据时间",
+            "injected_wrong_value": "使用超过2年的数据",
+            "detection_signal": "outdated: 使用2020年数据未标注时间"
+          }
+        ]
+      },
+      "scoring": {
+        "metric_name": "outdated_detection",
+        "formula": "sum(1 for i in critic_issues if i.get('type') == 'outdated')",
+        "evaluation_method": "Count detected outdated issues",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Should detect data older than 2 years without time标注"
+    },
+    {
+      "test_id": "CM-HAL-005",
+      "agent": "CriticMaster",
+      "category": "hal",
+      "difficulty": "medium",
+      "description": "Verifies logic error detection",
+      "input": {
+        "query": "储能盈利分析",
+        "context": "检测逻辑矛盾",
+        "agent_state_fields": {
+          "question": "储能盈利分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "盈利分析"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "储能行业整体盈利困难[来源1]，但宁德时代储能业务营收599亿元[来源2]，利润丰厚。"
+          },
+          "facts": []
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": [],
+        "injected_errors": [
+          {
+            "error_id": "ERR-005",
+            "location": "sec_1",
+            "original_correct_fact": "逻辑矛盾",
+            "injected_wrong_value": "前后矛盾",
+            "detection_signal": "logic_error: 前后论点矛盾"
+          }
+        ]
+      },
+      "scoring": {
+        "metric_name": "logic_error_detection",
+        "formula": "sum(1 for i in critic_issues if i.get('type') == 'logic_error')",
+        "evaluation_method": "Count detected logic error issues",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Should detect contradictory statements"
+    },
+    {
+      "test_id": "CM-EDGE-001",
+      "agent": "CriticMaster",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies demo_mode auto-passes review",
+      "input": {
+        "query": "快速测试",
+        "context": "demo模式",
+        "agent_state_fields": {
+          "question": "快速测试",
+          "outline": [],
+          "draft_sections": {},
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_autopass",
+        "formula": "1.0 if phase == 'done' and quality_score == 0.75 else 0.0",
+        "evaluation_method": "Check if demo_mode auto-passes with score 0.75",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "demo_mode should skip LLM review and auto-pass"
+    },
+    {
+      "test_id": "CM-EDGE-002",
+      "agent": "CriticMaster",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies empty draft handling",
+      "input": {
+        "query": "空报告测试",
+        "context": "无内容",
+        "agent_state_fields": {
+          "question": "空报告测试",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {}
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "empty_draft_handling",
+        "formula": "1.0 if quality_score < 0.5 and any(i.get('type') == 'incomplete' for i in critic_issues) else 0.0",
+        "evaluation_method": "Check if empty draft gets low score and incomplete issue",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Empty draft should get low score with incomplete issue"
+    },
+    {
+      "test_id": "SY-COV-001",
+      "agent": "Synthesizer",
+      "category": "cov",
+      "difficulty": "medium",
+      "description": "Verifies all planned sections are present in final report",
+      "input": {
+        "query": "完整储能报告",
+        "context": "需要所有章节",
+        "agent_state_fields": {
+          "question": "完整储能报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            },
+            {
+              "id": "sec_2",
+              "title": "政策环境"
+            },
+            {
+              "id": "sec_3",
+              "title": "竞争格局"
+            },
+            {
+              "id": "sec_4",
+              "title": "技术趋势"
+            },
+            {
+              "id": "sec_5",
+              "title": "数据分析"
+            },
+            {
+              "id": "sec_6",
+              "title": "未来展望"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "市场分析内容",
+            "sec_2": "政策分析内容",
+            "sec_3": "竞争分析内容",
+            "sec_4": "技术分析内容",
+            "sec_5": "数据分析内容",
+            "sec_6": "未来展望内容"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [],
+          "quality_score": 0.8
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "section_coverage_ratio",
+        "formula": "sum(1 for sec in outline if sec.get('title','') in final_answer) / len(outline)",
+        "evaluation_method": "Count sections from outline present in final answer",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "All planned sections must appear in final report"
+    },
+    {
+      "test_id": "SY-COV-002",
+      "agent": "Synthesizer",
+      "category": "cov",
+      "difficulty": "medium",
+      "description": "Verifies references are included in final report",
+      "input": {
+        "query": "储能报告",
+        "context": "需要引用",
+        "agent_state_fields": {
+          "question": "储能报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "2023年新增储能44GWh[来源1]。"
+          },
+          "references": [
+            {
+              "title": "储能行业发展概览",
+              "url": "energy_storage_overview.txt",
+              "date": "2024-01-01"
+            }
+          ],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [],
+          "quality_score": 0.8
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "reference_inclusion",
+        "formula": "1.0 if '参考来源' in final_answer or '参考文献' in final_answer else 0.0",
+        "evaluation_method": "Check if references section exists in final answer",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "References must be included in final report"
+    },
+    {
+      "test_id": "SY-COV-003",
+      "agent": "Synthesizer",
+      "category": "cov",
+      "difficulty": "medium",
+      "description": "Verifies charts are embedded in final report",
+      "input": {
+        "query": "数据分析报告",
+        "context": "需要图表",
+        "agent_state_fields": {
+          "question": "数据分析报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "数据分析"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "数据展示如下："
+          },
+          "references": [],
+          "charts_data": [
+            {
+              "title": "中国储能装机容量",
+              "type": "bar",
+              "data": [
+                {
+                  "label": "2020",
+                  "value": 3.3
+                },
+                {
+                  "label": "2021",
+                  "value": 5.1
+                }
+              ],
+              "image_64": "base64data"
+            }
+          ],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [],
+          "quality_score": 0.8
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "chart_embedding",
+        "formula": "1.0 if '数据图表' in final_answer or '图表' in final_answer else 0.0",
+        "evaluation_method": "Check if charts section exists in final answer",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Charts should be embedded in final report"
+    },
+    {
+      "test_id": "SY-CONS-001",
+      "agent": "Synthesizer",
+      "category": "cons",
+      "difficulty": "hard",
+      "description": "Verifies high-severity critic issues are disclosed",
+      "input": {
+        "query": "有问题的报告",
+        "context": "需要披露问题",
+        "agent_state_fields": {
+          "question": "有问题的报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [
+            {
+              "type": "hallucination",
+              "severity": "high",
+              "section": "sec_1",
+              "description": "包含虚构数据"
+            }
+          ],
+          "quality_score": 0.5
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "issue_disclosure",
+        "formula": "1.0 if '免责声明' in final_answer or '待改进' in final_answer else 0.0",
+        "evaluation_method": "Check if high-severity issues are disclosed in final report",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "High-severity issues must be disclosed in final report"
+    },
+    {
+      "test_id": "SY-CONS-002",
+      "agent": "Synthesizer",
+      "category": "cons",
+      "difficulty": "medium",
+      "description": "Verifies hypothesis section is included",
+      "input": {
+        "query": "储能分析",
+        "context": "需要假设",
+        "agent_state_fields": {
+          "question": "储能分析",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [
+            "假设2024年储能装机增长100%"
+          ],
+          "critic_issues": [],
+          "quality_score": 0.8
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "hypothesis_section",
+        "formula": "1.0 if '研究假设' in final_answer or '假设' in final_answer else 0.0",
+        "evaluation_method": "Check if hypotheses are included in final report",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Hypotheses should be listed in final report"
+    },
+    {
+      "test_id": "SY-CONS-003",
+      "agent": "Synthesizer",
+      "category": "cons",
+      "difficulty": "medium",
+      "description": "Verifies quality score is reported in metadata",
+      "input": {
+        "query": "质量评分报告",
+        "context": "需要评分",
+        "agent_state_fields": {
+          "question": "质量评分报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [],
+          "quality_score": 0.85
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "quality_score_reporting",
+        "formula": "1.0 if '质量评分' in final_answer or 'score' in final_answer.lower() else 0.0",
+        "evaluation_method": "Check if quality score appears in final report",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "notes": "Quality score must be reported in final report"
+    },
+    {
+      "test_id": "SY-ROB-001",
+      "agent": "Synthesizer",
+      "category": "rob",
+      "difficulty": "medium",
+      "description": "Verifies revision application for high-severity issues",
+      "input": {
+        "query": "需要修订的报告",
+        "context": "测试修订",
+        "agent_state_fields": {
+          "question": "需要修订的报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "原内容有严重问题"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [
+            {
+              "type": "hallucination",
+              "severity": "high",
+              "section": "sec_1",
+              "description": "包含错误数据",
+              "fix_query": "正确数据查询"
+            }
+          ],
+          "quality_score": 0.5,
+          "demo_mode": false
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "revision_application",
+        "formula": "1.0 if '修订' in str(draft_sections) or len(draft_sections.get('sec_1','')) > 20 else 0.0",
+        "evaluation_method": "Check if sections were revised based on critic issues",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "High-severity issues should trigger revision"
+    },
+    {
+      "test_id": "SY-ROB-002",
+      "agent": "Synthesizer",
+      "category": "rob",
+      "difficulty": "easy",
+      "description": "Verifies demo_mode skips revision",
+      "input": {
+        "query": "快速报告",
+        "context": "demo模式",
+        "agent_state_fields": {
+          "question": "快速报告",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [
+            {
+              "type": "hallucination",
+              "severity": "high",
+              "section": "sec_1",
+              "description": "问题"
+            }
+          ],
+          "quality_score": 0.5,
+          "demo_mode": true
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "demo_mode_revision_skip",
+        "formula": "1.0 if 'demo' in final_answer.lower() or len(final_answer) < 500 else 0.0",
+        "evaluation_method": "Check if demo_mode skips revision LLM call",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "demo_mode should skip revision LLM call"
+    },
+    {
+      "test_id": "SY-ROB-003",
+      "agent": "Synthesizer",
+      "category": "rob",
+      "difficulty": "medium",
+      "description": "Verifies reference deduplication",
+      "input": {
+        "query": "去重测试",
+        "context": "测试引用去重",
+        "agent_state_fields": {
+          "question": "去重测试",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "测试"
+            }
+          ],
+          "draft_sections": {
+            "sec_1": "内容"
+          },
+          "references": [
+            {
+              "title": "储能报告",
+              "url": "http://example.com/1"
+            },
+            {
+              "title": "储能报告",
+              "url": "http://example.com/1"
+            },
+            {
+              "title": "光伏报告",
+              "url": "http://example.com/2"
+            }
+          ],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [],
+          "quality_score": 0.8
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "reference_deduplication",
+        "formula": "len(set(r.get('url','') for r in references if r.get('url'))) / max(len(references),1)",
+        "evaluation_method": "Calculate unique URL ratio in references",
+        "threshold": 0.9,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.8,
+        "max": 1.0
+      },
+      "notes": "Duplicate URLs should be removed from references"
+    },
+    {
+      "test_id": "SY-EDGE-001",
+      "agent": "Synthesizer",
+      "category": "edge",
+      "difficulty": "easy",
+      "description": "Verifies executive summary is first section",
+      "input": {
+        "query": "摘要测试",
+        "context": "测试顺序",
+        "agent_state_fields": {
+          "question": "摘要测试",
+          "outline": [
+            {
+              "id": "sec_1",
+              "title": "市场概况"
+            }
+          ],
+          "draft_sections": {
+            "summary": "这是执行摘要",
+            "sec_1": "第一节内容"
+          },
+          "references": [],
+          "charts_data": [],
+          "data_points": [],
+          "hypotheses": [],
+          "critic_issues": [],
+          "quality_score": 0.8
+        }
+      },
+      "ground_truth": {
+        "required_hypotheses": [],
+        "required_sub_questions": []
+      },
+      "scoring": {
+        "metric_name": "summary_placement",
+        "formula": "1.0 if final_answer.index('执行摘要') < final_answer.index('市场概况') else 0.0",
+        "evaluation_method": "Check if summary appears before first section",
+        "threshold": 1.0,
+        "direction": "higher_is_better"
+      },
+      "expected_output_range": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "notes": "Executive summary should be first major section"
+    }
+  ]
+}
