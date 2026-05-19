@@ -31,6 +31,7 @@ Where:
 | [OPT-003](OPT-003-Human-in-the-Loop-CriticMaster-Intervention.md) | Human-in-the-loop missing at CriticMaster gate | 🟡 Medium | Multi-Agent | ⚠️ Known | Medium | [#10](https://github.com/VariianWrynn/AgentProject/issues/10) |
 | [OPT-004](OPT-004-Router-Intent-Misclassification-General-Bypass.md) | Router misroutes technical questions to general, skips RAG | 🟠 High | Router | ❌ Unfixed | Low | [#11](https://github.com/VariianWrynn/AgentProject/issues/11) |
 | [OPT-005](OPT-005-Pipeline-Fallback-Layer3-Test-Not-Rigorous.md) | Layer 3 fallback test validates availability not actual fallback | 🟢 Low | Testing | ⚠️ Known | Low | [#12](https://github.com/VariianWrynn/AgentProject/issues/12) |
+| [OPT-006](OPT-006-Resume-Metrics-Baseline-Threshold-Missing.md) | test_resume_metrics.py baseline has no actionable pass threshold | 🟢 Low | Testing | ❌ Unfixed | Low | — |
 
 ---
 
@@ -211,5 +212,5 @@ Add one line to the **Current Issues** table (include Issue link):
 
 ---
 
-**Last Updated**: 2026-04-23  
+**Last Updated**: 2026-05-06  
 **Maintained By**: Development Team

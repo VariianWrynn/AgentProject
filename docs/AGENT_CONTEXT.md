@@ -150,6 +150,16 @@ python tests/test_energy_p1.py 2>&1 | tee /tmp/test_out.txt
 python tests/final_test.py 2>&1 | tail -5
 ```
 
+**Test scope by change type — run only what matches your change:**
+
+| Change type | Tests to run |
+|-------------|--------------|
+| Prompt / system message edit | Baselines only (`test_energy_p1.py`, `final_test.py`) |
+| Agent core logic (state, formulas, routing) | Baselines + `--agent <AgentName>` suite |
+| New agent node or LangGraph edge | Full quality suite + baselines |
+
+⚠️ Do NOT run full per-agent suites for prompt-only changes. Full suites make ~25 LLM calls and take 30+ minutes. Reserve them for structural code changes.
+
 **Step 2 — Create checkpoint:**
 READ docs/AGENT_PROTOCOLS.md → Section "Checkpoint Format"
 CREATE docs/checkpoints/<name>-checkpoint.md
