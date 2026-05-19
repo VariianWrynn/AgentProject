@@ -130,6 +130,7 @@ _SAFE_BUILTINS: dict = {
     "list":  list,
     "dict":  dict,
     "range": range,
+    "set":   set,   # needed for deduplication formulas (e.g. len(set(...)))
 }
 
 PASS  = "PASS"
@@ -203,7 +204,15 @@ def evaluate_formula(formula: str, ctx: dict) -> tuple[float, str | None]:
     Score is 0.0 on any exception; the caller decides whether to SKIP or FAIL.
     """
     try:
-        result = eval(formula, {"__builtins__": _SAFE_BUILTINS}, ctx)  # noqa: S307
+        # Merge ctx into globals so generator expressions / comprehensions can
+        # see all variables.  In CPython 3, generators create their own scope
+        # and resolve free names against *globals*, not *locals* — passing ctx
+        # only as locals therefore hides its keys inside nested scopes.
+        # Security boundary is unchanged: __builtins__ is still the restricted
+        # _SAFE_BUILTINS dict; ctx values are plain data, not callables.
+        _globals = {"__builtins__": _SAFE_BUILTINS}
+        _globals.update(ctx)
+        result = eval(formula, _globals)  # noqa: S307
         return float(result), None
     except ZeroDivisionError:
         return 0.0, "ZeroDivisionError — output likely empty"
