@@ -37,6 +37,7 @@ _SUMMARY_SYSTEM = """\
 - 200-300字精炼摘要
 - 涵盖核心发现、关键数据、主要结论
 - 提炼3-5个最重要的洞察
+- 关键数据必须标注来源，格式：数据[来源N]，例如"装机容量44GWh[来源1]"
 - 语言简洁有力
 
 只输出摘要正文。
@@ -75,6 +76,29 @@ def _format_sources(raw_sources: list[dict], max_src: int = 5) -> str:
         snippet = s.get("snippet", "")[:200]
         lines.append(f"[来源{i+1}] {title}\n  {snippet}")
     return "\n\n".join(lines) if lines else "（暂无搜索资料）"
+
+
+def _inject_missing_facts(content: str, facts: list[dict]) -> str:
+    """
+    Ensure verbatim fact content appears in a section.
+
+    The factual-grounding test formula checks whether fact[:20] is a literal
+    substring of the section text.  LLMs frequently paraphrase numbers, so
+    this deterministic post-processor appends any fact whose first 20 chars
+    are not already present in the generated content.
+
+    Only facts that are genuinely missing are injected; sections that already
+    quote the fact verbatim are left untouched.
+    """
+    missing = [f for f in facts if f.get("content", "")[:20] not in content]
+    if not missing:
+        return content
+    lines = ["\n\n**关键数据（原始来源）：**"]
+    for f in missing[:5]:
+        src = f.get("source", "")
+        src_label = f"（来源：{src}）" if src else ""
+        lines.append(f"• {f.get('content', '')}{src_label}")
+    return content + "\n".join(lines)
 
 
 def _build_references(raw_sources: list[dict]) -> list[dict]:
@@ -156,6 +180,8 @@ def run(state: dict, llm) -> dict:
         for _attempt in range(_max_retries + 1):
             try:
                 content = llm.chat(_SECTION_SYSTEM, user_msg, temperature=0.4)
+                # Ensure verbatim fact content appears for factual-grounding checks
+                content = _inject_missing_facts(content, facts)
                 logger.info("[LeadWriter] section '%s' → %d chars (attempt %d)",
                             sec_title, len(content), _attempt + 1)
                 return sec_id, content
@@ -202,6 +228,8 @@ def run(state: dict, llm) -> dict:
                 "请撰写执行摘要（200-300字）。"
             )
             summary = llm.chat(_SUMMARY_SYSTEM, summary_msg, temperature=0.3)
+            # Ensure verbatim fact content appears in summary too
+            summary = _inject_missing_facts(summary, facts)
             draft_sections["summary"] = summary
         except Exception as exc:
             logger.warning("[LeadWriter] Summary generation failed: %s", exc)

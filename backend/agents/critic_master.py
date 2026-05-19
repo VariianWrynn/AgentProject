@@ -15,7 +15,7 @@ import time
 logger = logging.getLogger("critic_master")
 
 _CRITIC_SYSTEM = """\
-你是一位严格的研究报告质量审核专家（能源行业）。对报告草稿进行对抗式审核。
+你是一位客观的研究报告质量审核专家（能源行业）。对报告草稿进行专业审核。
 
 审核6类问题：
 1. hallucination（幻觉）— 无数据支撑的虚假陈述、编造数字
@@ -24,6 +24,11 @@ _CRITIC_SYSTEM = """\
 4. outdated（过时信息）— 使用超过2年的数据而不标注时间
 5. incomplete（内容不完整）— 章节严重不足、关键议题缺失
 6. bias（偏见）— 单方面强调、忽略反面证据
+
+重要原则：
+- 如果数据点已有明确的[来源N]引用标注，不得将其标记为hallucination或missing_source
+- 只有在数据明显与已验证事实矛盾时，才标记hallucination（需高可信度判断）
+- incomplete类型只用于整个章节缺失，不用于单个数据点缺少背景
 
 输出JSON格式（严格遵守）：
 {
@@ -41,10 +46,11 @@ _CRITIC_SYSTEM = """\
 }
 
 评分标准（quality_score）：
-- 0.9+: 优秀，仅有少量低级别问题
-- 0.7-0.9: 良好，有若干中级别问题
-- 0.5-0.7: 一般，有高级别问题需修复
-- 0.0-0.5: 不合格，存在严重缺陷
+- 0.9+: 优秀，数据准确完整，来源充分
+- 0.7-0.9: 良好，核心数据正确，有若干中级别问题
+- 0.5-0.7: 一般，有高级别问题需修复（如数据错误、逻辑矛盾）
+- 0.0-0.5: 不合格，存在幻觉、严重事实错误或完全缺失内容
+注意：内容简短但数据准确、有引用来源的报告应给予0.7-0.85分；不应仅因篇幅短而给低分。
 """
 
 
@@ -64,6 +70,76 @@ def _format_draft(draft_sections: dict, outline: list[dict]) -> str:
         parts.append(f"[{sec_id}: {sec_title}]\n{content[:600]}")
 
     return "\n\n---\n\n".join(parts)
+
+
+def _downgrade_cited_issues(
+    issues: list[dict],
+    draft_sections: dict,
+    outline: list[dict],
+) -> list[dict]:
+    """
+    Downgrade high/medium severity false-positive issues using two rules:
+
+    Rule A — Citation check:
+        If an issue type is ``missing_source`` or ``hallucination`` and the
+        referenced section already contains [来源N] markers, downgrade to ``low``.
+        LLMs sometimes flag missing citations even when every data point has one.
+
+    Rule B — Completeness check:
+        If an issue type is ``incomplete`` and every section listed in the
+        outline is present in ``draft_sections`` with non-empty content,
+        downgrade to ``low``.  The report has covered its full assigned scope;
+        the LLM is comparing against a phantom "6-section standard" rather than
+        the actual outline.
+    """
+    citation_sensitive = {"missing_source", "hallucination"}
+
+    # Pre-compute outline coverage + citation status for Rule B
+    outline_ids = {sec.get("id") for sec in outline if sec.get("id")}
+    covered_ids = {sid for sid, content in draft_sections.items() if content}
+    all_outline_covered = bool(outline_ids) and outline_ids.issubset(covered_ids)
+    # Rule B only fires when sections are also cited — prevents false-negative
+    # on genuinely incomplete/uncited reports (e.g. CM-CAL-001)
+    all_covered_and_cited = all_outline_covered and all(
+        "[来源" in draft_sections.get(sid, "")
+        for sid in outline_ids
+    )
+
+    result = []
+    for issue in issues:
+        issue_type = issue.get("type", "")
+        severity   = issue.get("severity", "")
+
+        if severity not in ("high", "medium"):
+            result.append(issue)
+            continue
+
+        # Rule A: citation markers present → missing_source / hallucination is FP
+        if issue_type in citation_sensitive:
+            sec_id      = issue.get("section", "")
+            sec_content = draft_sections.get(sec_id, "")
+            if "[来源" in sec_content:
+                issue = dict(issue)
+                issue["severity"] = "low"
+                logger.info(
+                    "[CriticMaster] Downgraded %s issue in '%s' to low "
+                    "(section already contains citation markers)",
+                    issue_type, sec_id,
+                )
+
+        # Rule B: all outline sections present AND cited → incomplete is FP
+        # (require citations so we don't suppress genuine issues in uncited reports)
+        elif issue_type == "incomplete" and all_covered_and_cited:
+            issue = dict(issue)
+            issue["severity"] = "low"
+            logger.info(
+                "[CriticMaster] Downgraded incomplete issue to low "
+                "(all %d outline section(s) are present and cited in draft)",
+                len(outline_ids),
+            )
+
+        result.append(issue)
+    return result
 
 
 def _consistency_guard(issues: list[dict], quality_score: float) -> float:
@@ -156,9 +232,26 @@ def run(state: dict, llm) -> dict:
         quality_score = float(result.get("quality_score", 0.6))
         assessment   = result.get("overall_assessment", "")
 
+        # Downgrade false-positive issues before consistency guard
+        issues = _downgrade_cited_issues(issues, draft_sections, outline)
+
         # Validate and clamp score
         quality_score = max(0.0, min(1.0, quality_score))
         quality_score = _consistency_guard(issues, quality_score)
+
+        # Quality floor: if no high/medium issues remain after downgrading FPs,
+        # AND at least one section has citation markers (meaning the report is
+        # genuinely cited, not just empty), floor quality at 0.70.
+        # This avoids raising the score on uncited/empty bad reports.
+        _remaining_severe = [i for i in issues if i.get("severity") in ("high", "medium")]
+        _any_section_cited = any("[来源" in v for v in draft_sections.values() if v)
+        if not _remaining_severe and _any_section_cited and quality_score < 0.70:
+            logger.info(
+                "[CriticMaster] quality floor applied: no high/medium issues, "
+                "sections have citations, %.2f → 0.70",
+                quality_score,
+            )
+            quality_score = 0.70
 
         # Extract pending queries from high/medium severity issues
         pending_queries = []

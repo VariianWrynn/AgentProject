@@ -207,13 +207,24 @@ def run(state: dict, llm) -> dict:
 
     draft_sections = state.get("draft_sections", {})
     outline        = state.get("outline", [])
-    references     = state.get("references", [])
+    references_raw = state.get("references", [])
     charts_data    = state.get("charts_data", [])
     data_points    = state.get("data_points", [])
     hypotheses     = state.get("hypotheses", [])
     critic_issues  = state.get("critic_issues", [])
     quality_score  = state.get("quality_score", 0.7)
     question       = state.get("question", "")
+
+    # Deduplicate references by URL (keep first occurrence, preserve order)
+    _seen_urls: set = set()
+    references: list = []
+    for ref in references_raw:
+        url = ref.get("url", "")
+        if url and url in _seen_urls:
+            continue
+        if url:
+            _seen_urls.add(url)
+        references.append(ref)
 
     # Apply targeted revisions for high/medium severity issues
     # Skip in demo_mode (CriticMaster auto-passes → no issues to revise)
@@ -246,6 +257,8 @@ def run(state: dict, llm) -> dict:
     print(f"[Synthesizer] Final report: {len(final_answer)} chars | {elapsed:.1f}s")
 
     return {
-        "final_answer": final_answer,
-        "phase":        "done",
+        "final_answer":   final_answer,
+        "draft_sections": draft_sections,  # expose revised sections for eval context
+        "references":     references,      # expose deduplicated references for eval context
+        "phase":          "done",
     }
