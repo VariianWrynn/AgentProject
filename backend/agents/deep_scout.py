@@ -122,10 +122,17 @@ async def _search_single(query: str) -> list[dict]:
 
 
 async def _search_all(questions: list[str]) -> list[dict]:
-    """Run all sub-questions in parallel."""
+    """Run all sub-questions in parallel (serial when PARALLEL=off, for benchmarks)."""
+    import os as _os
+    merged: list[dict] = []
+    if _os.getenv("PARALLEL", "on").lower() == "off":
+        for q in questions:
+            web = await _search_bocha(None, q)
+            rag = await _search_rag(None, q)
+            merged.extend(web + rag)
+        return merged
     tasks = [_search_single(q) for q in questions]
     all_results = await asyncio.gather(*tasks)
-    merged = []
     for results in all_results:
         merged.extend(results)
     return merged

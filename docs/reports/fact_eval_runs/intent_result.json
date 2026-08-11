@@ -1,0 +1,377 @@
+{
+  "mode": "intent",
+  "total": 50,
+  "correct": 44,
+  "accuracy": 0.88,
+  "confusion": {
+    "policy_query": {
+      "policy_query": 10
+    },
+    "data_query": {
+      "data_query": 10
+    },
+    "market_analysis": {
+      "market_analysis": 6,
+      "research": 4
+    },
+    "research": {
+      "research": 10
+    },
+    "general": {
+      "general": 8,
+      "research": 2
+    }
+  },
+  "records": [
+    {
+      "id": "int-001",
+      "question": "碳中和政策最新进展",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-002",
+      "question": "新能源补贴政策有哪些变化",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-003",
+      "question": "136号文对新能源上网电价的规定是什么",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-004",
+      "question": "能源法什么时候开始施行",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-005",
+      "question": "十四五新型储能发展实施方案的主要目标",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-006",
+      "question": "绿证全覆盖政策适用于哪些项目",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-007",
+      "question": "碳达峰行动方案对风光装机的要求",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-008",
+      "question": "电力现货市场基本规则的适用范围",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-009",
+      "question": "新型储能并网调度有什么新规定",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-010",
+      "question": "国家对可再生能源替代行动有什么部署",
+      "expected": "policy_query",
+      "predicted": "policy_query",
+      "correct": true
+    },
+    {
+      "id": "int-011",
+      "question": "宁德时代2023年营收多少",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-012",
+      "question": "华东地区风电装机容量",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-013",
+      "question": "2024年全社会用电量是多少",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-014",
+      "question": "阳光电源2024年净利润",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-015",
+      "question": "查一下2023年风电新增吊装容量",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-016",
+      "question": "全国新型储能累计装机规模到多少了",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-017",
+      "question": "2024年动力电池装车量数据",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-018",
+      "question": "隆基绿能2023年财报里营业收入是多少",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-019",
+      "question": "全国碳市场2024年成交额",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-020",
+      "question": "金风科技净利润同比降了多少",
+      "expected": "data_query",
+      "predicted": "data_query",
+      "correct": true
+    },
+    {
+      "id": "int-021",
+      "question": "光伏市场未来五年趋势",
+      "expected": "market_analysis",
+      "predicted": "market_analysis",
+      "correct": true
+    },
+    {
+      "id": "int-022",
+      "question": "储能行业竞争格局分析",
+      "expected": "market_analysis",
+      "predicted": "market_analysis",
+      "correct": true
+    },
+    {
+      "id": "int-023",
+      "question": "光伏组件价格走势",
+      "expected": "market_analysis",
+      "predicted": "market_analysis",
+      "correct": true
+    },
+    {
+      "id": "int-024",
+      "question": "多晶硅价格什么时候能反转",
+      "expected": "market_analysis",
+      "predicted": "market_analysis",
+      "correct": true
+    },
+    {
+      "id": "int-025",
+      "question": "动力电池行业产能过剩情况分析",
+      "expected": "market_analysis",
+      "predicted": "research",
+      "correct": false
+    },
+    {
+      "id": "int-026",
+      "question": "风电整机厂商的盈利能力对比",
+      "expected": "market_analysis",
+      "predicted": "research",
+      "correct": false
+    },
+    {
+      "id": "int-027",
+      "question": "新型储能商业模式的可行性分析",
+      "expected": "market_analysis",
+      "predicted": "research",
+      "correct": false
+    },
+    {
+      "id": "int-028",
+      "question": "碳价未来走势判断",
+      "expected": "market_analysis",
+      "predicted": "market_analysis",
+      "correct": true
+    },
+    {
+      "id": "int-029",
+      "question": "户用光伏市场还有多大空间",
+      "expected": "market_analysis",
+      "predicted": "market_analysis",
+      "correct": true
+    },
+    {
+      "id": "int-030",
+      "question": "锂电池上游材料价格对整车成本的影响分析",
+      "expected": "market_analysis",
+      "predicted": "research",
+      "correct": false
+    },
+    {
+      "id": "int-031",
+      "question": "分析中国能源转型的挑战和机遇",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-032",
+      "question": "电力市场改革对煤电企业的影响",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-033",
+      "question": "写一份关于新能源电价市场化改革影响的研究报告",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-034",
+      "question": "对比宁德时代和亿纬锂能的经营状况并给出研究结论",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-035",
+      "question": "研究一下碳市场扩容对高耗能行业的影响路径",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-036",
+      "question": "帮我系统梳理储能政策演进脉络并分析未来方向",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-037",
+      "question": "深入调研光伏产业链各环节的价格传导机制",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-038",
+      "question": "结合政策和市场数据，评估2025年风电行业投资价值",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-039",
+      "question": "查一下最新储能装机数据，再分析对电网调峰的意义",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-040",
+      "question": "能源法实施后对能源企业合规的长期影响研究",
+      "expected": "research",
+      "predicted": "research",
+      "correct": true
+    },
+    {
+      "id": "int-041",
+      "question": "你好",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-042",
+      "question": "你是谁，能做什么",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-043",
+      "question": "谢谢你的帮助",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-044",
+      "question": "今天天气怎么样",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-045",
+      "question": "帮我写一首关于春天的诗",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-046",
+      "question": "1加1等于几",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-047",
+      "question": "把上一个回答翻译成英文",
+      "expected": "general",
+      "predicted": "research",
+      "correct": false
+    },
+    {
+      "id": "int-048",
+      "question": "你们系统是用什么技术做的",
+      "expected": "general",
+      "predicted": "research",
+      "correct": false
+    },
+    {
+      "id": "int-049",
+      "question": "再见",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    },
+    {
+      "id": "int-050",
+      "question": "讲个笑话",
+      "expected": "general",
+      "predicted": "general",
+      "correct": true
+    }
+  ]
+}

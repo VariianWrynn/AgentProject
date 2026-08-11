@@ -290,8 +290,10 @@ def run(state: dict, llm) -> dict:
                                  sec_title, _max_retries + 1, exc)
                     return sec_id, f"[{sec_title}内容生成失败，请重试]"
 
-    # Parallel execution: all sections fire simultaneously, each on its own thread
-    max_workers = min(len(sections_to_write), 6)
+    # Parallel execution: all sections fire simultaneously, each on its own thread.
+    # PARALLEL=off forces serial writing (perf-benchmark baseline).
+    import os as _os
+    max_workers = 1 if _os.getenv("PARALLEL", "on").lower() == "off" else min(len(sections_to_write), 6)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_write_one, sec): sec for sec in sections_to_write}
         for future in as_completed(futures):
