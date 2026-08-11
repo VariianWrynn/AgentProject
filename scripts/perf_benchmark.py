@@ -38,10 +38,11 @@ QUERIES = [
     "分析2024年光伏产业链价格走势及对企业盈利的影响",
 ]
 
-# USD per 1M tokens (input, output) — update from provider price page before quoting
+# USD per 1M tokens, official DeepSeek list price (cache-miss input / output),
+# checked 2026-08-11 — cache-hit input is far cheaper, so real cost is an upper bound
 PRICES = {
-    "deepseek-v4-pro":   {"in": 0.60, "out": 2.20},
-    "deepseek-v4-flash": {"in": 0.10, "out": 0.30},
+    "deepseek-v4-pro":   {"in": 0.435, "out": 0.87},
+    "deepseek-v4-flash": {"in": 0.14,  "out": 0.28},
 }
 
 CONFIGS = {

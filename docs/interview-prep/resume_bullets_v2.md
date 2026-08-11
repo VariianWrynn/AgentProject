@@ -54,8 +54,10 @@ Implemented MemGPT-style two-tier memory: core memory (persona/human profile inj
 
 ---
 
-## 性能/成本补充弹药（⏳ 回填自 perf_20260811.md）
+## 性能/成本补充弹药（perf_20260811.md，3 条固定 query 中位数）
 
-- 单份完整报告耗时：串行无缓存 ⏳s → asyncio 并行 + Redis 缓存 ⏳s（⏳× 加速）
-- 单份报告成本：全 deepseek-v4-pro $⏳ → 大小模型分级（flash 路由/检索/分析 + pro 规划/写作/审查）$⏳（节省 ⏳%）
+- 单份完整报告耗时：串行无缓存 **424s** → asyncio 并行 + Redis 缓存 **304s**（**1.40×**）→ 叠加大小模型分级 **256s**（累计 **1.66×**）
+- 单份报告成本：全 deepseek-v4-pro **$0.0408** → 分级路由（flash 承担路由/检索/分析，pro 承担规划/写作/审查）**$0.0357**（**-12%**，同时提速 16%）
+- 单份报告体量：~4.4-4.9 万 prompt tok + 2.1-2.4 万 completion tok，15-17 次 LLM 调用
+- 诚实注脚：成本节省只有 12%，因为 token 大头在写作/审查（必须用大模型）——分级的真实收益是"便宜 12% 且快 16%，零质量代价"，面试时主动讲这个 tradeoff 比吹大数字可信
 - 多 API key 分角色并发（6 keys）避免单 key 限流
