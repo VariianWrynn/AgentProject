@@ -1,0 +1,531 @@
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	<meta name="renderer" content="webkit" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta http-equiv="cache-control" content="max-age=0" />
+	<meta http-equiv="cache-control" content="no-cache" />
+	<meta http-equiv="expires" content="0" />
+	<meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+	<meta http-equiv="pragma" content="no-cache" />
+	<meta name="viewport" content="width=device-width,intial-scale=1,maximum-scale=1,user-scalable=yes,shrink-to-fit=no">
+	<title>2024年度CNESA储能数据重磅发布</title>
+	<link rel="stylesheet" type="text/css" href="../../css/energy.css" />
+	<link rel="stylesheet" type="text/css" href="../../css/public_list.css" />
+	<script type="text/javascript" src="../../js/jquery-1.8.2.js"></script>
+	<script type="text/javascript" src="../../js/nav_header.js"></script>
+	<link rel="stylesheet" type="text/css" href="/js/libs/layui-v2.6.8/layui/css/layui.css">
+	<script type="text/javascript" src="/js/libs/layui-v2.6.8/layui/layui.js"></script>
+	<script type="text/javascript">
+		layui.use(['carousel', 'form'], function(){
+			var carousel = layui.carousel;
+			var form = layui.form;
+			carousel.render({
+				elem: '#rotationDiv1',
+				interval: 1800,
+				anim: 'fade',
+				width: '317px',
+				height: '287.47px'
+				// height: '120px'
+			});
+      	})
+	</script>
+</head>
+
+<body>
+
+<script language="JavaScript" type="text/javascript">
+function stlDoZoom(zoomId, size){
+    var artibody = document.getElementById(zoomId);
+    if(!artibody){
+        return;
+    }
+    var artibodyChild = artibody.childNodes;
+    artibody.style.fontSize = size + 'px';
+    for(var i = 0; i < artibodyChild.length; i++){
+        if(artibodyChild[i].nodeType == 1){
+            artibodyChild[i].style.fontSize = size + 'px';
+        }
+    }
+}
+</script>
+
+<script language="JavaScript" type="text/javascript">
+function stlLoadPrintJsCallBack()
+{
+    if(typeof forSPrint == "object" && forSPrint.Print)
+    {
+        forSPrint.data.titleId = "title";
+        forSPrint.data.artiBodyId = "body";
+        forSPrint.data.pageLogoId = "";
+        forSPrint.data.pageWayId = "";
+        forSPrint.data.iconUrl = "/sitefiles/resources/print";
+        forSPrint.Print();
+    }
+}
+
+function stlPrintGetBrowser()
+{
+    if (navigator.userAgent.indexOf("MSIE") != -1)
+    {
+        return 1; 
+    }
+    else if (navigator.userAgent.indexOf("Firefox") != -1)
+    {
+        return 2; 
+    }
+    else if (navigator.userAgent.indexOf("Navigator") != -1)
+    {
+        return 3;
+    }
+    else if (navigator.userAgent.indexOf("Opera") != -1 )
+    {
+        return 4;
+    }
+    else
+    {
+        return 5;
+    }
+}
+
+function stlLoadPrintJs()
+{
+    var myBrowser = stlPrintGetBrowser();
+    if(myBrowser == 1)
+    {
+        var js_url = "/sitefiles/resources/scripts/print_uft8.js";
+        var js = document.createElement( "script" ); 
+        js.setAttribute( "type", "text/javascript" );
+        js.setAttribute( "src", js_url);
+        js.setAttribute( "id", "printJsUrl");
+        document.body.insertBefore( js, null);
+        document.getElementById("printJsUrl").onreadystatechange = stlLoadPrintJsCallBack;
+    }
+    else
+    {
+        var js_url = "/sitefiles/resources/scripts/print_uft8.js";
+        var js = document.createElement( "script" ); 
+        js.setAttribute( "type", "text/javascript" );
+        js.setAttribute( "src", js_url);
+        js.setAttribute( "id", "printJsUrl");
+        js.setAttribute( "onload", "stlLoadPrintJsCallBack()");
+        document.body.insertBefore( js, null);					
+    }
+}	
+</script>
+
+
+	<div class='headerBox'>
+	<div class='h-content'>
+		<div class="h-logo">
+			<img height="53" src="/upload/images/2024/7/e6e4abd3925f0320.png">
+		</div>
+		<div class="h-right">
+			<form id="globalSearchFrom" action="/globalSearchPage.html" method="get">
+				<input type="text" name="word" placeholder="输入关键字进行搜索">
+				<img style="margin-left:-5px;" onclick="document.getElementById('globalSearchFrom').submit()" src="/images/icons/Search.png">
+			</form>
+			<a class="h-right-a" href="/eesia_en">
+				<div class="h-right-a-div" style="font-family:arial;">
+					EN
+				</div>
+			</a>
+		</div>
+	</div>
+</div>
+<div class="navBox">
+	<div class="nav-list">
+		<ul>
+			
+				<li>
+					<a href="/channels/2.html">
+						首页
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/10.html">
+						会员动态
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/11.html">
+						联盟动态
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/8.html">
+						团体标准
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/12.html">
+						关于我们
+					</a>
+				</li>
+			
+		</ul>
+	</div>
+</div>
+	<div class="home-banner">
+		<div class="h_banner_content">
+			
+				<img src="/upload/images/2023/4/665dfaff7ae4817f.png">
+			
+		</div>
+		
+			<img height="280" src="/upload/images/2023/4/40eae9fa825cd9ce.jpg">
+		
+	</div>
+	<div class="location_now">
+		<a href="/index.html">首页</a> > <a href="/channels/3.html">行业新闻</a> > 
+		2024年度CNESA储能数据重磅发布
+	</div>
+	<div class="list_page">
+		<div class="l_p_left">
+			<div class="article_header">
+				<p class="a_h_title" id='title'>
+					2024年度CNESA储能数据重磅发布
+				</p>
+				<p class="a_h_sub-title" id='title'>
+					
+				</p>
+				<div>
+					<span class="date">时间：
+            			2025-01-16
+          			</span>
+					<span class='base'>来源：
+						<span>
+            				中关村储能产业技术联盟
+            			</span>
+					</span>
+					<span class="date">作者：
+            			
+          			</span>
+					<span style='margin-left:20px;float:right;'>
+						<i class="layui-icon layui-icon-print">
+							<a href="javascript:stlLoadPrintJs();">打印</a>
+						</i>  
+						
+					</span>
+					<span style='font-size:12px;float:right;'>
+						<span>【</span>
+					<span >字体</span>
+					<a href="javascript:stlDoZoom('body', 16);">大</a>
+					<a href="javascript:stlDoZoom('body', 14);">中</a>
+					<a href="javascript:stlDoZoom('body', 12);">小</a>
+					<span>】</span>
+					</span>
+				</div>
+			</div>
+			<div class="article_contents" id='body'>
+				<p style="line-height: 1.75em; text-indent: 0em; text-align: center;"><img src="/upload/images/2025/1/edb6f72ee1522100.jpg" draggable="false" style="text-wrap: wrap; letter-spacing: 0.544px; text-align: justify; border: 0px none; vertical-align: baseline; width: 969px; box-sizing: border-box; max-width: 100%;"/></p><p><br/></p><p style="text-indent: 2em; line-height: 1.75em;">1月15日，中关村储能产业技术联盟主办的“储能国际峰会暨展览会2025新闻发布会暨CNESADataLink2024年度储能数据发布”举办成功。</p><p><br/></p><p style="text-indent: 2em; line-height: 1.75em;">根据CNESA DataLink全球储能数据库不完全统计，截至2024年底，我国电力储能累计装机首超百吉瓦，达到137.9GW。新型储能装机规模首次超过抽水蓄能，达到78.3GW/184.2GWh，功率/能量规模同比增长126.5%/147.5%。</p><p><br/></p><p style="text-indent: 2em; line-height: 1.75em;">2024年中国新型储能新增投运43.7GW/109.8GWh，同比增长+103%/+136%。从区域分布看，新疆和内蒙古分列能量规模和功率规模第一，也是分别以新能源配储和独立储能为主导的省份。</p><p><br/></p><p style="text-indent: 2em; line-height: 1.75em;">根据CNESA预测，2025年新型储能新增装机预计在40.8GW~51.9GW之间，平均45GW左右。同时将呈现出明显的五大特征：从储能价值看，规模化调节与保供价值将不断提升；从参与电力市场看，随着市场衔接机制不断完善，可参与市场服务向“一体多用、分时复用”模式演变；行业洗牌加剧，2024年注销、吊销等异常储能相关企业数量翻番；技术革新推进行业从“卷价格”向”卷价值“转变；从市场规模看，预计2025年新型储能累计装机将突破一亿千瓦。</p><p><br/></p><p style="text-indent: 2em; line-height: 1.75em;">在保守场景下，预计2025年国内新型储能装机累计将达到116.3GW。</p>
+				<hr />
+				
+				<a class="goback" href="/channels/3.html">返回列表</a>
+			</div>
+			<div class="article_link">
+				<div>
+					<p>
+							上一篇： <a href="/contents/34/8182.html">注册资本2亿元！国家能源、国电电力合资成立新能源公司</a>
+						</p>
+				</div>
+				<div>
+					<p>
+							下一篇： <a href="/contents/34/8178.html">增幅38%！国家电投集团吉林能源投资公司增资至52.2亿</a>
+						</p>
+				</div>
+			</div>
+		</div>
+		<div class="l_p_right">
+			<div class="l_p_hot">
+				<div class="b_r_title">
+					<span class='b_r_title_name'>热度排行榜</span>
+				</div>
+				<div class="hot_list">
+					<ul>
+						
+							<li>
+								<span class="hot_icon">
+									1
+								</span>
+								<a href="/contents/34/9138.html">
+									<span>能源托管、虚拟电厂、零碳园区项目：招标0.73亿 ，中标26.75亿</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									2
+								</span>
+								<a href="/contents/34/9133.html">
+									<span>节能与综合能源服务企业必看！3月绿色低碳领域补贴政策汇总</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									3
+								</span>
+								<a href="/contents/34/9124.html">
+									<span>节能装备高质量发展实施方案解读之机电系统/变压器/工业热泵节能</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									4
+								</span>
+								<a href="/contents/34/9119.html">
+									<span>2026年，零碳园区怎么建？</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									5
+								</span>
+								<a href="/contents/34/9115.html">
+									<span>招中标周报 | 能源托管、虚拟电厂、零碳园区项目：招标￥14.14亿元 ，中标￥10.33亿元</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									6
+								</span>
+								<a href="/contents/34/9100.html">
+									<span>本周能源托管、零碳园区项目：招标￥2.79亿元 ，中标￥4.22亿元</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									7
+								</span>
+								<a href="/contents/34/9095.html">
+									<span>实践优选 | 13个首批新型电力系统建设能力提升试点名单虚拟电厂项目分享（下）</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									8
+								</span>
+								<a href="/contents/34/9090.html">
+									<span>13个首批新型电力系统建设能力提升试点名单虚拟电厂分享（上）</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									9
+								</span>
+								<a href="/contents/34/9087.html">
+									<span>招中标周报 | 能源托管、虚拟电厂、零碳园区项目</span>
+								</a>
+							</li>
+						
+							<li>
+								<span class="hot_icon">
+									10
+								</span>
+								<a href="/contents/34/9084.html">
+									<span>盘点政府工作报告与“十五五”规划纲要（草案）中的“双碳”要点</span>
+								</a>
+							</li>
+						
+					</ul>
+				</div>
+			</div>
+			<div class="l_p_activity">
+				<div class="b_r_title">
+					<span class='b_r_title_name'>品牌活动</span>
+				</div>
+				<div class="layui-carousel" id="rotationDiv1" style="margin:6px;">
+					<ul class='b_list' carousel-item="">
+						
+							<li class='b_li'>
+								<a href="/contents/23/793.html" target="_blank">
+									<img style="width:100%;height:100%;" src="/upload/images/2024/7/417823c5ea968060.jpg">
+								</a>
+								<div class="banner_bottom">
+									<a href="/contents/23/793.html" target="_blank">综合能源服务技术创新与合作发展论坛</a>
+								</div>
+							</li>
+						
+							<li class='b_li'>
+								<a href="/contents/23/5056.html" target="_blank">
+									<img style="width:100%;height:100%;" src="/upload/images/2023/11/df15637c4cb28952.jpg">
+								</a>
+								<div class="banner_bottom">
+									<a href="/contents/23/5056.html" target="_blank">绿智汇</a>
+								</div>
+							</li>
+						
+							<li class='b_li'>
+								<a href="/contents/23/794.html" target="_blank">
+									<img style="width:100%;height:100%;" src="/upload/images/2023/11/49af6a68fc853bb4.jpg">
+								</a>
+								<div class="banner_bottom">
+									<a href="/contents/23/794.html" target="_blank">绿青荟 </a>
+								</div>
+							</li>
+						
+							<li class='b_li'>
+								<a href="/contents/23/795.html" target="_blank">
+									<img style="width:100%;height:100%;" src="/upload/images/2023/11/426054e6aebdaa4a.jpg">
+								</a>
+								<div class="banner_bottom">
+									<a href="/contents/23/795.html" target="_blank">绿融汇</a>
+								</div>
+							</li>
+						
+							<li class='b_li'>
+								<a href="/contents/23/796.html" target="_blank">
+									<img style="width:100%;height:100%;" src="/upload/images/2023/11/b612b0cce12da885.jpg">
+								</a>
+								<div class="banner_bottom">
+									<a href="/contents/23/796.html" target="_blank">绿合会</a>
+								</div>
+							</li>
+						
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="friendship_link">
+	<div class="b_r_title">
+		<span class='b_r_title_name'>友情链接</span>
+	</div>
+	<div class="link_box">
+		<ul>
+			
+				<li>
+					<a href="https://www.ndrc.gov.cn" target="_blank">
+						国家发展和改革委员会
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://www.most.gov.cn/" target="_blank">
+						国家科技部
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://www.miit.gov.cn" target="_blank">
+						工业和信息化部
+					</a>
+				</li>
+			
+				<li>
+					<a href="https://www.mee.gov.cn/" target="_blank">
+						生态环境部
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://www.mohurd.gov.cn" target="_blank">
+						住房和城乡建设部
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://www.samr.gov.cn" target="_blank">
+						国家市场监督管理总局
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://ecpi.ggj.gov.cn/" target="_blank">
+						国家机关事务管理局
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://www.nea.gov.cn/" target="_blank">
+						国家能源局
+					</a>
+				</li>
+			
+				<li>
+					<a href="http://zgcgw.beijing.gov.cn/" target="_blank">
+						中关村国家自主创新示范区
+					</a>
+				</li>
+			
+		</ul>
+	</div>
+</div>
+	<div class="navBox">
+	<div class="nav-list">
+		<ul>
+			
+				<li>
+					<a href="/channels/2.html" target="_blank">
+						首页
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/10.html" target="_blank">
+						会员动态
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/11.html" target="_blank">
+						联盟动态
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/8.html" target="_blank">
+						团体标准
+					</a>
+				</li>
+			
+				<li>
+					<a href="/channels/12.html" target="_blank">
+						关于我们
+					</a>
+				</li>
+			
+		</ul>
+	</div>
+</div>
+<div class="footerBox">
+<div style="display:flex">	<div style="float:left;width: 80%;">
+		<p>
+			© Energy and Environmental Service Industry Alliance 能源环境服务产业联盟 
+			京ICP备18013713号-2 
+			<a style="margin-left: 10px;color:#fff;" href="http://www.guangyuanbj.com/" target="_blank">技术支持：北京广元科技有限公司</a>
+		</p>
+		<p>
+			邮箱：eesia@eesia.cn 
+		</p>
+    </div>
+    <div style="float:right;width:15%;margin-top: 5px;"><img src="/sitefiles/library/images/2023/5/ba43b9d830f1c6ba.png" width="100px"></div>
+</div>
+</div>
+</body>
+<script>
+	$(document).ready(function() {
+		// var nowLocation = $('.location_now a')[1].innerText;
+        $(".nav-list ul li").each(function(){
+            var y = $(this);
+            if(y.context.innerText == '行业新闻'){
+              $(this).addClass('nav_on');
+            }
+        });
+    }); 
+</script>
+
+</html>

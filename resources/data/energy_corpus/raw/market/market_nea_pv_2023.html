@@ -1,0 +1,1214 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><meta name="publishid" content="1310765696.13.33.0"/><meta name="pageid" content="11200.1176.0.0.1117575.0.0.0.0.0.114632.1310765696"/>
+<meta name="SiteName" content="国家能源局" />
+<meta name="SiteDomain" content="www.nea.gov.cn" />
+<meta name="SiteIDCode" content="bm62000002号" />
+<meta name="ArticleTitle" content="2023年光伏发电建设情况" />
+<meta name="PubDate" content="2024-02-28 12:06:54" />
+<meta name="ContentSource" content="国家能源局" />
+<meta name="description" content="国家能源网" />
+<meta name="keywords" content="国家能源网" />
+<script src="http://www.news.cn/global/js/pageCore.js"></script>
+<title>
+2023年光伏发电建设情况---国家能源局
+</title>
+<link href="http://www.nea.gov.cn/static/default/css/public/master_nyj_v1.0.css" rel="stylesheet" type="text/css" />
+<link href="http://www.nea.gov.cn/static/default/css/article.css" rel="stylesheet" type="text/css" />
+<link href="http://www.nea.gov.cn/2015nyj/xinban/topbase.css" rel="stylesheet" />
+<script src="http://www.nea.gov.cn/static/default/js/public/jquery-1.9.1.min.js" type="text/javascript"></script>
+<script language="javascript">
+$(document).ready(function(){　
+
+var lefttmp = new Image();
+lefttmp.src= "http://www.xinhuanet.com/photo/static/arr_left.cur";
+var righttmp = new Image();
+righttmp.src= "http://www.xinhuanet.com/photo/static/arr_right.cur";
+leng = $("a",$("#div_currpage")).length;
+	
+if(leng!=0)
+//curr里有a标签==稿件不止一页
+	{
+
+		//看一共有多少个a标签
+		leng = leng -1;
+		var nextLin  = $("a",$("#div_currpage"))[leng].href;//对于多页的情况，取得下一页的地址
+		var oneword = location.href+"#";
+		if(nextLin==oneword)
+		{
+		leng = leng -1;
+		nextLin  = $("a",$("#div_currpage"))[leng].href;
+		}
+		var currurl = location.href;//当前页链接地址<meta http-equiv="expires" content="Sunday 26 October 2011 01:00 GMT" /> 
+				
+		var underpd = currurl.substring(currurl.indexOf("c_")+2,currurl.indexOf(".htm"));	
+		if (underpd.indexOf("_")==-1)
+			{
+
+			prevLink = location.href;//如果是文章首页，则左键仍是替换到本页面
+			nextLink = $("a",$("#div_currpage"))[0].href;      //下一页的赋值
+			setTimeout("window.opener=null;window.location.href='"+nextLink+"'",60000);//30秒跳转到下一页
+		}
+
+	else
+		//是末页，http://news.xinhuanet.com/photo/2011-08/06/c_121822530.htm
+		{
+			//当前页分页号判断
+			var currnum = currurl.indexOf(".htm");//链接中第一次出现.htm的位置
+			var underlineindex = currurl.lastIndexOf("_")+1; //下划线甄别标识，第一页则不是下划线
+			//下一页的分页号
+			var nextnum = nextLin.indexOf(".htm");//链接中第一次出现.htm的位置
+			var underlinenext = nextLin.lastIndexOf("_")+1; //下划线甄别标识，第一页则不是下划线
+			var undernum = nextLin.substr(nextLin.indexOf("c_")).split("_").length-1;
+			
+			var temp = currurl.substring(underlineindex,currnum);//当前页的分页号
+			var nexttemp = 	nextLin.substring(underlinenext,nextnum);//最后a标签的分页号
+			var boolx = parseInt(temp,10)>parseInt(nexttemp,10);
+			
+			if((boolx)||(undernum==1))//末页
+
+					{
+					
+						if($("img",$("a",$("#content"))).length==0)//没有带链接的图片
+			
+							{
+								prevLink = nextLin;
+									if(undernum==1)
+									{
+										nextLink = nextLin;
+									}
+									else
+									{
+										nextLink = prevLink.substr(0,(prevLink.lastIndexOf("_")))+".htm";
+									}
+								setTimeout("window.opener=null;window.location.href='"+nextLink+"'",60000);//30秒跳转到下一页
+							}
+			
+						else//末页正文图片有链接
+							{
+								prevLink = nextLin;
+								nextLink = $("a",$("#content"))[0].href;//把正文第一个带链接的链接地址赋给下一页
+							}
+
+					}
+
+				else//不是末页
+					{
+
+							prevLink = $("a",$("#div_currpage"))[0].href;//把正文第一个带链接的链接地址赋给下一页
+							nextLink = nextLin;//把正文最后一个带链接的链接地址赋给下一页
+					}
+
+		}
+	}
+else
+//只有一页
+	{
+		prevLink = location.href;
+		nextLink = location.href;
+	}
+
+document.onkeydown = pageEvent;
+  function pageEvent(evt) {
+    evt = evt || window.event;
+    var key = evt.which || evt.keyCode;
+    if (key == 37) location = prevLink;
+    if (key == 39) location = nextLink;
+  };
+		
+		var lefturl		= prevLink;
+		var righturl	= nextLink;
+		var imgurl		= righturl;
+
+			$("#content img").each(function(){ 
+				var width = $(this).width();
+				var thisImage=$(this); 
+				//alert("01");
+				$(thisImage)[0].onmousemove=function(){
+					
+					if(event.offsetX<width/2){
+					
+						this.style.cursor	= 'url('+lefttmp.src+'),auto';
+						imgurl				= lefturl;
+					}
+					
+					else{
+					
+						this.style.cursor	= 'url('+righttmp.src+'),auto';
+						imgurl				= righturl;
+					}
+					
+	                                                }
+	               
+				$(thisImage)[0].onmouseup=function(){
+					top.location=imgurl;
+	
+				}   
+             });
+　　　　
+　　	});
+</script>
+</head>
+<body>
+<script src="http://www.nea.gov.cn/2015nyj/xinban/topnav.js" type="text/javascript"></script>
+<div class="main-colum">
+<div class="now-site">您当前位置：<a href="http://www.nea.gov.cn/" target="_blank">首页</a> > 正文</div>
+<div class="channel-page">
+<div class="article-title">
+<div class="hr_10"></div>
+<div class="titles">
+2023年光伏发电建设情况
+</div>
+<div class="hr_10"></div>
+<span class="times">
+发布时间：2024-02-28
+</span>
+<span class="author">
+来源：国家能源局
+</span>
+<span class="switchsize"><b class="bigger">大</b><b class="medium">中</b><b class="smaller">小</b></span>
+<div class="arrow"></div>
+</div>
+<div class="article-box">
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+<div class="article-content">
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+<tr>
+<td align="left" valign="top">
+<p style="TEXT-ALIGN: right" align="right"> <span>单位：万千瓦</span></p>
+<div align="center">
+<table style="BORDER-TOP: medium none; BORDER-RIGHT: medium none; WIDTH: 425.85pt; BORDER-COLLAPSE: collapse; BORDER-BOTTOM: medium none; BORDER-LEFT: medium none" cellspacing="0" border="1">
+<tbody>
+<tr style="HEIGHT: 28.5pt">
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: medium none; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" rowspan="3" width="84">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">省（区、市）</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: rgb(0,0,0) 1pt solid; WIDTH: 181.4pt; BORDER-BOTTOM: medium none; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="241" colspan="4">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="Times New Roman">202</font></span></b><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="Times New Roman">3</font></span></b><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">年新增并网容量</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: rgb(0,0,0) 1pt solid; WIDTH: 181.4pt; BORDER-BOTTOM: medium none; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="241" colspan="4">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">截至</font><font face="Times New Roman">202</font></span></b><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="Times New Roman">3</font></span></b><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">年底累计并网容量</font></span></b><b></b></p>
+</td>
+</tr>
+<tr style="HEIGHT: 43.5pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" rowspan="2" width="60">
+<p style="TEXT-ALIGN: left"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"> </span></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" rowspan="2" width="60">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">其中：集中式光伏电站</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 90.7pt; BORDER-BOTTOM: medium none; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="120" colspan="2">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">其中：分布式光伏</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" rowspan="2" width="60" nowrap="">
+<p style="TEXT-ALIGN: left"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><span style="FONT-FAMILY: 'Times New Roman'"> </span></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" rowspan="2" width="60">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">其中：集中式光伏电站</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 90.7pt; BORDER-BOTTOM: medium none; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="120" colspan="2">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">其中：分布式光伏</font></span></b><b></b></p>
+</td>
+</tr>
+<tr style="HEIGHT: 43.5pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"> </span></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">其中：户用光伏</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><span style="FONT-FAMILY: 'Times New Roman'"> </span></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: windowtext 1pt solid; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">其中：户用光伏</font></span></b><b></b></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><b><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">总计</font></span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">21630.0 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">12001.4 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">9628.6 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">4348.3 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">60891.8 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">35448.1 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">25443.8 </span></b><b></b></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><b><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; FONT-WEIGHT: bold; COLOR: rgb(0,0,0)">11579.7 </span></b><b></b></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">北京</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">13.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">13.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">108.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">5.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">103.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">32.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">天津</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">268.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">177.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">91.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">17.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">489.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">299.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">190.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">34.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">河北</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1561.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1029.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">531.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">235.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">5416.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3023.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2392.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1730.4 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">山西</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">795.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">567.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">227.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">178.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2490.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1824.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">666.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">468.0 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">山东</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1422.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">409.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1013.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">497.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">5692.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1593.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">4098.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2560.7 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">内蒙古</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">621.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">562.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">58.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">31.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2296.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2116.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">179.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">53.9 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">辽宁</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">357.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">140.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">216.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">133.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">957.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">521.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">436.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">218.0 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">吉林</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">73.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">45.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">27.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">19.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">459.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">340.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">119.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">42.5 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">黑龙江</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">89.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">29.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">60.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">24.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">564.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">396.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">168.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">36.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">上海</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">94.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">15.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">78.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">289.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">39.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">249.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">21.3 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">江苏</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1419.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">202.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1217.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">547.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3928.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1155.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2772.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">859.3 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">浙江</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">817.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">53.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">764.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">33.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3356.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">667.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2689.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">236.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">安徽</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1069.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">222.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">846.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">461.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3223.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1285.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1937.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">969.6 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">福建</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">409.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">5.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">404.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">166.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">874.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">44.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">830.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">341.4 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">江西</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">790.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">285.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">505.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">353.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1993.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">981.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1012.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">559.3 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">河南</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1398.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">8.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1389.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">999.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3731.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">637.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3094.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2231.3 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">湖北</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1171.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">773.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">398.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">185.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2487.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1749.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">738.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">291.1 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">湖南</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">615.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">113.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">502.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">188.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1251.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">399.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">852.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">301.7 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">重庆</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">91.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">33.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">57.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">160.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">90.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">70.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">4.7 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">四川</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">367.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">350.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">17.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">573.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">522.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">50.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">13.6 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">陕西</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">776.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">632.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">143.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">143.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2292.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1825.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">466.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">251.6 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">甘肃</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1122.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1103.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">18.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">8.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2518.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2414.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">104.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">19.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">青海</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">719.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">715.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2540.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2521.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">19.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">宁夏</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">552.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">519.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">32.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2136.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2011.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">125.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">6.3 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">新疆</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1428.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1428.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2895.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2877.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">18.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">3.7 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">新疆兵团</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)"> </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">106.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">106.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)"> </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">西藏</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">117.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">114.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)"> </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">256.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">254.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)"> </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">广东</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">932.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">300.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">631.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">84.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2522.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1053.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1468.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">223.0 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">广西</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">570.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">379.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">190.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">4.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1089.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">811.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">277.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">18.5 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">海南</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">226.6 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">126.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">100.3 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">12.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">472.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">327.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">144.5 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">21.8 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">贵州</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">223.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">216.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">7.1 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">0.2 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1643.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1612.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">30.8 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2.5 </span></p>
+</td>
+</tr>
+<tr style="HEIGHT: 15.75pt">
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 63.05pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: windowtext 1pt solid; PADDING-RIGHT: 5.4pt" valign="middle" width="84" nowrap="">
+<p style="TEXT-ALIGN: center" align="center"><span style="FONT-SIZE: 11pt; FONT-FAMILY: 方正楷体_GBK; COLOR: rgb(0,0,0)"><font face="方正楷体_GBK">云南</font></span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1514.4 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1440.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">73.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">10.0 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">2071.7 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">1937.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">133.9 </span></p>
+</td>
+<td style="BORDER-TOP: medium none; BORDER-RIGHT: windowtext 1pt solid; WIDTH: 45.35pt; BORDER-BOTTOM: windowtext 1pt solid; PADDING-BOTTOM: 0pt; PADDING-TOP: 0pt; PADDING-LEFT: 5.4pt; BORDER-LEFT: medium none; PADDING-RIGHT: 5.4pt" valign="middle" width="60" nowrap="">
+<p style="VERTICAL-ALIGN: middle; TEXT-ALIGN: right" align="right"><span style="FONT-SIZE: 10pt; FONT-FAMILY: 'Times New Roman'; COLOR: rgb(0,0,0)">21.6 </span></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p></p>
+</td>
+</tr>
+</table>
+</div>
+<div class="back-top"></div>
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+</div>
+<div class="article-other">
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+
+<div class="clear"></div>
+</div>
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+<div class="hr_10"></div>
+</div>
+</div>
+<script src="http://www.nea.gov.cn/2015nyj/xinban/bottom.js" type="text/javascript"></script>
+<script src="http://www.nea.gov.cn/static/default/js/public/article-font.js" type="text/javascript"></script>
+<div style="display:none"><div id="fwl">010090050000000000000000011100001310765696</div><script type="text/javascript" src="//webd.home.news.cn/webdig.js?z=1"></script><script type="text/javascript">wd_paramtracker("_wdxid=010090050000000000000000011100001310765696")</script><noscript><img src="//webd.home.news.cn/1.gif?z=1&_wdxid=010090050000000000000000011100001310765696" border="0" /></noscript></div>   </body>
+</html>
