@@ -37,7 +37,17 @@
 
 ---
 
-## Task 2: 固定评测集 — PENDING
+## Task 2: 固定评测集 — DONE (2026-08-11)
+
+| 评测集 | 规模 | 文件 |
+|--------|------|------|
+| 事实性评测集 | **40 条**（factual 20 / negation 10 / unanswerable 10） | resources/data/eval/energy_eval_set.json |
+| 意图分类评测集 | **50 条**（5 类 × 10，含边界样本） | resources/data/eval/intent_eval_set.json |
+
+- 每条 factual/negation 的 evidence_quote 逐字锚定语料原文，key_numbers 精确标注（防编造校验测试兜底）
+- unanswerable 条目全部经 grep 验证语料确实无答案
+- 检索评测复用 factual+negation 的 evidence_doc 标注（hit@5 / MRR）
+- 测试: tests/test_eval_set_integrity.py — **6/6 PASS**
 
 ## Task 3: 事前约束改造 — PENDING
 
