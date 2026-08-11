@@ -21,6 +21,32 @@ import requests
 
 logger = logging.getLogger("deep_scout")
 
+
+from backend.tools.citation_guard import guard_enabled as _guard_enabled  # noqa: E402
+
+
+def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
+    """Freeze the top search results into an immutable evidence set.
+
+    Each item gets a stable label (E1, E2 …) the writer must cite. RAG hits
+    keep their Milvus chunk_id; web hits get a URL-hash pseudo id, so every
+    citation in the final report is auditable back to a concrete chunk/page.
+    """
+    evidence: dict[str, dict] = {}
+    for i, item in enumerate(unique[:max_items]):
+        if item.get("source_type") == "rag" and item.get("chunk_id") is not None:
+            cid = item["chunk_id"]
+        else:
+            cid = "web:" + hashlib.md5((item.get("url") or "").encode("utf-8")).hexdigest()[:8]
+        evidence[f"E{i + 1}"] = {
+            "text":     item.get("snippet", ""),
+            "chunk_id": cid,
+            "source":   item.get("title") or item.get("url", ""),
+            "url":      item.get("url", ""),
+            "source_type": item.get("source_type", "web"),
+        }
+    return evidence
+
 MCP_URL = "http://localhost:8002"
 _REQUEST_TIMEOUT = 20   # seconds per individual search call
 
@@ -75,6 +101,7 @@ async def _search_rag(session: Any, query: str) -> list[dict]:
                 "snippet": it.get("content", "")[:400],
                 "url":     it.get("source", ""),
                 "score":   it.get("score", 0.0),
+                "chunk_id": it.get("chunk_id"),
                 "source_type": "rag",
                 "query":   query,
             }
@@ -222,9 +249,15 @@ def run(state: dict, llm) -> dict:
         f"{len(facts)} facts | {elapsed:.1f}s"
     )
 
-    return {
+    update = {
         "raw_sources": unique,
         "facts":       facts,
         "phase":       "analyzing",
         "pending_queries": [],   # clear after processing
     }
+    if _guard_enabled(state):
+        evidence = freeze_evidence(unique)
+        update["evidence_frozen"] = evidence
+        logger.info("[DeepScout] FACT_GUARD on — froze %d evidence items", len(evidence))
+        print(f"[DeepScout] FACT_GUARD on: froze {len(evidence)} evidence items")
+    return update

@@ -13,7 +13,70 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from backend.tools.citation_guard import (
+    build_rewrite_feedback,
+    format_evidence,
+    guard_enabled,
+    verify,
+)
+
 logger = logging.getLogger("lead_writer")
+
+_GUARD_SECTION_SYSTEM = """\
+你是一位能源行业资深分析师，负责撰写研究报告的指定章节。
+
+【事实约束 — 必须严格遵守】
+1. 只允许使用下方「证据集」原文中出现的数字；禁止使用你自己知识中的任何数字。
+2. 每个包含数字的句子，句末必须标注证据编号，格式 [E3]，可多个如 [E1][E4]；数据指标用 [D1] 格式。
+3. 数字必须与证据原文完全一致：不得四舍五入、不得换算单位、不得改写（如证据写 4009.2亿元 就写 4009.2亿元）。
+4. 证据集中没有依据的内容只做定性描述，不要编造任何数据；证据不足时明确写"现有证据未覆盖"。
+
+写作要求：
+- 每章400-700字，结构：概述 → 详细分析 → 小结
+- 语言专业、客观
+只输出章节正文，不要包含章节标题。
+"""
+
+_GUARD_SUMMARY_SYSTEM = """\
+你是一位能源行业研究报告编辑，负责撰写执行摘要（200-300字）。
+
+【事实约束 — 必须严格遵守】
+1. 只允许使用报告正文中已出现且带证据编号的数字。
+2. 每个数字后保留其证据编号，如 装机7376万千瓦[E2]。
+3. 不得引入报告正文之外的任何数字。
+
+只输出摘要正文。
+"""
+
+
+def _write_with_guard(llm, system: str, user_msg: str, evidence: dict,
+                      label: str) -> tuple[str, dict]:
+    """Generate → verify against frozen evidence → one feedback-guided rewrite →
+    annotate anything still unverified. Returns (content, stats)."""
+    content = llm.chat(system, user_msg, temperature=0.3)
+    result = verify(content, evidence)
+    stats = {"violations_first": len(result.violations), "rewrites": 0,
+             "violations_final": 0}
+    if not result.ok:
+        stats["rewrites"] = 1
+        feedback = build_rewrite_feedback(result.violations)
+        retry_msg = (
+            f"{user_msg}\n\n你上一稿如下：\n{content}\n\n"
+            f"【校验失败，必须修正】\n{feedback}\n\n"
+            "请重写全文：修正以上问题；无法在证据中找到依据的数字必须删除或改为定性表述。"
+        )
+        content = llm.chat(system, retry_msg, temperature=0.2)
+        result = verify(content, evidence)
+    if not result.ok:
+        # final fallback: annotate the surviving violations so nothing
+        # unverified reads as established fact
+        stats["violations_final"] = len(result.violations)
+        notes = "\n".join(f"- {v['detail']}" for v in result.violations[:5])
+        content += f"\n\n> ⚠ 以下表述未通过证据核验，仅供参考：\n{notes}"
+    logger.info("[LeadWriter] guard '%s': first=%d final=%d rewrites=%d",
+                label, stats["violations_first"], stats["violations_final"],
+                stats["rewrites"])
+    return content, stats
 
 _SECTION_SYSTEM = """\
 你是一位能源行业资深分析师，负责撰写研究报告的指定章节。
@@ -147,6 +210,22 @@ def run(state: dict, llm) -> dict:
     data_text    = _format_data_points(data_points)
     sources_text = _format_sources(raw_sources)
 
+    # Fact-constraint mode: writer sees only the frozen evidence set and must
+    # cite [E*]/[D*] labels; numbers are back-checked against evidence verbatim.
+    use_guard = guard_enabled(state) and bool(state.get("evidence_frozen"))
+    guard_evidence: dict = {}
+    guard_stats: dict = {}
+    if use_guard:
+        guard_evidence = dict(state["evidence_frozen"])
+        for i, dp in enumerate(data_points):
+            guard_evidence[f"D{i + 1}"] = {
+                "text": f"{dp.get('metric', '')}: {dp.get('value', '')}",
+                "chunk_id": f"sql:{i + 1}",
+                "source": "text2sql",
+            }
+        evidence_text = format_evidence(guard_evidence)
+        print(f"[LeadWriter] FACT_GUARD on: {len(guard_evidence)} evidence items bound")
+
     draft_sections: dict[str, str] = {}
     t0 = time.time()
 
@@ -164,24 +243,40 @@ def run(state: dict, llm) -> dict:
         sec_desc  = sec.get("description", "")
         keywords  = sec.get("keywords", [])
 
-        user_msg = (
-            f"研究主题：{question}\n\n"
-            f"本章节：{sec_title}\n"
-            f"章节描述：{sec_desc}\n"
-            f"关键词：{'、'.join(keywords)}\n\n"
-            f"研究假设：\n" + "\n".join(f"• {h}" for h in hypotheses[:3]) + "\n\n"
-            f"可用事实：\n{facts_text}\n\n"
-            f"数据指标：\n{data_text}\n\n"
-            f"参考资料：\n{sources_text}\n\n"
-            "请基于以上信息撰写本章节内容（500-800字）。"
-        )
+        if use_guard:
+            user_msg = (
+                f"研究主题：{question}\n\n"
+                f"本章节：{sec_title}\n"
+                f"章节描述：{sec_desc}\n"
+                f"关键词：{'、'.join(keywords)}\n\n"
+                f"研究假设：\n" + "\n".join(f"• {h}" for h in hypotheses[:3]) + "\n\n"
+                f"证据集（数字只能来自这里，引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
+                "请基于证据集撰写本章节内容（400-700字）。"
+            )
+        else:
+            user_msg = (
+                f"研究主题：{question}\n\n"
+                f"本章节：{sec_title}\n"
+                f"章节描述：{sec_desc}\n"
+                f"关键词：{'、'.join(keywords)}\n\n"
+                f"研究假设：\n" + "\n".join(f"• {h}" for h in hypotheses[:3]) + "\n\n"
+                f"可用事实：\n{facts_text}\n\n"
+                f"数据指标：\n{data_text}\n\n"
+                f"参考资料：\n{sources_text}\n\n"
+                "请基于以上信息撰写本章节内容（500-800字）。"
+            )
 
         _max_retries = 2
         for _attempt in range(_max_retries + 1):
             try:
-                content = llm.chat(_SECTION_SYSTEM, user_msg, temperature=0.4)
-                # Ensure verbatim fact content appears for factual-grounding checks
-                content = _inject_missing_facts(content, facts)
+                if use_guard:
+                    content, stats = _write_with_guard(
+                        llm, _GUARD_SECTION_SYSTEM, user_msg, guard_evidence, sec_title)
+                    guard_stats[sec_id] = stats
+                else:
+                    content = llm.chat(_SECTION_SYSTEM, user_msg, temperature=0.4)
+                    # Ensure verbatim fact content appears for factual-grounding checks
+                    content = _inject_missing_facts(content, facts)
                 logger.info("[LeadWriter] section '%s' → %d chars (attempt %d)",
                             sec_title, len(content), _attempt + 1)
                 return sec_id, content
@@ -227,16 +322,29 @@ def run(state: dict, llm) -> dict:
                 f"报告全文：\n{all_content[:3000]}\n\n"
                 "请撰写执行摘要（200-300字）。"
             )
-            summary = llm.chat(_SUMMARY_SYSTEM, summary_msg, temperature=0.3)
-            # Ensure verbatim fact content appears in summary too
-            summary = _inject_missing_facts(summary, facts)
+            if use_guard:
+                summary, s_stats = _write_with_guard(
+                    llm, _GUARD_SUMMARY_SYSTEM, summary_msg, guard_evidence, "summary")
+                guard_stats["summary"] = s_stats
+            else:
+                summary = llm.chat(_SUMMARY_SYSTEM, summary_msg, temperature=0.3)
+                # Ensure verbatim fact content appears in summary too
+                summary = _inject_missing_facts(summary, facts)
             draft_sections["summary"] = summary
         except Exception as exc:
             logger.warning("[LeadWriter] Summary generation failed: %s", exc)
             draft_sections["summary"] = f"本报告研究主题：{question}。包含{len(outline)}个章节。"
 
     elapsed = time.time() - t0
-    references = _build_references(raw_sources)
+    if use_guard:
+        # auditable reference list: label → chunk_id → source
+        references = [
+            {"label": label, "title": str(ev.get("source", ""))[:80],
+             "url": ev.get("url", ""), "chunk_id": ev.get("chunk_id", ""), "date": ""}
+            for label, ev in guard_evidence.items()
+        ]
+    else:
+        references = _build_references(raw_sources)
 
     logger.info(
         "[LeadWriter] %d sections + summary | %d references | %.1fs",
@@ -244,8 +352,11 @@ def run(state: dict, llm) -> dict:
     )
     print(f"[LeadWriter] {len(draft_sections)} sections (incl. summary) | {len(references)} refs | {elapsed:.1f}s")
 
-    return {
+    update = {
         "draft_sections": draft_sections,
         "references":     references,
         "phase":          "reviewing",
     }
+    if use_guard:
+        update["guard_stats"] = guard_stats
+    return update

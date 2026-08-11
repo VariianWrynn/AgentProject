@@ -49,7 +49,20 @@
 - 检索评测复用 factual+negation 的 evidence_doc 标注（hit@5 / MRR）
 - 测试: tests/test_eval_set_integrity.py — **6/6 PASS**
 
-## Task 3: 事前约束改造 — PENDING
+## Task 3: 事前约束改造 — DONE (2026-08-11)
+
+**机制**（事前约束替代事后修补）：
+1. **证据集冻结**：DeepScout 检索后将 top-24 结果冻结为 {E1..En}，RAG 命中绑定真实 Milvus chunk_id，web 命中绑定 URL 哈希（`freeze_evidence()`）
+2. **chunk_id 绑定**：rag_pipeline → mcp_server → deep_scout 全链路透传 chunk_id；SQL 数据点以 D1..Dn 并入证据集
+3. **引用回指校验**：`backend/tools/citation_guard.py` 纯函数校验——引用编号必须存在 / 被引句数字必须在证据原文精确出现（千分位/全角归一化）/ 含数字句必须有引用；日历年份与序数词排除
+4. **回退重写**：违规 → 带逐条反馈回炉重写 1 次 → 仍违规则显式标注"未通过证据核验"，绝不静默放行
+5. **开关**：`FACT_GUARD=on|off`（env）或 `run_deep_research(fact_guard=...)` per-run 覆盖；`HITL_ENABLED=off` 支持无人值守批量评测
+
+**改动文件**: citation_guard.py（新）、deep_scout.py、lead_writer.py、critic_master.py、agent_state.py、langgraph_agent.py、mcp_server.py
+
+**测试**: test_citation_guard.py 15/15 PASS + test_lead_writer_guard.py 6/6 PASS（含脚本化 LLM 的重写回路验证）
+
+**冒烟**（真实全流程, demo_mode+guard on）: 12 条证据冻结，正文引用 [E1][E11] 等 5 组标签，数字 4009.2/441.21/22.01%/43.58% 全部与语料逐字一致，首稿 0 违规
 
 ## Task 4: 对比评测 — PENDING
 

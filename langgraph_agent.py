@@ -696,9 +696,14 @@ def build_research_graph():
 # Convenience: run deep research pipeline with proper initial state
 # ---------------------------------------------------------------------------
 
-def _make_initial_state(question: str, session_id: str, demo_mode: bool = False) -> dict:
+def _make_initial_state(question: str, session_id: str, demo_mode: bool = False,
+                        fact_guard: bool | None = None) -> dict:
     """Build a valid initial AgentState for the research graph."""
     return {
+        # Fact constraints (pre-hoc citation guard)
+        "fact_guard":      fact_guard,
+        "evidence_frozen": {},
+        "guard_stats":     {},
         # Part 1 fields
         "question":       question,
         "intent":         "research",
@@ -732,7 +737,8 @@ def _make_initial_state(question: str, session_id: str, demo_mode: bool = False)
 
 
 def run_deep_research(question: str, session_id: str | None = None,
-                      demo_mode: bool = False) -> dict:
+                      demo_mode: bool = False,
+                      fact_guard: bool | None = None) -> dict:
     """
     Run the full multi-agent deep research pipeline.
 
@@ -748,7 +754,7 @@ def run_deep_research(question: str, session_id: str | None = None,
         pass
 
     research_graph = build_research_graph()
-    initial_state  = _make_initial_state(question, session_id, demo_mode)
+    initial_state  = _make_initial_state(question, session_id, demo_mode, fact_guard)
 
     logger.info("[DeepResearch] Starting for question='%s' session=%s demo_mode=%s",
                 question[:60], session_id, demo_mode)
