@@ -102,4 +102,27 @@
 - 牌价（2026-08-11 官方 cache-miss）: pro $0.435/$0.87，flash $0.14/$0.28 每百万 tok
 - 发现: token 大头在写作/审查环节（必须大模型），分级节省上限受此约束——12% 成本 + 16% 提速，零质量代价
 
-## Task 6: 样例报告 — PENDING
+## Task 6: 样例报告 — DONE (2026-08-11)
+
+**目录:** docs/reports/sample_reports/（政策/财报/市场各 1，完整模式 + FACT_GUARD on）
+
+| 报告 | query | 引用数 | 未核验标注 |
+|------|-------|--------|-----------|
+| sample_1_storage_policy | 新型储能政策演进 | 72 | 0 |
+| sample_2_battery_makers | 宁德 vs 亿纬 2023 业绩 | 48 | 0 |
+| sample_3_pv_prices | 2024 光伏产业链价格 | 51 | 1（显式标注） |
+
+- 每份含证据引用对照表（[E*] → chunk_id/URL）+ 守卫统计附录
+- 快审抽查：409.0GWh/74.6% 等数字沿 [E3]→chunk_id→market_ev_battery_2024.txt 逐字命中
+- 面试展示动线见 docs/interview-prep/users_and_deliverables.md
+
+---
+
+## 第二部分：叙事优化 — DONE (2026-08-11)
+
+**目录:** docs/interview-prep/
+1. resume_bullets_v2.md — 四条演进结构 bullet（中英双语，动机+做法+实测数字）
+2. positioning.md — vs OpenAI/Gemini Deep Research 30秒定位 + 追问预案
+3. tech_choices.md — 为什么不用 AutoGen/MetaGPT；为什么不直接长上下文（各含让步）
+4. timeline.md — v0(2025.06 原型期)→v1 工程化→v2 多智能体→v3 事实约束，git 日期可查证部分已标注
+5. users_and_deliverables.md — 目标用户如实口径 + 报告规格 + 2 分钟展示动线

@@ -1,8 +1,7 @@
 # 简历 Bullet v2 — 演进结构（数据底座 → 事实约束型写作 → 三层降级 → 双层记忆）
 
 > 结构：每条 = 上一步测评暴露的问题（动机）→ 做法 → 实测数字。
-> 所有数字来源：docs/reports/fact_eval_20260811.md、docs/checkpoints/interview-opt-checkpoint.md、resume-metrics-checkpoint.md。
-> 性能/成本数字（标 ⏳）待 perf_20260811.md 回填。
+> 所有数字来源：docs/reports/fact_eval_20260811.md、docs/reports/perf_20260811.md、docs/checkpoints/interview-opt-checkpoint.md、resume-metrics-checkpoint.md。全部可重跑复现。
 
 ---
 
