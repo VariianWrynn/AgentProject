@@ -21,7 +21,9 @@ Modes (run from project root, agentPro env, MCP server on :8002, Milvus/Redis up
 Scoring (deterministic heuristics, no judge LLM — reproducible):
   factual      correct  = every key_number appears (normalized) in the answer
   negation     correct  = key_numbers present AND a negation cue word survives
-  unanswerable correct  = a refusal/no-evidence marker present in the answer
+  unanswerable correct  = refusal marker present, OR (guard runs only) the answer
+                          carries [E*]/[D*] citations with zero final violations
+                          — i.e. the metric is "answered WITHOUT evidence"
 """
 
 import argparse
@@ -106,11 +108,20 @@ def run_retrieval() -> dict:
 
 # ── fact mode (full pipeline) ─────────────────────────────────────────────────
 
-def score_answer(item: dict, answer: str) -> dict:
+def score_answer(item: dict, answer: str, guard_stats: dict | None = None) -> dict:
     ans = _normalize(answer)
     if item["type"] == "unanswerable":
         refused = any(c in ans for c in REFUSAL_CUES)
-        return {"correct": refused, "reason": "refused" if refused else "answered_without_evidence"}
+        if refused:
+            return {"correct": True, "reason": "refused"}
+        # An answer backed by verified citations (frozen web evidence) is NOT a
+        # hallucination — the metric is "answered WITHOUT evidence", not "answered".
+        has_citation = bool(re.search(r"\[[ED]\d+\]", answer))
+        zero_violations = bool(guard_stats) and all(
+            s.get("violations_final", 1) == 0 for s in guard_stats.values())
+        if has_citation and zero_violations:
+            return {"correct": True, "reason": "answered_with_verified_citations"}
+        return {"correct": False, "reason": "answered_without_evidence"}
     nums_ok = all(n in ans for n in item["key_numbers"])
     if item["type"] == "negation":
         neg_ok = any(c in ans for c in NEGATION_CUES)
@@ -158,7 +169,7 @@ def run_fact(guard: str, workers: int, limit: int | None, subset: str | None) ->
             rec = {
                 "id": item["id"], "type": item["type"], "guard": guard,
                 "question": item["question"],
-                **score_answer(item, answer),
+                **score_answer(item, answer, final.get("guard_stats") or {}),
                 "elapsed_s": round(time.time() - t0, 1),
                 "guard_stats": final.get("guard_stats", {}),
                 "n_evidence": len(final.get("evidence_frozen", {}) or {}),
