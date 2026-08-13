@@ -50,6 +50,45 @@ CHUNK_SIZE = 512       # tokens
 CHUNK_OVERLAP = 50     # tokens
 TOP_K = 5
 
+# ── Vector index ──────────────────────────────────────────────────────────
+# FLAT（穷举、精确）是万级以下向量的正确默认值：IVF 聚类只有在 nlist << N
+# 时才有意义，nlist 超过实体数会留下大量空簇，受 nprobe 限制的搜索会静默
+# 丢召回。本库当前 161 个向量，FLAT 既更准也更快。
+INDEX_TYPE = os.getenv("MILVUS_INDEX_TYPE", "FLAT").upper()
+IVF_NLIST  = int(os.getenv("MILVUS_IVF_NLIST", "128"))
+IVF_NPROBE = int(os.getenv("MILVUS_IVF_NPROBE", "16"))
+
+
+def build_index_params(index_type: str = None, nlist: int = None) -> dict:
+    """构造 create_index 参数；FLAT 不带聚类参数。"""
+    it = (index_type or INDEX_TYPE).upper()
+    if it == "FLAT":
+        return {"index_type": "FLAT", "metric_type": "COSINE", "params": {}}
+    return {"index_type": it, "metric_type": "COSINE",
+            "params": {"nlist": nlist if nlist is not None else IVF_NLIST}}
+
+
+def build_search_params(index_type: str = None, nprobe: int = None) -> dict:
+    """构造 search 参数；FLAT 无 nprobe 概念。"""
+    it = (index_type or INDEX_TYPE).upper()
+    if it == "FLAT":
+        return {"metric_type": "COSINE", "params": {}}
+    return {"metric_type": "COSINE",
+            "params": {"nprobe": nprobe if nprobe is not None else IVF_NPROBE}}
+
+
+def validate_index_for_size(index_type: str, n_entities: int, nlist: int = None) -> None:
+    """nlist 超过实体数时抛错——这会让多数簇为空并静默损失召回。"""
+    it = (index_type or "").upper()
+    if it == "FLAT":
+        return
+    nl = nlist if nlist is not None else IVF_NLIST
+    if nl > n_entities:
+        raise ValueError(
+            f"nlist={nl} 超过实体数 {n_entities}：多数簇将为空，受 nprobe 限制的"
+            f"搜索会静默丢召回。此规模请用 MILVUS_INDEX_TYPE=FLAT。"
+        )
+
 
 # ===================================================================
 # 1. Document Loading
@@ -337,14 +376,8 @@ class RAGPipeline:
         schema = CollectionSchema(fields=fields, description="RAG Knowledge Base")
         col = Collection(name=self.collection_name, schema=schema)
 
-        # Create IVF_FLAT index on embedding field
-        index_params = {
-            "index_type": "IVF_FLAT",
-            "metric_type": "COSINE",
-            "params": {"nlist": 1024},
-        }
-        col.create_index(field_name="embedding", index_params=index_params)
-        logger.info("Index created on 'embedding' field.")
+        col.create_index(field_name="embedding", index_params=build_index_params())
+        logger.info("Index created on 'embedding' field (%s).", INDEX_TYPE)
         col.load()
         return col
 
@@ -447,6 +480,20 @@ class RAGPipeline:
     # ------------------------------------------------------------------
     # Query / Retrieval
     # ------------------------------------------------------------------
+    def rebuild_index(self) -> None:
+        """就地重建向量索引（保留实体）。
+
+        改动 MILVUS_INDEX_TYPE 后必须调用——索引只在集合首次创建时建立。
+        """
+        n = self.count()
+        validate_index_for_size(INDEX_TYPE, n)
+        self.collection.release()
+        self.collection.drop_index()
+        self.collection.create_index(field_name="embedding",
+                                     index_params=build_index_params())
+        self.collection.load()
+        logger.info("Index rebuilt as %s over %d entities.", INDEX_TYPE, n)
+
     def query(self, question: str, top_k: int = TOP_K) -> list[dict]:
         """Semantic search: return top-k most similar chunks.
 
@@ -455,7 +502,7 @@ class RAGPipeline:
         """
         q_embedding = self.embed([question])[0]
 
-        search_params = {"metric_type": "COSINE", "params": {"nprobe": 64}}
+        search_params = build_search_params()
         results = self.collection.search(
             data=[q_embedding],
             anns_field="embedding",
