@@ -34,6 +34,11 @@ class AgentState(TypedDict):
     # Knowledge layer
     facts:               list[dict]     # [{content, source, credibility}]
     raw_sources:         list[dict]     # raw source objects from search/RAG
+
+    # Fact constraints (pre-hoc citation guard)
+    fact_guard:          Optional[bool] # per-run FACT_GUARD override (None = use env)
+    evidence_frozen:     dict           # {label: {text, chunk_id, source, url}} frozen by DeepScout
+    guard_stats:         dict           # {section_id: {violations_first, violations_final, rewrites}}
     data_points:         list[dict]     # structured numeric data points
 
     # Output layer

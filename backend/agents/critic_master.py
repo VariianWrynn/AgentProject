@@ -10,6 +10,7 @@ Output: critic_issues, quality_score (0-1), pending_queries
 """
 
 import logging
+import os
 import time
 
 logger = logging.getLogger("critic_master")
@@ -284,8 +285,9 @@ def run(state: dict, llm) -> dict:
             # After 2 iterations, accept anything — prevent perfectionism loop
             logger.info("[CriticMaster] iteration=%d, forcing done (convergence guard)", iteration)
             next_phase = "done"
-        elif quality_score < 0.7:
-            # Quality below threshold — pause for human review (OPT-003)
+        elif quality_score < 0.7 and os.getenv("HITL_ENABLED", "on").lower() != "off":
+            # Quality below threshold — pause for human review (OPT-003).
+            # HITL_ENABLED=off skips the gate for unattended batch eval runs.
             next_phase = "awaiting_human"
         else:
             next_phase = "done"

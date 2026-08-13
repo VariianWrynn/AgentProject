@@ -1,0 +1,189 @@
+{
+  "mode": "retrieval",
+  "total": 30,
+  "hit_at_5": 29,
+  "hit_rate": 0.9667,
+  "mrr": 0.8472,
+  "records": [
+    {
+      "id": "fact-001",
+      "expected_doc": "finance_catl_2023",
+      "rank": 1,
+      "top1": "finance_catl_2023.txt"
+    },
+    {
+      "id": "fact-002",
+      "expected_doc": "finance_catl_2024",
+      "rank": 1,
+      "top1": "finance_catl_2024.txt"
+    },
+    {
+      "id": "fact-003",
+      "expected_doc": "finance_sungrow_2023",
+      "rank": 1,
+      "top1": "finance_sungrow_2023.txt"
+    },
+    {
+      "id": "fact-004",
+      "expected_doc": "finance_sungrow_2024",
+      "rank": 1,
+      "top1": "finance_sungrow_2024.txt"
+    },
+    {
+      "id": "fact-005",
+      "expected_doc": "finance_longi_2023",
+      "rank": 1,
+      "top1": "finance_longi_2023.txt"
+    },
+    {
+      "id": "fact-006",
+      "expected_doc": "finance_goldwind_2023",
+      "rank": 1,
+      "top1": "finance_goldwind_2023.txt"
+    },
+    {
+      "id": "fact-007",
+      "expected_doc": "finance_eve_2023",
+      "rank": 1,
+      "top1": "finance_eve_2023.txt"
+    },
+    {
+      "id": "fact-008",
+      "expected_doc": "finance_changjiang_power_2023",
+      "rank": 1,
+      "top1": "finance_changjiang_power_2023.txt"
+    },
+    {
+      "id": "fact-009",
+      "expected_doc": "market_power_consumption_2024",
+      "rank": 1,
+      "top1": "market_power_consumption_2024.txt"
+    },
+    {
+      "id": "fact-010",
+      "expected_doc": "market_nea_storage_2024",
+      "rank": 1,
+      "top1": "market_nea_storage_2024.txt"
+    },
+    {
+      "id": "fact-011",
+      "expected_doc": "market_ev_battery_2024",
+      "rank": 1,
+      "top1": "market_ev_battery_2024.txt"
+    },
+    {
+      "id": "fact-012",
+      "expected_doc": "market_wind_installation_2023",
+      "rank": 1,
+      "top1": "market_wind_installation_2023.txt"
+    },
+    {
+      "id": "fact-013",
+      "expected_doc": "policy_carbon_peak_2021",
+      "rank": 3,
+      "top1": "energy_policy_2024.txt"
+    },
+    {
+      "id": "fact-014",
+      "expected_doc": "policy_carbon_peak_2021",
+      "rank": 2,
+      "top1": "energy_policy_2024.txt"
+    },
+    {
+      "id": "fact-015",
+      "expected_doc": "policy_energy_law_2024",
+      "rank": 1,
+      "top1": "policy_energy_law_2024.txt"
+    },
+    {
+      "id": "fact-016",
+      "expected_doc": "market_carbon_market_2024",
+      "rank": 1,
+      "top1": "market_carbon_market_2024.txt"
+    },
+    {
+      "id": "fact-017",
+      "expected_doc": "market_cnesa_storage_2024",
+      "rank": 1,
+      "top1": "market_cnesa_storage_2024.txt"
+    },
+    {
+      "id": "fact-018",
+      "expected_doc": "market_polysilicon_price_2024",
+      "rank": 2,
+      "top1": "finance_daqo_2023.txt"
+    },
+    {
+      "id": "fact-019",
+      "expected_doc": "finance_tongwei_2023",
+      "rank": 4,
+      "top1": "market_pv_industry_2023.txt"
+    },
+    {
+      "id": "fact-020",
+      "expected_doc": "finance_shenhua_2022",
+      "rank": 1,
+      "top1": "finance_shenhua_2022.txt"
+    },
+    {
+      "id": "neg-001",
+      "expected_doc": "finance_goldwind_2023",
+      "rank": 1,
+      "top1": "finance_goldwind_2023.txt"
+    },
+    {
+      "id": "neg-002",
+      "expected_doc": "finance_daqo_2023",
+      "rank": 1,
+      "top1": "finance_daqo_2023.txt"
+    },
+    {
+      "id": "neg-003",
+      "expected_doc": "finance_catl_2024",
+      "rank": 2,
+      "top1": "finance_catl_2023.txt"
+    },
+    {
+      "id": "neg-004",
+      "expected_doc": "finance_daqo_2023",
+      "rank": 1,
+      "top1": "finance_daqo_2023.txt"
+    },
+    {
+      "id": "neg-005",
+      "expected_doc": "market_polysilicon_price_2024",
+      "rank": 1,
+      "top1": "market_polysilicon_price_2024.txt"
+    },
+    {
+      "id": "neg-006",
+      "expected_doc": "policy_carbon_peak_2021",
+      "rank": 3,
+      "top1": "policy_renewable_substitution_2024.txt"
+    },
+    {
+      "id": "neg-007",
+      "expected_doc": "finance_goldwind_2023",
+      "rank": 1,
+      "top1": "finance_goldwind_2023.txt"
+    },
+    {
+      "id": "neg-008",
+      "expected_doc": "finance_shenhua_2022",
+      "rank": 1,
+      "top1": "finance_shenhua_2022.txt"
+    },
+    {
+      "id": "neg-009",
+      "expected_doc": "finance_longi_2023",
+      "rank": 1,
+      "top1": "finance_longi_2023.txt"
+    },
+    {
+      "id": "neg-010",
+      "expected_doc": "market_polysilicon_price_2024",
+      "rank": null,
+      "top1": "finance_tongwei_2023.txt"
+    }
+  ]
+}

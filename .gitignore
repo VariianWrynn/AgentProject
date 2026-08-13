@@ -43,3 +43,12 @@ record/
 # Binary test documents (recreated manually)
 test_files/*.pdf
 resources/test_files/*.pdf
+
+# Node deps (docx generation tooling)
+node_modules/
+
+# Personal resume artifacts — keep out of this public repo
+*简历*.pdf
+Varian_Chi_Resume_EN.*
+resume_photo.*
+scripts/gen_resume_en.js

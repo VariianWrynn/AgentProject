@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import re
+import threading
 import uuid
 from typing import Optional
 
@@ -137,6 +138,32 @@ class Memory:
 # ===========================================================================
 # LLM client — thin wrapper around openai SDK
 # ===========================================================================
+# ── global token accounting (for perf/cost benchmarks) ─────────────────────
+_USAGE_LOCK = threading.Lock()
+_USAGE_TOTALS: dict = {}   # {model: {"calls": n, "prompt_tokens": n, "completion_tokens": n}}
+
+
+def record_usage(model: str, usage) -> None:
+    """Accumulate token usage from an OpenAI-compatible response.usage object."""
+    if usage is None:
+        return
+    with _USAGE_LOCK:
+        d = _USAGE_TOTALS.setdefault(model, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
+        d["calls"] += 1
+        d["prompt_tokens"] += getattr(usage, "prompt_tokens", 0) or 0
+        d["completion_tokens"] += getattr(usage, "completion_tokens", 0) or 0
+
+
+def get_usage_totals() -> dict:
+    with _USAGE_LOCK:
+        return {m: dict(v) for m, v in _USAGE_TOTALS.items()}
+
+
+def reset_usage_totals() -> None:
+    with _USAGE_LOCK:
+        _USAGE_TOTALS.clear()
+
+
 class LLMClient:
     def __init__(self, api_key: str = None, model: str = None, base_url: str = None) -> None:
         _key = api_key or OPENAI_API_KEY
@@ -174,6 +201,7 @@ class LLMClient:
                 temperature=temperature,
                 response_format={"type": "json_object"},
             )
+            record_usage(self.model, getattr(resp, "usage", None))
             return json.loads(resp.choices[0].message.content)
         except Exception:
             # Some providers ignore response_format — extract JSON from raw text
@@ -185,6 +213,7 @@ class LLMClient:
                 ],
                 temperature=temperature,
             )
+            record_usage(self.model, getattr(resp, "usage", None))
             text = resp.choices[0].message.content
             match = re.search(r"\{.*\}", text, re.DOTALL)
             if match:
@@ -201,6 +230,7 @@ class LLMClient:
             ],
             temperature=temperature,
         )
+        record_usage(self.model, getattr(resp, "usage", None))
         return resp.choices[0].message.content
 
 

@@ -243,7 +243,8 @@ def rag_search(req: ToolRequest) -> ToolResponse:
         top_k  = int(req.params.get("top_k", 5))
         hits   = _rag.query(req.query, top_k=top_k)
         result = [
-            {"content": h["content"], "source": h["source"], "score": h["score"]}
+            {"content": h["content"], "source": h["source"], "score": h["score"],
+             "chunk_id": h.get("chunk_id")}
             for h in hits
         ]
         _cache_set("rag_search", req.query, result)
