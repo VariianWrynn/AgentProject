@@ -8,30 +8,29 @@
 
 ## 粘贴版全文
 
-针对能源分析师跨政策/市场/财务多来源研究场景，独立设计并实现端到端 Multi-Agent 深度研究系统：37 篇真实语料（政策全文/上市公司财报/市场统计，2021–2026）清洗入 Milvus 构成数据底座（138 chunks，检索 hit@5 96.7%），产出句级可审计的研究报告。
+针对能源分析师跨政策/市场/财务多来源研究场景，独立设计并实现端到端 Multi-Agent 深度研究系统：37 篇真实语料（政策全文/上市公司业绩公告/市场统计，2021–2026）清洗入 Milvus 构成数据底座（138 chunks，检索 hit@5 96.7%），产出句级可审计的研究报告。
 
-**• Multi-Agent 架构演进与模型分级调度**：针对单 Agent ReAct 多职责耦合的质量问题（30 题全链路评测 28/30，失败例定位为 Router 意图误判），将串行 ReAct 重构为六角色 LangGraph StateGraph，按任务复杂度分级调度大小模型并用 asyncio 并行化检索与写作：单份报告生成 424s→256s（1.66× 提速），token 成本降 12%。
+**• Multi-Agent 架构演进与模型分级调度**：单 Agent ReAct 将规划/检索/写作/审查耦合在同一循环内，报告质量波动时无法定位失效环节；重构为六角色 LangGraph StateGraph 使每环可独立评测与替换，并用 asyncio 并行化检索与章节写作——单份报告耗时中位提速 1.57×（3 组固定 query，区间 1.27–1.89×）；大小模型分级路由再降 token 成本 12%（对延迟无稳定收益）。
 
 **• 事实约束型写作（发散检索 + 收敛写作两阶段）**：基线评测暴露 70% 语料外问题被无据作答、事实性错误率 27.5%，遂将事后审查改为事前约束：检索阶段冻结证据集并绑定 Milvus chunk_id，写作阶段强制句级引用与数字回指校验（校验不过自动重写、仍失败显式标注"未核验"），CriticMaster 降为质量兜底；40 题固定评测事实性错误率 27.5%→15.0%，无据作答率 70%→10%。
 
-**• MCP 工具层与三层降级**：将 rag_search/web_search/text2sql 封装为 MCP FastAPI 端点，三层渐进降级：工具级独立 fallback → MCPClient 层统一异常与独立超时封装 → Pipeline 级崩溃自动回退 legacy ReAct；三层降级验证测试 3/3 通过。
+**• MCP 工具层与三层降级**：将 rag_search/web_search/text2sql 封装为 MCP FastAPI 端点，三层渐进降级：工具级独立 fallback → MCPClient 层统一异常与独立超时封装 → Pipeline 级崩溃自动回退 legacy ReAct；经真实故障注入验证——MCP 服务离线时工具层自动降级为本地函数，legacy 图仍产出可用答案。
 
-**• MemGPT 双层记忆**：实现 Core Memory（Redis FIFO，自动注入 system prompt）+ Archival Memory（Milvus BGE-m3 向量化，跨 session 持久化），由 LLM 主动判断触发写入避免无关信息污染；跨 session 检索回归测试 3/3 通过，top-1 平均相关度 0.68（基线 0.5）。
+**• MemGPT 双层记忆**：实现 Core Memory（Redis FIFO，自动注入 system prompt）+ Archival Memory（Milvus BGE-m3 向量化，跨 session 持久化），由 LLM 主动判断触发写入避免无关信息污染；跨 session 检索 top-1 平均相关度 0.68（自设 0.5 为可用阈值，3 条回归查询全部通过）。
 
 ---
 
-## 数字来源对照表（面试前自查用，16 项已逐一 grep 核验 2026-08-11）
+## 数字来源对照表（面试前自查用，2026-08-13 交叉验证后更新）
 
 | 数字 | 出处 |
 |------|------|
 | 37 篇 / 138 chunks / 2021–2026 | docs/checkpoints/interview-opt-checkpoint.md · Task 1 |
-| hit@5 96.7%（MRR 0.847 备用） | docs/reports/fact_eval_20260811.md · 检索指标 |
-| 30 题评测 28/30 + Router 误判定位 | docs/checkpoints/part1-energy-checkpoint.md（wk4 基线，六角色拆分前）+ docs/optimization/OPT-004 |
-| 424s→256s（1.66× = 424/256） | docs/reports/perf_20260811.md（串行 424s / 并行+分级 256s，3 query 中位数） |
-| token 成本降 12% | docs/reports/perf_20260811.md（$0.0408→$0.0357，分级路由） |
+| hit@5 96.7%（MRR 0.8472 备用） | docs/reports/fact_eval_runs/retrieval_result.json（FLAT 索引重测，与 IVF 基线一致） |
+| 提速 1.57×（逐题配对中位，区间 1.27–1.89×） | docs/reports/perf_20260813.md · 逐 query 配对比较 |
+| token 成本降 12% | docs/reports/perf_20260813.md（$0.0408→$0.0357，分级路由） |
 | 错误率 27.5%→15.0% | docs/reports/fact_eval_20260811.md（11/40 → 6/40，40 题） |
 | 无据作答率 70%→10% | docs/reports/fact_eval_20260811.md（unanswerable 7/10 幻觉 → 1/10） |
-| 三层降级 3/3 | docs/checkpoints/resume-metrics-checkpoint.md · Test C |
+| 三层降级真实故障注入 | tests/test_layer3_real_fallback.py（MCP 离线下 legacy 图产出 503 字答案，4 步，置信度 0.95） |
 | MemGPT top-1 0.68（0.6807） | docs/checkpoints/resume-metrics-checkpoint.md · Test D |
 
 ## 约束自查
@@ -39,7 +38,7 @@
 - [x] 关键词齐：LangGraph（B1）、MCP（B3）、MemGPT（B4）、Milvus（描述行/B2/B4）
 - [x] 每条 ≤3 行：B1 ≈146 字 / B2 ≈166 字 / B3 ≈97 字 / B4 ≈118 字（~50 字/行）
 - [x] 总篇幅 ≈13 行 < 现版 ~21 行
-- [x] 无占位符、无未实测数字；1.66× 为报告内两个中位数的直接比值
+- [x] 无占位符、无未实测数字；1.57× 为逐 query 配对比值的中位数（非跨 run 拼接）
 - [x] 描述行含场景 + 数据底座数字；bullet 按演进顺序（架构 → 事实约束 → 降级 → 记忆）
 
 ## 有意省略（追问弹药，不上简历）
@@ -47,3 +46,17 @@
 - 意图分类 88%（50 条扩充集）→ 见 positioning.md / fact_eval 报告，被问评测方法时再讲
 - 守卫活动 52 处拦截/26 章节重写、样例报告 171 处引用 → 现场展示动线见 users_and_deliverables.md
 - 成本绝对值 $0.0357/份（依赖牌价假设，只用相对值 12%）
+
+---
+
+## 已知弱点与标准答法（面试前必读）
+
+| 追问 | 事实 | 答法 |
+|------|------|------|
+| 27.5%→15.0% 显著吗？ | n=40，11 错 vs 6 错，Fisher 精确检验 **p=0.274** | 主动说明：方向性证据，样本量不足以下强结论，要定论需扩到 200 题以上 |
+| hit@5 分母多少？题谁出的？ | 30 题，且题目对着语料出（evidence_quote 逐字锚定） | 承认存在 optimistic bias：它证明检索链路通，不代表绝对召回水平 |
+| 9 万字为何不直接塞长上下文？ | 语料 ~13 万 token，1M 上下文确实塞得下 | 把论证从"规模"切到"可审计性"：chunk_id 是数字回指校验的锚点，全文塞入就没有锚点；并承认此规模下 RAG 的成本优势尚未体现 |
+| 索引怎么选的？为什么 161 个向量用 IVF？ | 初版照搬教程用 IVF_FLAT nlist=1024（每簇 0.13 个向量）；**实测对比 FLAT 后召回完全一致**（29/30、MRR 0.8472、逐题排名零变化） | 讲成测量纪律：我怀疑 nprobe=64 只覆盖 6.25% 的簇会丢召回，于是换 FLAT 重测——结果证明我的假设是错的，Milvus 在小集合上已做退化处理；仍改用 FLAT，因为 IVF 的参数在这个量级没有意义、留着会误导读代码的人 |
+| 那道漏检的题为什么漏？ | neg-010：检索返回通威财报文档，而 gold label 指向一篇顺带提到该季度亏损的多晶硅价格文章 | 如实说是**标注问题**而非检索失败——跨文档事实用单一 gold doc 标注本就不严谨 |
+| 财报是解析 PDF 年报吗？ | 否，是财经媒体业绩报道稿，最短 209 字 | 如实说明是业绩公告与媒体报道；数字均可回溯到原文并逐字核对 |
+| 模型分级提速多少？ | **不提速**：parallel→tiered 逐题延迟比 1.19×/0.76×/0.85×，两条反而变慢 | 主动讲这个反直觉结果：分级的价值在成本（-12%），延迟收益来自并行+缓存，不要混为一谈 |
