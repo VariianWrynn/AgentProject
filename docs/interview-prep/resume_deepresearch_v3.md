@@ -10,13 +10,13 @@
 
 针对能源分析师跨政策/市场/财务多来源研究场景，独立设计并实现端到端 Multi-Agent 深度研究系统：37 篇真实语料（政策全文/上市公司业绩公告/市场统计，2021–2026）清洗入 Milvus 构成数据底座（138 chunks，检索 hit@5 96.7%），产出句级可审计的研究报告。
 
-**• Multi-Agent 架构演进与模型分级调度**：单 Agent ReAct 将规划/检索/写作/审查耦合在同一循环内，报告质量波动时无法定位失效环节；重构为六角色 LangGraph StateGraph 使每环可独立评测与替换，并用 asyncio 并行化检索与章节写作——单份报告耗时中位提速 1.57×（3 组固定 query，区间 1.27–1.89×）；大小模型分级路由再降 token 成本 12%（对延迟无稳定收益）。
+**• Multi-Agent 架构演进与模型分级调度**：单 Agent ReAct 将规划/检索/写作/审查耦合在同一循环内，报告质量波动时无法定位失效环节；重构为六角色 LangGraph StateGraph，各角色状态显式可替换、关键环节可单独评测（Router 意图准确率、LeadWriter 引用违规率、CriticMaster 检出率）；检索用 asyncio 并发、章节写作用线程池并行（LLM SDK 为同步调用）——单份报告耗时中位提速 1.57×（3 组固定 query，区间 1.27–1.89×）；大小模型分级路由再降 token 成本 12%（对延迟无稳定收益）。
 
 **• 事实约束型写作（发散检索 + 收敛写作两阶段）**：基线评测暴露 70% 语料外问题被无据作答、事实性错误率 27.5%，遂将事后审查改为事前约束：检索阶段冻结证据集并绑定 Milvus chunk_id，写作阶段强制句级引用与数字回指校验（校验不过自动重写、仍失败显式标注"未核验"），CriticMaster 降为质量兜底；40 题固定评测事实性错误率 27.5%→15.0%，无据作答率 70%→10%。
 
 **• MCP 工具层与三层降级**：将 rag_search/web_search/text2sql 封装为 MCP FastAPI 端点，三层渐进降级：工具级独立 fallback → MCPClient 层统一异常与独立超时封装 → Pipeline 级崩溃自动回退 legacy ReAct；经真实故障注入验证——MCP 服务离线时工具层自动降级为本地函数，legacy 图仍产出可用答案。
 
-**• MemGPT 双层记忆**：实现 Core Memory（Redis FIFO，自动注入 system prompt）+ Archival Memory（Milvus BGE-m3 向量化，跨 session 持久化），由 LLM 主动判断触发写入避免无关信息污染；跨 session 检索 top-1 平均相关度 0.68（自设 0.5 为可用阈值，3 条回归查询全部通过）。
+**• MemGPT 双层记忆**：实现 Core Memory（Redis FIFO，自动注入 system prompt）+ Archival Memory（Milvus BGE-m3 向量化，跨 session 持久化），由 LLM 主动判断触发写入避免无关信息污染；跨 session 检索 top-1 平均相关度 0.68，无关 query 对照仅 0.33（2.07× 分离度）。
 
 ---
 
@@ -31,7 +31,7 @@
 | 错误率 27.5%→15.0% | docs/reports/fact_eval_20260811.md（11/40 → 6/40，40 题） |
 | 无据作答率 70%→10% | docs/reports/fact_eval_20260811.md（unanswerable 7/10 幻觉 → 1/10） |
 | 三层降级真实故障注入 | tests/test_layer3_real_fallback.py（MCP 离线下 legacy 图产出 503 字答案，4 步，置信度 0.95） |
-| MemGPT top-1 0.68（0.6807） | docs/checkpoints/resume-metrics-checkpoint.md · Test D |
+| MemGPT top-1 0.68 vs 无关 0.33（2.07×） | tests/test_memory_negative_control.py（相关 0.6807 / 无关 0.3295，同口径对照） |
 
 ## 约束自查
 

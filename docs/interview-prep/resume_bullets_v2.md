@@ -46,10 +46,10 @@ Designed a three-layer degradation strategy: L1 component retries (60s LLM timeo
 **动机**：单次会话的 Redis 短期记忆（TTL 1h）无法支撑"上次研究过什么"的连续分析场景；长上下文塞历史又贵又稀释注意力。
 
 **中文**：
-实现 MemGPT 式双层记忆：core memory（persona/human 画像，注入每次规划 prompt）+ archival memory（Milvus 向量化归档，跨会话语义检索）；跨会话检索 top-1 平均相关度 0.6807（自设 0.5 为可用阈值，3 条回归查询全部通过），Redis 会话内记忆 TTL 1h/2h 分层。
+实现 MemGPT 式双层记忆：core memory（persona/human 画像，注入每次规划 prompt）+ archival memory（Milvus 向量化归档，跨会话语义检索）；跨会话检索 top-1 平均相关度 0.6807，无关 query 对照仅 0.3295（2.07× 分离度），Redis 会话内记忆 TTL 1h/2h 分层。
 
 **English**:
-Implemented MemGPT-style two-tier memory: core memory (persona/human profile injected into every planning prompt) + archival memory (vectorized in Milvus for cross-session semantic recall); cross-session retrieval scored 0.6807 average top-1 relevance (0.5 being a self-set usability threshold, 3/3 regression queries passing), with tiered Redis session memory (1h/2h TTL).
+Implemented MemGPT-style two-tier memory: core memory (persona/human profile injected into every planning prompt) + archival memory (vectorized in Milvus for cross-session semantic recall); cross-session retrieval scored 0.6807 average top-1 relevance against 0.3295 for unrelated control queries (2.07x separation), with tiered Redis session memory (1h/2h TTL).
 
 ---
 
