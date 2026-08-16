@@ -133,11 +133,10 @@ When compacting:
 - Bad cases appended to `resources/data/badcases.jsonl`
 - Files: backend/tools/text2sql_tool.py, resources/data/schema_metadata.json,
   resources/data/energy.db, tests/test_text2sql.py, tests/test_text2sql_edge.py
-- Legacy sales-schema debris (pre-energy migration, not yet cleaned up):
-  tests/test_text2sql_edge.py still targets `resources/data/sales.db` (gitignored, built by
-  resources/data/create_db.py — absent on a fresh clone); text2sql_tool.py keeps
-  `"total_amount"` in the validator keyword allowlist and a `类别|category|产品类` JOIN hint,
-  and its module docstring example still asks about 总销售额.
+- Sales-schema migration is complete: create_db.py, sales.db references, the
+  `"total_amount"` allowlist entry and the `类别|category|产品类` JOIN hint are all gone.
+  JOIN detection now requires a finance term AND a capacity term — see
+  `_FINANCE_RE` / `_CAPACITY_RE` / `_JOINABLE_TABLES` in text2sql_tool.py.
 
 ### LangGraph Agent (langgraph_agent.py)
 - Dual-graph architecture:

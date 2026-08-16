@@ -10,7 +10,7 @@ Converts natural-language questions into SQLite queries via a 3-LLM-call pipelin
 Usage:
     from backend.tools.text2sql_tool import Text2SQLTool
     tool = Text2SQLTool()
-    result = tool.run("华东地区上个月的总销售额是多少？")
+    result = tool.run("华东地区2023年各企业总营收排名？")
     print(result["summary"])
 """
 
@@ -325,7 +325,7 @@ class Text2SQLTool:
             "inner", "left", "right", "outer", "cross", "sum", "count", "avg",
             "min", "max", "distinct", "case", "when", "then", "else", "end",
             "like", "in", "between", "is", "null", "strftime", "date", "now",
-            "start", "month", "year", "day", "rev", "total_amount", "total_revenue",
+            "start", "month", "year", "day", "rev", "total_revenue",
         }
         # Table names are not column names
         table_names = set(self._metadata["tables"].keys())
