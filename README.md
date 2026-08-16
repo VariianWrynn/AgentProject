@@ -9,7 +9,7 @@
 - **多智能体研究流水线** — 6 个专业角色：ChiefArchitect（规划）、DeepScout（检索）、DataAnalyst（数据分析）、LeadWriter（撰写）、CriticMaster（审核）、Synthesizer（汇总）
 - **实时 SSE 流式前端** — React/TypeScript 界面实时显示各智能体执行进度
 - **能源行业知识库** — 基于 Milvus + BGE-m3 的 RAG 检索，覆盖精选能源行业文献
-- **Text2SQL 能源数据查询** — 自然语言直接转 SQL，支持中文业务术语（如"营收"→ `SUM(amount)`）
+- **Text2SQL 能源数据查询** — 自然语言直接转 SQL，支持中文业务术语（如"营收"→ `SUM(revenue_billion)`）
 - **Redis 缓存工具层** — MCP 服务端缓存高频工具调用，重复查询速度大幅提升
 - **对抗式审核循环** — CriticMaster 在置信度 < 0.7 时自动触发重新研究
 

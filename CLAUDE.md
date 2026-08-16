@@ -127,6 +127,7 @@ When compacting:
   - `company_finance(id, company_name, year, quarter, revenue_billion, profit_billion, debt_ratio, region)`
   - `capacity_stats(id, company_name, energy_type, installed_mw, year, province)`
   - `price_index(id, date, energy_type, region, price_yuan_kwh, spot_price, forward_price)`
+- Joins: `company_finance` x `capacity_stats` on `company_name` (the only shared key; price_index has no company dimension)
 - term_dict: Chinese energy terms → SQL (e.g., "营收"→"SUM(revenue_billion)",
   "装机容量"→"SUM(installed_mw)", "电价"→"AVG(price_yuan_kwh)", "高负债"→"debt_ratio > 0.7")
 - Bad cases appended to `resources/data/badcases.jsonl`
