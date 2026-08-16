@@ -308,7 +308,7 @@ def run_section2() -> list[dict]:
     print("\n--- MEM-2 [Archival写入验证] ---")
     memgpt._redis.delete("core_memory:mem_arch_02")
     before = memgpt._archival.num_entities
-    q = "帮我查询华北地区上个季度所有产品类别的销售总额，并总结哪个类别表现最好"
+    q = "帮我查询华北地区各能源企业上个季度的营收总额，并总结哪家企业表现最好"
     state, _, elapsed = run_session(q, "mem_arch_02")
     after   = memgpt._archival.num_entities
     inserted = after > before
@@ -316,7 +316,7 @@ def run_section2() -> list[dict]:
     # 展示最新插入的内容
     archived_preview = ""
     if inserted:
-        recent = memgpt.archival_memory_search("华北销售", top_k=1)
+        recent = memgpt.archival_memory_search("华北营收", top_k=1)
         if recent:
             archived_preview = recent[0]["content"][:150]
     print(f"MEM-2 [Archival写入验证] — {verdict}")
@@ -328,7 +328,7 @@ def run_section2() -> list[dict]:
     # ── MEM-3: 跨session Archival检索 (依赖MEM-2) ───────────────────────────
     print("\n--- MEM-3 [跨session Archival检索] ---")
     memgpt._redis.delete("core_memory:mem_arch_03")
-    q = "上次分析华北地区销售的结论是什么？"
+    q = "上次分析华北地区营收的结论是什么？"
     state, _, elapsed = run_session(q, "mem_arch_03")
     steps = state.get("steps_executed", [])
     search_step = next(

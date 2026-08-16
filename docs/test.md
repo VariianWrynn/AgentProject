@@ -39,12 +39,12 @@ MEM-1 Core Memory首次写入：
 
 MEM-2 Archival Memory写入验证：
 
-问题："帮我查询华北地区上个季度所有产品类别的销售总额，并总结哪个类别表现最好"
+问题："帮我查询华北地区各能源企业上个季度的营收总额，并总结哪家企业表现最好"
 验证：archival_memory_insert被触发，打印插入的内容
 
 MEM-3 跨session Archival检索（依赖MEM-2先执行）：
 
-新session，问题："上次分析华北地区销售的结论是什么？"
+新session，问题："上次分析华北地区营收的结论是什么？"
 验证：archival_memory_search被触发，top1相似度≥0.5，打印检索到的内容
 
 MEM-4 Core Memory更新（依赖MEM-1先执行）：
