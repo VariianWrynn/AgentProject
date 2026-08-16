@@ -34,7 +34,7 @@ Read `AGENT_CONTEXT.md` for the full development workflow guide, including:
 - Config thresholds: score threshold 0.45, confidence threshold 0.7, max_iterations 3
 
 ### Key Technical Decisions
-- Architecture choices with rationale (e.g., "chose IVF_FLAT over HNSW because...")
+- Architecture choices with rationale (e.g., "chose FLAT over IVF_FLAT because...")
 - Model/library selection decisions with comparison data
 - Tradeoff analysis (recall vs. latency, accuracy vs. cost)
 
@@ -95,10 +95,30 @@ When compacting:
 
 ---
 
+## TEST GATE
+
+```bash
+bash scripts/test_offline.sh     # 42 tests, ~20s, no Milvus/Redis/MCP/LLM needed
+```
+
+提交前跑这个。**不要**指望 `pytest -m unit`：pytest 先 import 全部测试文件再按 marker
+过滤，而仓库里若干文件在导入期就构造 LLM 客户端 / 读 `OPENAI_API_KEY`，收集阶段即报错，
+marker 来不及生效。`scripts/test_offline.sh` 用显式文件清单绕开这个问题——新增无外部
+依赖的测试文件时把它加进清单。
+
+需要服务的测试（Milvus/Redis/MCP/LLM）单独按文件跑，例如
+`pytest tests/test_layer3_real_fallback.py -m ""`。
+
+---
+
 ## MODULE CONTEXT (quick reference after /compact)
 
 ### RAG Pipeline (rag_pipeline.py)
-- Embedding: BAAI/bge-m3 (1024-dim), Milvus IVF_FLAT/COSINE (nlist 1024, nprobe 64)
+- Embedding: BAAI/bge-m3 (1024-dim), Milvus COSINE. Index type is configurable via
+  `MILVUS_INDEX_TYPE`, default **FLAT** (exhaustive/exact — IVF clustering needs
+  nlist << N, and the collection holds ~161 vectors). Measured: FLAT and
+  IVF_FLAT(nlist=1024) score identically here — hit@5 29/30, MRR 0.8472, zero
+  per-question rank differences. `validate_index_for_size()` rejects nlist > entity count.
 - Chunking: ParagraphChunker, 512 tokens, 50-token overlap, SHA-256 dedup
 - PDF loading: PyMuPDF (fitz) with table→Markdown extraction
 - Retrieval: `query(question, top_k=TOP_K)` with TOP_K=5. Score threshold 0.45 is NOT
