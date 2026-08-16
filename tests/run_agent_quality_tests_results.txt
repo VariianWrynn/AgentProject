@@ -1,0 +1,536 @@
+agentPro) PS D:\agnet project\AgentProject> python .\tests\run_agent_quality_[tests.py](http://tests.py)
+
+Agent Quality Test Runner
+============================================================
+Cases loaded : 65
+Test file    : tests\agent_quality_test_cases.json
+============================================================
+
+============================================================
+  ChiefArchitect  (10 cases)
+============================================================
+  [CA-PLAN-001] Verifies that the agent generates exactly 3 hypotheses with numeric ta
+2026-04-30 18:54:30,826 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:54:30,831 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=1.000  threshold=1.0  21.2s
+  [CA-PLAN-002] Verifies outline contains exactly 6 sections with required keywords
+2026-04-30 18:55:31,255 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:55:31,257 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=1.000  threshold=1.0  60.4s
+  [CA-PLAN-003] Verifies research questions are decomposed into 5-8 specific sub-quest
+2026-04-30 18:56:10,954 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:56:10,955 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=8.000  threshold=1.0  39.7s
+  [CA-PLAN-004] Verifies fallback to default outline when LLM returns empty
+2026-04-30 18:56:36,938 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:56:36,939 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=1.000  threshold=1.0  26.0s
+  [CA-PLAN-005] Verifies hypothesis generation with numeric targets for different ener
+2026-04-30 18:57:02,157 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:57:02,369 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=7
+[ChiefArchitect] hypotheses=3 outline=6 questions=7
+    → PASS  score=1.000  threshold=0.8  25.4s
+  [CA-PLAN-006] Verifies keywords are relevant to each section's content domain
+2026-04-30 18:57:30,488 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:57:30,490 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → FAIL  score=0.667  threshold=0.8  28.1s  [expected 0.7–1.0]
+  [CA-PLAN-007] Verifies demo_mode produces minimal output (1 section, 1 question)
+2026-04-30 18:57:30,514 [INFO] chief_architect - [ChiefArchitect] demo_mode: fixed 1-section outline (no LLM call)
+[ChiefArchitect] demo_mode: 1 section, 1 question (skip LLM)
+    → PASS  score=2.000  threshold=2.0  0.0s
+  [CA-PLAN-008] Verifies hypotheses are verifiable (not vague statements)
+2026-04-30 18:58:30,559 [INFO] openai._base_client - Retrying request to /chat/completions in 0.428813 seconds
+2026-04-30 18:59:13,748 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:59:13,749 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=1.000  threshold=0.8  103.2s
+  [CA-PLAN-009] Verifies outline adapts to different intent types
+2026-04-30 18:59:36,711 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 18:59:36,712 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=1.000  threshold=1.0  22.9s
+  [CA-PLAN-010] Verifies minimum 4 sections when outline is too short
+2026-04-30 19:00:02,636 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:00:02,637 [INFO] chief_architect - [ChiefArchitect] hypotheses=3 outline=6 questions=8
+[ChiefArchitect] hypotheses=3 outline=6 questions=8
+    → PASS  score=1.500  threshold=1.0  25.9s
+
+  ──────────────────────────────────────────────────────
+  ChiefArchitect: 9/10 PASS  |  1 FAIL  |  0 ERROR  |  0 SKIP
+    FAIL   CA-PLAN-006       score=0.667     thresh=0.8 [out-of-range]
+
+============================================================
+  DeepScout  (10 cases)
+============================================================
+  [DS-RET-001] Verifies retrieval precision against known-relevant energy storage doc
+[DeepScout] Searching 1 questions in parallel ...
+2026-04-30 19:00:06,722 [WARNING] deep_scout - [DeepScout] Bocha search failed for '磷酸铁锂储能系统成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:06,723 [WARNING] deep_scout - [DeepScout] RAG search failed for '磷酸铁锂储能系统成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:06,723 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → FAIL  score=0.000  threshold=0.6  4.1s  [expected 0.5–1.0]
+  [DS-RET-002] Verifies recall against multiple relevant documents
+[DeepScout] Searching 2 questions in parallel ...
+2026-04-30 19:00:10,832 [WARNING] deep_scout - [DeepScout] RAG search failed for 'TOPCon电池效率数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:10,833 [WARNING] deep_scout - [DeepScout] RAG search failed for '2024年光伏组件价格走势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:10,833 [WARNING] deep_scout - [DeepScout] Bocha search failed for 'TOPCon电池效率数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:10,833 [WARNING] deep_scout - [DeepScout] Bocha search failed for '2024年光伏组件价格走势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:10,833 [INFO] deep_scout - [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → FAIL  score=0.000  threshold=0.8  4.1s  [expected 0.5–2.0]
+  [DS-RET-003] Verifies deduplication removes duplicate URLs
+[DeepScout] Searching 2 questions in parallel ...
+2026-04-30 19:00:14,938 [WARNING] deep_scout - [DeepScout] Bocha search failed for '宁德时代储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:14,938 [WARNING] deep_scout - [DeepScout] Bocha search failed for '比亚迪储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:14,938 [WARNING] deep_scout - [DeepScout] RAG search failed for '宁德时代储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:14,939 [WARNING] deep_scout - [DeepScout] RAG search failed for '比亚迪储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:14,939 [INFO] deep_scout - [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → SKIP  formula unevaluable: NameError: name 'set' is not defined — variable missing from eval context
+  [DS-RET-004] Verifies graceful handling when no results returned
+[DeepScout] Searching 1 questions in parallel ...
+2026-04-30 19:00:19,044 [WARNING] deep_scout - [DeepScout] RAG search failed for '不存在的查询': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:19,044 [WARNING] deep_scout - [DeepScout] Bocha search failed for '不存在的查询': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:19,045 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → PASS  score=1.000  threshold=1.0  4.1s
+  [DS-RET-005] Verifies credibility scoring prioritizes RAG sources
+[DeepScout] Searching 2 questions in parallel ...
+2026-04-30 19:00:23,133 [WARNING] deep_scout - [DeepScout] RAG search failed for '液流电池成本': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:23,134 [WARNING] deep_scout - [DeepScout] Bocha search failed for '液流电池成本': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:23,134 [WARNING] deep_scout - [DeepScout] RAG search failed for '钠离子电池技术优势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:23,134 [WARNING] deep_scout - [DeepScout] Bocha search failed for '钠离子电池技术优势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:23,135 [INFO] deep_scout - [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → FAIL  score=0.000  threshold=0.6  4.1s  [expected 0.4–1.0]
+  [DS-RET-006] Verifies parallel search executes for multiple questions
+[DeepScout] Searching 3 questions in parallel ...
+2026-04-30 19:00:27,199 [WARNING] deep_scout - [DeepScout] RAG search failed for '储能装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:27,199 [WARNING] deep_scout - [DeepScout] Bocha search failed for '光伏装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:27,200 [WARNING] deep_scout - [DeepScout] RAG search failed for '光伏装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:27,212 [WARNING] deep_scout - [DeepScout] RAG search failed for '风电装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:27,212 [WARNING] deep_scout - [DeepScout] Bocha search failed for '储能装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:27,212 [WARNING] deep_scout - [DeepScout] Bocha search failed for '风电装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:27,213 [INFO] deep_scout - [DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → SKIP  formula unevaluable: NameError: name 'set' is not defined — variable missing from eval context
+  [DS-RET-007] Verifies demo_mode limits to 1 question
+[DeepScout] demo_mode: limiting to 1 question
+[DeepScout] Searching 1 questions in parallel ...
+2026-04-30 19:00:31,299 [WARNING] deep_scout - [DeepScout] Bocha search failed for '储能成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:31,319 [WARNING] deep_scout - [DeepScout] RAG search failed for '储能成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:31,320 [INFO] deep_scout - [DeepScout] demo_mode: skipping fact extraction LLM call
+[DeepScout] demo_mode: skipping fact extraction
+2026-04-30 19:00:31,320 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → PASS  score=1.000  threshold=1.0  4.1s
+  [DS-RET-008] Verifies fact extraction from top results
+[DeepScout] Searching 1 questions in parallel ...
+2026-04-30 19:00:35,409 [WARNING] deep_scout - [DeepScout] RAG search failed for '2024年中国储能新增装机容量': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:35,423 [WARNING] deep_scout - [DeepScout] Bocha search failed for '2024年中国储能新增装机容量': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:35,424 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → FAIL  score=0.000  threshold=0.5  4.1s  [expected 0.3–1.0]
+  [DS-RET-009] Verifies snippet content length provides sufficient context
+[DeepScout] Searching 1 questions in parallel ...
+2026-04-30 19:00:39,487 [WARNING] deep_scout - [DeepScout] Bocha search failed for '电力现货市场运行情况': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:39,489 [WARNING] deep_scout - [DeepScout] RAG search failed for '电力现货市场运行情况': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:39,489 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.0s
+[DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.0s
+    → FAIL  score=0.000  threshold=200.0  4.0s  [expected 150–500]
+  [DS-RET-010] Verifies pending_queries are cleared after processing
+[DeepScout] Searching 3 questions in parallel ...
+2026-04-30 19:00:43,576 [WARNING] deep_scout - [DeepScout] Bocha search failed for '补充查询2': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:43,577 [WARNING] deep_scout - [DeepScout] Bocha search failed for '补充查询1': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] RAG search failed for '光伏政策最新动态': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] Bocha search failed for '光伏政策最新动态': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] RAG search failed for '补充查询2': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] RAG search failed for '补充查询1': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:43,579 [INFO] deep_scout - [DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
+[DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
+    → PASS  score=1.000  threshold=1.0  4.1s
+
+  ──────────────────────────────────────────────────────
+  DeepScout: 3/10 PASS  |  5 FAIL  |  0 ERROR  |  2 SKIP
+    FAIL   DS-RET-001        score=0.000     thresh=0.6 [out-of-range]
+    FAIL   DS-RET-002        score=0.000     thresh=0.8 [out-of-range]
+    SKIP   DS-RET-003        score=n/a       thresh=0.9  ← NameError: name 'set' is not defined — variable missing from eval context
+    FAIL   DS-RET-005        score=0.000     thresh=0.6 [out-of-range]
+    SKIP   DS-RET-006        score=n/a       thresh=1.0  ← NameError: name 'set' is not defined — variable missing from eval context
+    FAIL   DS-RET-008        score=0.000     thresh=0.5 [out-of-range]
+    FAIL   DS-RET-009        score=0.000     thresh=200.0 [out-of-range]
+
+============================================================
+  DataAnalyst  (10 cases)
+============================================================
+  [DA-SQL-001] Verifies SQL query uses correct table and column names from schema
+[DataAnalyst] Running 2 SQL queries in parallel ...
+2026-04-30 19:00:47,659 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:47,660 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '营收数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:47,661 [INFO] data_analyst - [DataAnalyst] 2 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 2 queries → 0 data_points → 0 charts | 4.1s
+    → FAIL  score=0.000  threshold=1.0  4.1s  [expected 1.0–1.0]
+  [DA-SQL-002] Verifies SQL aggregation functions work correctly for capacity stats
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:00:51,733 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各省份光伏装机容量统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:51,734 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '装机容量数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:51,774 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:51,778 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → FAIL  score=0.000  threshold=1.0  4.1s  [expected 1.0–1.0]
+  [DA-SQL-003] Verifies price index query with date filtering
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:00:55,853 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '2024年光伏电价走势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:55,854 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:55,853 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '电价数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:00:55,856 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → FAIL  score=0.000  threshold=1.0  4.1s  [expected 1.0–1.0]
+  [DA-SQL-004] Verifies demo_mode skips SQL and generates static chart
+2026-04-30 19:00:55,879 [INFO] data_analyst - [DataAnalyst] demo_mode: skipping SQL queries, generating 1 static chart
+[DataAnalyst] demo_mode: generating static chart (no SQL)
+2026-04-30 19:00:56,088 [INFO] data_analyst - [DataAnalyst] Chinese font selected: Microsoft YaHei
+    → PASS  score=1.000  threshold=1.0  0.3s
+  [DA-SQL-005] Verifies SQL handles JOIN-like queries across tables conceptually
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:01:00,214 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '营收最高的企业': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:00,215 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:00,230 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '营收数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:00,232 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → FAIL  score=0.000  threshold=1.0  4.1s  [expected 1.0–1.0]
+  [DA-SQL-006] Verifies empty SQL results are handled gracefully
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:01:04,327 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:04,327 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '数据数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:04,348 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '不存在的能源类型数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:04,349 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → PASS  score=1.000  threshold=1.0  4.1s
+  [DA-SQL-007] Verifies chart type appropriateness for data distribution
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:01:08,419 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '营收数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:08,440 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:08,441 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各季度营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:08,444 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → FAIL  score=0.000  threshold=1.0  4.1s  [expected 1.0–1.0]
+  [DA-SQL-008] Verifies multiple SQL queries run in parallel
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:01:12,550 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:12,551 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '营收数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:12,564 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '储能企业对比分析': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:12,565 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → SKIP  formula unevaluable: NameError: name 'set' is not defined — variable missing from eval context
+  [DA-SQL-009] Verifies data points contain numeric values
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:01:16,626 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '利润数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:16,626 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:16,637 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '企业利润数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:16,639 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.0s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.0s
+    → FAIL  score=0.000  threshold=0.9  4.1s  [expected 0.8–1.0]
+  [DA-SQL-010] Verifies Chinese font configuration for chart rendering
+[DataAnalyst] Running 3 SQL queries in parallel ...
+2026-04-30 19:01:20,717 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '各能源企业2023年营收对比': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:20,718 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '中国储能装机容量': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:20,718 [WARNING] data_analyst - [DataAnalyst] text2sql failed for '装机数据统计': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/text2sql (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
+2026-04-30 19:01:20,721 [INFO] data_analyst - [DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+[DataAnalyst] 3 queries → 0 data_points → 0 charts | 4.1s
+    → FAIL  score=0.000  threshold=1.0  4.1s  [expected 1.0–1.0]
+
+  ──────────────────────────────────────────────────────
+  DataAnalyst: 2/10 PASS  |  7 FAIL  |  0 ERROR  |  1 SKIP
+    FAIL   DA-SQL-001        score=0.000     thresh=1.0 [out-of-range]
+    FAIL   DA-SQL-002        score=0.000     thresh=1.0 [out-of-range]
+    FAIL   DA-SQL-003        score=0.000     thresh=1.0 [out-of-range]
+    FAIL   DA-SQL-005        score=0.000     thresh=1.0 [out-of-range]
+    FAIL   DA-SQL-007        score=0.000     thresh=1.0 [out-of-range]
+    SKIP   DA-SQL-008        score=n/a       thresh=2.0  ← NameError: name 'set' is not defined — variable missing from eval context
+    FAIL   DA-SQL-009        score=0.000     thresh=0.9 [out-of-range]
+    FAIL   DA-SQL-010        score=0.000     thresh=1.0 [out-of-range]
+
+============================================================
+  LeadWriter  (10 cases)
+============================================================
+  [LW-WRITE-001] Verifies factual grounding - claims traceable to sources
+[LeadWriter] Writing 2 sections in parallel ...
+2026-04-30 19:01:46,383 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:01:46,384 [INFO] lead_writer - [LeadWriter] section '政策环境' → 809 chars (attempt 1)
+2026-04-30 19:02:20,757 [INFO] openai._base_client - Retrying request to /chat/completions in 0.475905 seconds
+2026-04-30 19:02:50,584 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:02:50,585 [INFO] lead_writer - [LeadWriter] section '市场概况' → 715 chars (attempt 1)
+2026-04-30 19:03:15,184 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:03:15,185 [INFO] lead_writer - [LeadWriter] 2 sections + summary | 1 references | 114.4s
+[LeadWriter] 3 sections (incl. summary) | 1 refs | 114.4s
+    → SKIP  formula unevaluable: NameError: name 'facts' is not defined — variable missing from eval context
+  [LW-WRITE-002] Verifies citation coverage - each section cites sources
+[LeadWriter] Writing 1 sections in parallel ...
+2026-04-30 19:04:19,334 [INFO] openai._base_client - Retrying request to /chat/completions in 0.453415 seconds
+2026-04-30 19:05:19,804 [WARNING] lead_writer - [LeadWriter] Section '市场概况' attempt 1 failed: Request timed out., retrying...
+2026-04-30 19:05:42,511 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:05:42,512 [INFO] lead_writer - [LeadWriter] section '市场概况' → 654 chars (attempt 2)
+2026-04-30 19:06:00,412 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:06:00,413 [INFO] lead_writer - [LeadWriter] 1 sections + summary | 1 references | 165.2s
+[LeadWriter] 2 sections (incl. summary) | 1 refs | 165.2s
+    → FAIL  score=0.500  threshold=0.8  165.2s  [expected 0.6–1.0]
+  [LW-WRITE-003] Verifies hallucination detection - no invented facts
+[LeadWriter] Writing 1 sections in parallel ...
+2026-04-30 19:06:52,805 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:06:53,006 [INFO] lead_writer - [LeadWriter] section '竞争格局' → 536 chars (attempt 1)
+2026-04-30 19:07:05,521 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:07:05,522 [INFO] lead_writer - [LeadWriter] 1 sections + summary | 0 references | 65.1s
+[LeadWriter] 2 sections (incl. summary) | 0 refs | 65.1s
+    → PASS  score=1.000  threshold=0.95  65.1s
+  [LW-WRITE-004] Verifies demo_mode writes only 2 sections
+[LeadWriter] demo_mode: writing 2/3 sections
+[LeadWriter] Writing 2 sections in parallel ...
+2026-04-30 19:07:38,419 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:07:38,420 [INFO] lead_writer - [LeadWriter] section '市场概况' → 636 chars (attempt 1)
+2026-04-30 19:08:05,572 [INFO] openai._base_client - Retrying request to /chat/completions in 0.430185 seconds
+2026-04-30 19:08:33,781 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:08:33,783 [INFO] lead_writer - [LeadWriter] section '技术趋势' → 349 chars (attempt 1)
+2026-04-30 19:08:33,785 [INFO] lead_writer - [LeadWriter] demo_mode: skipping summary LLM call
+[LeadWriter] demo_mode: skipping summary generation
+2026-04-30 19:08:33,785 [INFO] lead_writer - [LeadWriter] 3 sections + summary | 0 references | 88.2s
+[LeadWriter] 3 sections (incl. summary) | 0 refs | 88.2s
+    → PASS  score=2.000  threshold=2.0  88.2s
+  [LW-WRITE-005] Verifies all outline sections get content
+[LeadWriter] Writing 6 sections in parallel ...
+2026-04-30 19:08:54,081 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:08:54,763 [INFO] lead_writer - [LeadWriter] section '数据分析' → 310 chars (attempt 1)
+2026-04-30 19:08:58,990 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:08:58,991 [INFO] lead_writer - [LeadWriter] section '未来展望' → 554 chars (attempt 1)
+2026-04-30 19:09:09,645 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:09:09,857 [INFO] lead_writer - [LeadWriter] section '技术趋势' → 322 chars (attempt 1)
+2026-04-30 19:09:17,539 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:09:17,541 [INFO] lead_writer - [LeadWriter] section '竞争格局' → 792 chars (attempt 1)
+2026-04-30 19:09:19,946 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:09:19,947 [INFO] lead_writer - [LeadWriter] section '政策环境' → 793 chars (attempt 1)
+2026-04-30 19:09:35,432 [INFO] openai._base_client - Retrying request to /chat/completions in 0.425775 seconds
+2026-04-30 19:10:01,495 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:10:01,497 [INFO] lead_writer - [LeadWriter] section '市场概况' → 245 chars (attempt 1)
+2026-04-30 19:10:33,079 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:10:33,081 [INFO] lead_writer - [LeadWriter] 6 sections + summary | 0 references | 119.3s
+[LeadWriter] 7 sections (incl. summary) | 0 refs | 119.3s
+    → PASS  score=1.000  threshold=1.0  119.3s
+  [LW-WRITE-006] Verifies summary generation from all sections
+[LeadWriter] Writing 2 sections in parallel ...
+2026-04-30 19:11:03,237 [INFO] openai._base_client - Retrying request to /chat/completions in 0.391822 seconds
+2026-04-30 19:11:14,666 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:11:14,666 [INFO] lead_writer - [LeadWriter] section '市场概况' → 355 chars (attempt 1)
+2026-04-30 19:11:35,384 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:11:35,385 [INFO] lead_writer - [LeadWriter] section '政策环境' → 812 chars (attempt 1)
+2026-04-30 19:12:35,392 [INFO] openai._base_client - Retrying request to /chat/completions in 0.387678 seconds
+2026-04-30 19:13:15,376 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:13:15,377 [INFO] lead_writer - [LeadWriter] 2 sections + summary | 0 references | 162.3s
+[LeadWriter] 3 sections (incl. summary) | 0 refs | 162.3s
+    → PASS  score=1.000  threshold=1.0  162.3s
+  [LW-WRITE-007] Verifies parallel section writing completes all sections
+[LeadWriter] Writing 4 sections in parallel ...
+2026-04-30 19:13:43,712 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:13:43,714 [INFO] lead_writer - [LeadWriter] section '市场概况' → 318 chars (attempt 1)
+2026-04-30 19:13:47,878 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:13:47,952 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:13:47,988 [INFO] lead_writer - [LeadWriter] section '政策环境' → 686 chars (attempt 1)
+2026-04-30 19:13:48,752 [INFO] lead_writer - [LeadWriter] section '竞争格局' → 745 chars (attempt 1)
+2026-04-30 19:14:03,753 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:14:03,755 [INFO] lead_writer - [LeadWriter] section '技术趋势' → 630 chars (attempt 1)
+2026-04-30 19:14:29,664 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:14:29,666 [INFO] lead_writer - [LeadWriter] 4 sections + summary | 0 references | 74.3s
+[LeadWriter] 5 sections (incl. summary) | 0 refs | 74.3s
+    → PASS  score=1.250  threshold=1.0  74.3s  [expected 0.8–1.0]
+  [LW-WRITE-008] Verifies fallback when outline is empty
+2026-04-30 19:14:29,691 [WARNING] lead_writer - [LeadWriter] No outline found, generating minimal draft
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [LW-WRITE-009] Verifies hypothesis inclusion in section writing
+[LeadWriter] Writing 1 sections in parallel ...
+2026-04-30 19:14:59,751 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:14:59,752 [INFO] lead_writer - [LeadWriter] section '市场概况' → 782 chars (attempt 1)
+2026-04-30 19:15:59,757 [INFO] openai._base_client - Retrying request to /chat/completions in 0.383698 seconds
+2026-04-30 19:17:18,959 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:17:19,811 [INFO] lead_writer - [LeadWriter] 1 sections + summary | 0 references | 170.1s
+[LeadWriter] 2 sections (incl. summary) | 0 refs | 170.1s
+    → PASS  score=1.000  threshold=1.0  170.1s
+  [LW-WRITE-010] Verifies demo_mode skips summary LLM call
+[LeadWriter] demo_mode: writing 2/2 sections
+[LeadWriter] Writing 2 sections in parallel ...
+2026-04-30 19:17:36,702 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:17:36,703 [INFO] lead_writer - [LeadWriter] section '市场概况' → 399 chars (attempt 1)
+2026-04-30 19:18:07,435 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:18:07,663 [INFO] lead_writer - [LeadWriter] section '技术趋势' → 694 chars (attempt 1)
+2026-04-30 19:18:07,664 [INFO] lead_writer - [LeadWriter] demo_mode: skipping summary LLM call
+[LeadWriter] demo_mode: skipping summary generation
+2026-04-30 19:18:07,664 [INFO] lead_writer - [LeadWriter] 2 sections + summary | 0 references | 47.8s
+[LeadWriter] 3 sections (incl. summary) | 0 refs | 47.8s
+    → PASS  score=1.000  threshold=1.0  47.8s
+
+  ──────────────────────────────────────────────────────
+  LeadWriter: 8/10 PASS  |  1 FAIL  |  0 ERROR  |  1 SKIP
+    SKIP   LW-WRITE-001      score=n/a       thresh=0.85  ← NameError: name 'facts' is not defined — variable missing from eval context
+    FAIL   LW-WRITE-002      score=0.500     thresh=0.8 [out-of-range]
+
+============================================================
+  CriticMaster  (15 cases)
+============================================================
+  [CM-HAL-001] Verifies hallucination detection recall with injected errors
+2026-04-30 19:19:17,744 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:19:17,956 [INFO] critic_master - [CriticMaster] 5 issues | score=0.25 | 3 pending | 70.3s
+[CriticMaster] 5 issues | score=0.25 | 3 pending | 70.3s
+[CriticMaster] Assessment: 报告存在严重质量问题：数据严重失实（100GWh vs 44GWh），属于明显幻觉；两处数据均无可靠来源；内容严重不完整，仅有2个小节，缺少行业分析必备要素。需全面修订数据并补充完整框架。
+    → PASS  score=1.000  threshold=0.8  70.3s
+  [CM-HAL-002] Verifies hallucination detection precision
+2026-04-30 19:19:38,913 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:19:38,914 [INFO] critic_master - [CriticMaster] 2 issues | score=0.40 | 2 pending | 20.9s
+[CriticMaster] 2 issues | score=0.40 | 2 pending | 20.9s
+[CriticMaster] Assessment: 报告仅包含两个数据点且缺少具体来源标注，内容严重不完整。虽数据与验证事实一致，但作为行业报告缺乏基本分析框架，需大幅补充内容并明确引用权威机构数据。
+    → PASS  score=1.000  threshold=0.9  20.9s
+  [CM-HAL-003] Verifies missing source detection
+2026-04-30 19:20:38,964 [INFO] openai._base_client - Retrying request to /chat/completions in 0.392157 seconds
+2026-04-30 19:22:10,974 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:22:10,976 [INFO] critic_master - [CriticMaster] 5 issues | score=0.25 | 3 pending | 152.0s
+[CriticMaster] 5 issues | score=0.25 | 3 pending | 152.0s
+[CriticMaster] Assessment: 报告严重不完整，仅含一个标题和一句未经证实的陈述。存在高等级幻觉（虚假预测）、缺失来源、内容严重不足及偏见等问题。需补充技术原理、市场数据、产业链信息、政策环境及竞品对比分析，并提供权威来源支撑。
+    → PASS  score=1.000  threshold=0.7  152.0s
+  [CM-CAL-001] Verifies OPT-001 guard - high severity caps quality_score at 0.65
+2026-04-30 19:22:56,719 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:22:56,720 [INFO] critic_master - [CriticMaster] 3 issues | score=0.10 | 2 pending | 45.7s
+[CriticMaster] 3 issues | score=0.10 | 2 pending | 45.7s
+[CriticMaster] Assessment: 报告仅为占位符，内容严重不完整。缺少测试质量评分的定义、方法、指标体系、数据分析等核心内容，无法满足研究要求。
+    → PASS  score=1.000  threshold=1.0  45.7s
+  [CM-CAL-002] Verifies quality_score calibration accuracy
+2026-04-30 19:23:09,740 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:23:10,199 [INFO] critic_master - [CriticMaster] 3 issues | score=0.35 | 3 pending | 13.5s
+[CriticMaster] 3 issues | score=0.35 | 3 pending | 13.5s
+[CriticMaster] Assessment: 报告内容极简，仅有市场数据和技术参数两个片段。虽数据与已验证事实一致，但缺少具体来源出处，且章节严重不完整，缺失政策、竞争格局、企业分析等核心内容，需大幅补充完善。
+    → FAIL  score=0.450  threshold=0.15  13.5s  [expected 0.0–0.2]
+  [CM-CAL-003] Verifies re-research trigger when quality_score < 0.7
+2026-04-30 19:23:19,578 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:23:19,579 [INFO] critic_master - [CriticMaster] 2 issues | score=0.10 | 2 pending | 9.4s
+[CriticMaster] 2 issues | score=0.10 | 2 pending | 9.4s
+[CriticMaster] Assessment: 报告严重不完整，仅有标题和无效内容填充，缺少任何实质研究数据、观点论证或信息来源，不符合基本研究报告要求。
+    → PASS  score=1.000  threshold=1.0  9.4s
+  [CM-FP-001] Verifies false positive rate for correct content
+2026-04-30 19:23:34,562 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:23:36,772 [INFO] critic_master - [CriticMaster] 5 issues | score=0.35 | 3 pending | 17.2s
+[CriticMaster] 5 issues | score=0.35 | 3 pending | 17.2s
+[CriticMaster] Assessment: 报告存在严重缺陷：两个核心数据（同比增速、循环寿命）缺乏事实支撑，属于幻觉问题；引用来源模糊；内容极不完整，仅有市场和技术两个基础章节，缺少政策、产业链、竞争格局等必要分析框架。
+    → FAIL  score=1.000  threshold=0.1  17.2s  [expected 0.0–0.2]
+  [CM-FP-002] Verifies no bias detection in balanced report
+2026-04-30 19:23:50,030 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:23:50,031 [INFO] critic_master - [CriticMaster] 3 issues | score=0.45 | 2 pending | 13.2s
+[CriticMaster] 3 issues | score=0.45 | 2 pending | 13.2s
+[CriticMaster] Assessment: 报告内容过于简略，仅一个竞争格局章节且缺乏具体数据支撑。存在2个高级别问题（数据来源缺失、内容不完整）和1个中级别问题（时效性不明），需补充市场份额具体数值、扩展分析维度并标注数据时间。
+    → PASS  score=1.000  threshold=1.0  13.2s
+  [CM-CONS-001] Verifies consistency guard Rule 1 - high severity caps score
+2026-04-30 19:23:51,315 [INFO] openai._base_client - Retrying request to /chat/completions in 0.437286 seconds
+2026-04-30 19:24:00,642 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:24:00,643 [INFO] critic_master - [CriticMaster] 3 issues | score=0.10 | 0 pending | 10.6s
+[CriticMaster] 3 issues | score=0.10 | 0 pending | 10.6s
+[CriticMaster] Assessment: 报告严重不合格，仅有标题和一句无效内容。缺乏任何实质数据、来源引用、逻辑论证，属于完全不成形的草稿，无法用于任何实际研究目的。
+    → PASS  score=1.000  threshold=1.0  10.6s
+  [CM-CONS-002] Verifies consistency guard Rule 2 - any issues cap at 0.85
+2026-04-30 19:24:29,450 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:24:29,452 [INFO] critic_master - [CriticMaster] 1 issues | score=0.20 | 1 pending | 28.8s
+[CriticMaster] 1 issues | score=0.20 | 1 pending | 28.8s
+[CriticMaster] Assessment: 报告严重不完整，仅有章节标题和一句无实质内容的描述。缺少研究报告必需的基本结构（背景、方法、数据、分析、结论等），无法进行有效审核。建议补充完整内容后重新提交。
+    → PASS  score=1.000  threshold=1.0  28.8s
+  [CM-CONS-003] Verifies iteration convergence guard
+2026-04-30 19:24:37,773 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:24:37,996 [INFO] critic_master - [CriticMaster] 1 issues | score=0.10 | 1 pending | 8.5s
+[CriticMaster] 1 issues | score=0.10 | 1 pending | 8.5s
+[CriticMaster] Assessment: 报告严重不完整，仅有标题框架而无实质内容，无法进行有效审核。建议补充完整研究文本后重新提交。
+2026-04-30 19:24:37,996 [INFO] critic_master - [CriticMaster] iteration=2, forcing done (convergence guard)
+    → PASS  score=1.000  threshold=1.0  8.5s
+  [CM-HAL-004] Verifies outdated information detection
+2026-04-30 19:24:56,306 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:24:56,511 [INFO] critic_master - [CriticMaster] 6 issues | score=0.20 | 3 pending | 18.5s
+[CriticMaster] 6 issues | score=0.20 | 3 pending | 18.5s
+[CriticMaster] Assessment: 报告严重不完整，仅有一句无法核实的陈述。存在高级别幻觉（虚构数据）、缺失关键来源、逻辑断裂、内容严重不足等6类问题，需全面补充当前成本数据、多技术对比及可靠引用来源。
+    → PASS  score=1.000  threshold=1.0  18.5s
+  [CM-HAL-005] Verifies logic error detection
+2026-04-30 19:24:59,118 [INFO] openai._base_client - Retrying request to /chat/completions in 0.459164 seconds
+2026-04-30 19:25:19,061 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:25:19,515 [INFO] critic_master - [CriticMaster] 6 issues | score=0.25 | 3 pending | 23.0s
+[CriticMaster] 6 issues | score=0.25 | 3 pending | 23.0s
+[CriticMaster] Assessment: 报告存在严重缺陷：来源标注为空无法验证，逻辑上混淆营收与利润且前后矛盾，数据缺少时间维度，内容过于简略且存在选择性呈现问题。需补充利润率数据、行业对比及完整来源引用。
+    → PASS  score=1.000  threshold=1.0  23.0s
+  [CM-EDGE-001] Verifies demo_mode auto-passes review
+2026-04-30 19:25:19,541 [INFO] critic_master - [CriticMaster] demo_mode=True, auto-passing review (no LLM call)
+[CriticMaster] demo_mode: auto-pass (quality_score=0.75, phase=done)
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [CM-EDGE-002] Verifies empty draft handling
+2026-04-30 19:25:19,564 [WARNING] critic_master - [CriticMaster] No draft sections to review
+    → PASS  score=1.000  threshold=1.0  0.0s
+
+  ──────────────────────────────────────────────────────
+  CriticMaster: 13/15 PASS  |  2 FAIL  |  0 ERROR  |  0 SKIP
+    FAIL   CM-CAL-002        score=0.450     thresh=0.15 [out-of-range]
+    FAIL   CM-FP-001         score=1.000     thresh=0.1 [out-of-range]
+
+============================================================
+  Synthesizer  (10 cases)
+============================================================
+  [SY-COV-001] Verifies all planned sections are present in final report
+2026-04-30 19:25:19,585 [INFO] synthesizer - [Synthesizer] Final report: 163 chars | 0.0s
+[Synthesizer] Final report: 163 chars | 0.0s
+    → SKIP  formula unevaluable: NameError: name 'final_answer' is not defined — variable missing from eval conte
+  [SY-COV-002] Verifies references are included in final report
+2026-04-30 19:25:19,606 [INFO] synthesizer - [Synthesizer] Final report: 125 chars | 0.0s
+[Synthesizer] Final report: 125 chars | 0.0s
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [SY-COV-003] Verifies charts are embedded in final report
+2026-04-30 19:25:19,627 [INFO] synthesizer - [Synthesizer] Final report: 134 chars | 0.0s
+[Synthesizer] Final report: 134 chars | 0.0s
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [SY-CONS-001] Verifies high-severity critic issues are disclosed
+[Synthesizer] Applying revisions for 1 critic issues ...
+2026-04-30 19:25:21,271 [INFO] openai._base_client - Retrying request to /chat/completions in 0.376951 seconds
+2026-04-30 19:25:25,299 [WARNING] synthesizer - [Synthesizer] Revision of 'sec_1' failed: Connection error.
+2026-04-30 19:25:25,300 [INFO] synthesizer - [Synthesizer] Final report: 128 chars | 5.7s
+[Synthesizer] Final report: 128 chars | 5.7s
+    → PASS  score=1.000  threshold=1.0  5.7s
+  [SY-CONS-002] Verifies hypothesis section is included
+2026-04-30 19:25:25,326 [INFO] synthesizer - [Synthesizer] Final report: 102 chars | 0.0s
+[Synthesizer] Final report: 102 chars | 0.0s
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [SY-CONS-003] Verifies quality score is reported in metadata
+2026-04-30 19:25:25,348 [INFO] synthesizer - [Synthesizer] Final report: 72 chars | 0.0s
+[Synthesizer] Final report: 72 chars | 0.0s
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [SY-ROB-001] Verifies revision application for high-severity issues
+[Synthesizer] Applying revisions for 1 critic issues ...
+2026-04-30 19:25:39,421 [INFO] httpx - HTTP Request: POST https://api.scnet.cn/api/llm/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-30 19:25:39,422 [INFO] synthesizer - [Synthesizer] Revised section 'sec_1'
+2026-04-30 19:25:39,423 [INFO] synthesizer - [Synthesizer] Final report: 268 chars | 14.1s
+[Synthesizer] Final report: 268 chars | 14.1s
+    → FAIL  score=0.000  threshold=1.0  14.1s
+  [SY-ROB-002] Verifies demo_mode skips revision
+2026-04-30 19:25:39,445 [INFO] synthesizer - [Synthesizer] demo_mode: skipping LLM revisions
+2026-04-30 19:25:39,446 [INFO] synthesizer - [Synthesizer] Final report: 122 chars | 0.0s
+[Synthesizer] Final report: 122 chars | 0.0s
+    → PASS  score=1.000  threshold=1.0  0.0s
+  [SY-ROB-003] Verifies reference deduplication
+2026-04-30 19:25:39,469 [INFO] synthesizer - [Synthesizer] Final report: 176 chars | 0.0s
+[Synthesizer] Final report: 176 chars | 0.0s
+    → SKIP  formula unevaluable: NameError: name 'set' is not defined — variable missing from eval context
+  [SY-EDGE-001] Verifies executive summary is first section
+2026-04-30 19:25:39,491 [INFO] synthesizer - [Synthesizer] Final report: 92 chars | 0.0s
+[Synthesizer] Final report: 92 chars | 0.0s
+    → PASS  score=1.000  threshold=1.0  0.0s
+
+  ──────────────────────────────────────────────────────
+  Synthesizer: 7/10 PASS  |  1 FAIL  |  0 ERROR  |  2 SKIP
+    SKIP   SY-COV-001        score=n/a       thresh=1.0  ← NameError: name 'final_answer' is not defined — variable missing from eval context
+    FAIL   SY-ROB-001        score=0.000     thresh=1.0
+    SKIP   SY-ROB-003        score=n/a       thresh=0.9  ← NameError: name 'set' is not defined — variable missing from eval context
+
+============================================================
+GRAND TOTAL: 42/65 PASS  |  17 FAIL  |  0 ERROR  |  6 SKIP
+============================================================
