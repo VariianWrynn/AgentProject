@@ -16,9 +16,7 @@ troubleshooting-log/
 docs/troubleshooting-log/
 
 # Generated / runtime files
-data/sales.db
 data/badcases.jsonl
-resources/data/sales.db
 resources/data/badcases.jsonl
 logs/
 front_end_log/

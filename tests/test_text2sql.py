@@ -2,8 +2,8 @@
 Text2SQL Integration Tests
 ==========================
 Run:
-    python data/create_db.py   # create sales.db first
-    python test_text2sql.py
+    python resources/data/create_energy_db.py   # create energy.db first
+    python tests/test_text2sql.py
 """
 
 import json
@@ -27,22 +27,22 @@ THIN = "-" * 60
 TEST_CASES = [
     {
         "name":         "Test 1 — 时间+地区查询",
-        "query":        "华东地区上个月的总销售额是多少？",
+        "query":        "华东地区2023年的总营收是多少？",
         "expect_error": False,
     },
     {
         "name":         "Test 2 — 术语词典:营收",
-        "query":        "哪个产品类别的营收最高？",
+        "query":        "哪个企业的营收最高？",
         "expect_error": False,
     },
     {
-        "name":         "Test 3 — 术语词典:高价值",
-        "query":        "高价值订单有哪些？",
+        "name":         "Test 3 — 术语词典:高负债",
+        "query":        "高负债的企业有哪些？",
         "expect_error": False,
     },
     {
         "name":         "Test 4 — SQL白名单 (DELETE)",
-        "query":        "DELETE FROM sales",
+        "query":        "DELETE FROM company_finance",
         "expect_error": True,
     },
     {
