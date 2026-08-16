@@ -917,23 +917,32 @@ class TestText2SQLTool:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        with patch("openai.OpenAI") as mock_openai_cls:
+        try:
+            from backend.tools import text2sql_tool as t2s_mod
+        except ImportError:
+            pytest.skip("Text2SQLTool not importable")
+
+        with patch.object(t2s_mod, "OpenAI") as mock_openai_cls:
             self.mock_llm = MagicMock()
             mock_openai_cls.return_value = self.mock_llm
+            self.tool = t2s_mod.Text2SQLTool()
             self._set_mock_sql(self._MOCK_SQL)
-
-            try:
-                from tools.text2sql_tool import Text2SQLTool
-                self.tool = Text2SQLTool()
-            except ImportError:
-                pytest.skip("Text2SQLTool not importable")
 
             yield
 
     def _set_mock_sql(self, sql: str):
-        completion = MagicMock()
-        completion.choices[0].message.content = sql
-        self.mock_llm.chat.completions.create.return_value = completion
+        """Mock both LLM legs: ambiguity detection returns JSON, SQL generation returns text."""
+        def _create(*args, **kwargs):
+            completion = MagicMock()
+            if (kwargs.get("response_format") or {}).get("type") == "json_object":
+                user_msg = kwargs.get("messages", [{}])[-1].get("content", "")
+                hits = {t: e for t, e in self.tool._term_dict.items() if t in user_msg}
+                completion.choices[0].message.content = json.dumps(hits, ensure_ascii=False)
+            else:
+                completion.choices[0].message.content = sql
+            return completion
+
+        self.mock_llm.chat.completions.create.side_effect = _create
 
     @unit
     def test_run_returns_dict_with_required_keys(self):
@@ -984,21 +993,21 @@ class TestText2SQLTool:
     def test_chinese_term_yingshou_expands_to_revenue(self):
         """D2: '营收' in input → prompt sent to LLM contains revenue_billion."""
         self.tool.run("查询各公司营收情况")
-        prompt = str(self.mock_llm.chat.completions.create.call_args)
+        prompt = str(self.mock_llm.chat.completions.create.call_args_list)
         assert "revenue_billion" in prompt
 
     @unit
     def test_chinese_term_zhuangjirong_expands_to_installed_mw(self):
         """D2: '装机容量' in input → prompt contains installed_mw."""
         self.tool.run("各省装机容量统计")
-        prompt = str(self.mock_llm.chat.completions.create.call_args)
+        prompt = str(self.mock_llm.chat.completions.create.call_args_list)
         assert "installed_mw" in prompt
 
     @unit
     def test_chinese_term_xin_nengyuan_expands_to_energy_type(self):
         """D2: '新能源' in input → prompt contains energy_type."""
         self.tool.run("新能源装机统计")
-        prompt = str(self.mock_llm.chat.completions.create.call_args)
+        prompt = str(self.mock_llm.chat.completions.create.call_args_list)
         assert "energy_type" in prompt
 
     @unit
@@ -1008,14 +1017,15 @@ class TestText2SQLTool:
 
         unblock = threading.Event()
 
-        def slow_create(*args, **kwargs):
+        from backend.tools import text2sql_tool as t2s_mod
+
+        def slow_connect(*args, **kwargs):
             unblock.wait(timeout=10)
             return MagicMock()
 
-        self.mock_llm.chat.completions.create.side_effect = slow_create
-
         start = time.time()
-        result = self.tool.run("Any slow query")
+        with patch.object(t2s_mod.sqlite3, "connect", side_effect=slow_connect):
+            result = self.tool.run("Any slow query")
         elapsed = time.time() - start
 
         unblock.set()  # release background thread
@@ -1076,21 +1086,21 @@ class TestAgentStateSchema:
     def test_all_five_intent_literals_accepted(self, intent):
         """E: intent field accepts each of the 5 defined literals."""
         state = self._make_state(intent=intent)
-        assert state.intent == intent
+        assert state["intent"] == intent
 
     @unit
     @pytest.mark.parametrize("iteration", [0, 1, 2, 3])
     def test_iteration_valid_range_0_to_3(self, iteration):
         """E: iteration accepts integers in [0, 3]."""
         state = self._make_state(iteration=iteration)
-        assert state.iteration == iteration
+        assert state["iteration"] == iteration
 
     @unit
     @pytest.mark.parametrize("confidence", [0.0, 0.5, 0.7, 1.0])
     def test_confidence_valid_range_0_to_1(self, confidence):
         """E: confidence accepts floats in [0.0, 1.0]."""
         state = self._make_state(confidence=confidence)
-        assert state.confidence == confidence
+        assert state["confidence"] == confidence
 
     @unit
     def test_required_fields_have_correct_types(self):
@@ -1106,24 +1116,23 @@ class TestAgentStateSchema:
             iteration=1,
             session_id="type-check",
         )
-        assert isinstance(state.question, str)
-        assert isinstance(state.intent, str)
-        assert isinstance(state.plan, list)
-        assert isinstance(state.steps_executed, list)
-        assert isinstance(state.reflection, str)
-        assert isinstance(state.confidence, float)
-        assert isinstance(state.final_answer, str)
-        assert isinstance(state.iteration, int)
-        assert isinstance(state.session_id, str)
+        assert isinstance(state["question"], str)
+        assert isinstance(state["intent"], str)
+        assert isinstance(state["plan"], list)
+        assert isinstance(state["steps_executed"], list)
+        assert isinstance(state["reflection"], str)
+        assert isinstance(state["confidence"], float)
+        assert isinstance(state["final_answer"], str)
+        assert isinstance(state["iteration"], int)
+        assert isinstance(state["session_id"], str)
 
     @unit
     def test_optional_fields_default_to_none(self):
-        """E: all 17 optional fields default to None when not supplied."""
+        """E: optional fields read as None when not supplied (TypedDict leaves them absent)."""
         state = self._make_state()
         for field in self.OPTIONAL_FIELDS:
-            if hasattr(state, field):
-                val = getattr(state, field)
-                assert val is None, f"Optional field '{field}' should be None, got {val!r}"
+            val = state.get(field)
+            assert val is None, f"Optional field '{field}' should be absent or None, got {val!r}"
 
 
 # ===========================================================================
@@ -1152,11 +1161,21 @@ class TestMemorySystem:
         def fake_exists(key):
             return int(key in self._store)
 
+        try:
+            from backend.memory import memgpt_memory as mem_mod
+        except ImportError:
+            pytest.skip("MemGPTMemory not importable")
+
+        self.mock_col = MagicMock()
+        # rag is supplied so MemGPTMemory reuses its embed() instead of loading BGE-m3
+        fake_rag = MagicMock()
+        fake_rag.embed.return_value = [[0.0] * 1024]
+
         with (
             patch("redis.Redis") as mock_redis_cls,
             patch("pymilvus.connections.connect"),
-            patch("pymilvus.Collection") as mock_col_cls,
-            patch("pymilvus.utility.has_collection", return_value=False),
+            patch.object(mem_mod, "Collection", return_value=self.mock_col),
+            patch.object(mem_mod, "utility") as mock_utility,
         ):
             ri = MagicMock()
             ri.get.side_effect = fake_get
@@ -1164,25 +1183,9 @@ class TestMemorySystem:
             ri.delete.side_effect = fake_delete
             ri.exists.side_effect = fake_exists
             mock_redis_cls.return_value = ri
-            self.mock_col = MagicMock()
-            mock_col_cls.return_value = self.mock_col
+            mock_utility.has_collection.return_value = False
 
-            imported = False
-            for module_path, class_name in [
-                ("langgraph_agent", "MemGPTMemory"),
-                ("memory", "MemGPTMemory"),
-            ]:
-                try:
-                    import importlib
-                    mod = importlib.import_module(module_path)
-                    self.memory = getattr(mod, class_name)()
-                    imported = True
-                    break
-                except (ImportError, AttributeError):
-                    continue
-
-            if not imported:
-                pytest.skip("MemGPTMemory not importable from any known module path")
+            self.memory = mem_mod.MemGPTMemory(rag=fake_rag)
 
             yield
 
