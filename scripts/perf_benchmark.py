@@ -150,6 +150,34 @@ def orchestrate() -> None:
     report()
 
 
+def _median(vals: list[float]) -> float:
+    s = sorted(vals)
+    return s[len(s) // 2] if s else 0.0
+
+
+def _median_run(rs: list[dict]) -> dict:
+    """返回 elapsed_s 处于中位的那一次运行。
+
+    报告一行里的每个数字都必须来自同一次运行——逐列独立取中位数会混合
+    不同 run，产出自相矛盾的行（例如 token 更多却成本更低）。
+    """
+    return sorted(rs, key=lambda r: r["elapsed_s"])[len(rs) // 2]
+
+
+def _paired_ratios(recs: list[dict], base_cfg: str, cfg: str, key: str) -> list[float]:
+    """逐 query 计算 base/cfg 比值——每个 (config, query) 只有 n=1 时，
+    这是唯一有意义的比较方式。缺任一侧的 query 整对丢弃。"""
+    by_q: dict[int, dict[str, dict]] = {}
+    for r in recs:
+        by_q.setdefault(r["query_idx"], {})[r["config"]] = r
+    out: list[float] = []
+    for q in sorted(by_q):
+        cell = by_q[q]
+        if base_cfg in cell and cfg in cell:
+            out.append(cell[base_cfg][key] / cell[cfg][key])
+    return out
+
+
 def report() -> None:
     if not os.path.exists(RUNS_PATH):
         print("no runs")
@@ -159,36 +187,46 @@ def report() -> None:
     for r in recs:
         by_cfg.setdefault(r["config"], []).append(r)
 
-    def med(vals):
-        s = sorted(vals)
-        return s[len(s) // 2] if s else 0
-
     date = datetime.now().strftime("%Y%m%d")
+    n_q = len({r["query_idx"] for r in recs})
     lines = ["# 性能与成本基准（单份完整报告, demo_mode=False, FACT_GUARD=on）", "",
              f"**日期:** {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-             f"**固定 query:** {len(QUERIES)} 条（政策/财报/市场各1），每配置取中位数", "",
-             "| 配置 | 中位耗时 | 中位 prompt tok | 中位 completion tok | LLM 调用数 | 中位成本(USD) |",
+             f"**固定 query:** {n_q} 条（政策/财报/市场各1），每个配置每条 query 各跑 1 次",
+             "",
+             "> 统计口径：表格取**中位耗时那一次运行的实测值**（整行同源）；",
+             "> 提速/成本结论取**逐 query 配对比值**的中位数与区间。",
+             "> 每格样本 n=1，LLM 延迟波动大，比值区间比点估计更可信。",
+             "",
+             "| 配置 | 耗时 | prompt tok | completion tok | LLM 调用 | 成本(USD) |",
              "|---|---|---|---|---|---|"]
     for cfg in ("serial_nocache", "parallel_cache", "tiered"):
         rs = by_cfg.get(cfg, [])
         if not rs:
             continue
+        r = _median_run(rs)
         lines.append(
-            f"| {cfg} | {med([r['elapsed_s'] for r in rs]):.0f}s "
-            f"| {med([r['prompt_tokens'] for r in rs])} "
-            f"| {med([r['completion_tokens'] for r in rs])} "
-            f"| {med([r['llm_calls'] for r in rs])} "
-            f"| ${med([r['cost_usd'] for r in rs]):.4f} |")
-    sn = by_cfg.get("serial_nocache", [])
-    pc = by_cfg.get("parallel_cache", [])
-    td = by_cfg.get("tiered", [])
-    if sn and pc:
-        speedup = med([r["elapsed_s"] for r in sn]) / max(med([r["elapsed_s"] for r in pc]), 1e-9)
-        lines += ["", f"**并行+缓存 加速比:** {speedup:.2f}×（{med([r['elapsed_s'] for r in sn]):.0f}s → {med([r['elapsed_s'] for r in pc]):.0f}s）"]
-    if pc and td:
-        c_all, c_tier = med([r["cost_usd"] for r in pc]), med([r["cost_usd"] for r in td])
-        if c_all:
-            lines.append(f"**分级路由 成本节省:** {1 - c_tier / c_all:.0%}（${c_all:.4f} → ${c_tier:.4f}/份）")
+            f"| {cfg} | {r['elapsed_s']:.0f}s | {r['prompt_tokens']} "
+            f"| {r['completion_tokens']} | {r['llm_calls']} | ${r['cost_usd']:.4f} |")
+
+    lines += ["", "## 逐 query 配对比较", "",
+              "| 对比 | 各 query 比值 | 中位 |", "|---|---|---|"]
+    for label, base, cfg, key in [
+        ("并行+缓存 提速 (serial→parallel)", "serial_nocache", "parallel_cache", "elapsed_s"),
+        ("再叠加模型分级 提速 (serial→tiered)", "serial_nocache", "tiered", "elapsed_s"),
+        ("模型分级 省钱 (parallel→tiered)", "parallel_cache", "tiered", "cost_usd"),
+    ]:
+        rr = _paired_ratios(recs, base, cfg, key)
+        if not rr:
+            continue
+        cells = " / ".join(f"{v:.2f}x" for v in rr)
+        lines.append(f"| {label} | {cells} | **{_median(rr):.2f}x** |")
+
+    lat = _paired_ratios(recs, "parallel_cache", "tiered", "elapsed_s")
+    if lat:
+        lines += ["",
+                  f"**结论：** 提速主要来自 asyncio 并行 + Redis 缓存；模型分级对延迟"
+                  f"无稳定收益（parallel→tiered 比值 "
+                  f"{' / '.join(f'{v:.2f}x' for v in lat)}，含劣化），其价值在成本。"]
     lines += ["", f"**单价假设(USD/1M tok):** {json.dumps(PRICES)}（引用前请与供应商牌价核对）", ""]
     out = os.path.join("docs", "reports", f"perf_{date}.md")
     with open(out, "w", encoding="utf-8") as f:
