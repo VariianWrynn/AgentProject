@@ -27,7 +27,7 @@ THIN = "-" * 70
 TEST_CASES = [
     {
         "id":              1,
-        "question":        "华东地区各产品类别的销售额对比",
+        "question":        "华东地区各能源企业的营收对比",
         "expected_intent": "data_query",
         "expected_tools":  ["text2sql"],
         "skip_planner":    False,

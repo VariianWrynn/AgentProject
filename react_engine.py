@@ -10,8 +10,8 @@ Plan → Act → Reflect loop with:
 
 Configuration (env vars):
   OPENAI_API_KEY   — required
-  OPENAI_BASE_URL  — default: https://api.openai.com/v1
-  LLM_MODEL        — default: gpt-4o-mini
+  OPENAI_BASE_URL  — required (e.g. https://api.openai.com/v1)
+  LLM_MODEL        — required
   REDIS_HOST       — default: localhost
   REDIS_PORT       — default: 6379
   MILVUS_HOST      — default: localhost  (passed to RAGPipeline)

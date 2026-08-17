@@ -21,15 +21,20 @@ Read `AGENT_CONTEXT.md` for the full development workflow guide, including:
 
 ### API & Interface Contracts
 - Function signatures with parameter types and return shapes
-  - `query(text: str, top_k: int = 5) -> list[dict]` (RAG)
-  - `run(question: str, session_id: str) -> AgentState` (LangGraph)
-  - `text2sql_tool(question: str) -> str` (Text2SQL)
-- AgentState schema: question, intent, plan, steps_executed, reflection, confidence, final_answer, iteration, session_id
+  - `RAGPipeline.query(question: str, top_k: int = TOP_K) -> list[dict]` (RAG, TOP_K=5)
+  - `run_deep_research(question: str, session_id: str | None = None, demo_mode: bool = False) -> dict`
+    (LangGraph Graph 2; returns the final AgentState as a plain dict)
+  - `Text2SQLTool.run(query: str) -> dict{sql, result, summary, error}` (Text2SQL)
+- AgentState (agent_state.py) Part 1: question, intent, plan, steps_executed, reflection,
+  confidence, final_answer, iteration, session_id. Part 2 adds planning (outline, hypotheses,
+  research_questions), knowledge (facts, raw_sources, data_points), output (draft_sections,
+  charts_data, references), review (critic_issues, pending_queries, quality_score), flow
+  control (phase, demo_mode) and HITL (user_decision, awaiting_human, issue_summary) fields.
 - Redis key patterns: `react:{sid}:*` (TTL 3600s), `langgraph:{sid}:summary` (TTL 7200s)
 - Config thresholds: score threshold 0.45, confidence threshold 0.7, max_iterations 3
 
 ### Key Technical Decisions
-- Architecture choices with rationale (e.g., "chose IVF_FLAT over HNSW because...")
+- Architecture choices with rationale (e.g., "chose FLAT over IVF_FLAT because...")
 - Model/library selection decisions with comparison data
 - Tradeoff analysis (recall vs. latency, accuracy vs. cost)
 
@@ -90,32 +95,83 @@ When compacting:
 
 ---
 
+## TEST GATE
+
+```bash
+bash scripts/test_offline.sh     # 42 tests, ~20s, no Milvus/Redis/MCP/LLM needed
+```
+
+提交前跑这个。**不要**指望 `pytest -m unit`：pytest 先 import 全部测试文件再按 marker
+过滤，而仓库里若干文件在导入期就构造 LLM 客户端 / 读 `OPENAI_API_KEY`，收集阶段即报错，
+marker 来不及生效。`scripts/test_offline.sh` 用显式文件清单绕开这个问题——新增无外部
+依赖的测试文件时把它加进清单。
+
+需要服务的测试（Milvus/Redis/MCP/LLM）单独按文件跑，例如
+`pytest tests/test_layer3_real_fallback.py -m ""`。
+
+---
+
 ## MODULE CONTEXT (quick reference after /compact)
 
 ### RAG Pipeline (rag_pipeline.py)
-- Embedding: BAAI/bge-m3 (1024-dim), Milvus IVF_FLAT/COSINE
+- Embedding: BAAI/bge-m3 (1024-dim), Milvus COSINE. Index type is configurable via
+  `MILVUS_INDEX_TYPE`, default **FLAT** (exhaustive/exact — IVF clustering needs
+  nlist << N, and the collection holds ~161 vectors). Measured: FLAT and
+  IVF_FLAT(nlist=1024) score identically here — hit@5 29/30, MRR 0.8472, zero
+  per-question rank differences. `validate_index_for_size()` rejects nlist > entity count.
 - Chunking: ParagraphChunker, 512 tokens, 50-token overlap, SHA-256 dedup
-- Retrieval: top-5, score threshold 0.45
-- Files: rag_pipeline.py, ingest_files.py, test_rag.py
+- PDF loading: PyMuPDF (fitz) with table→Markdown extraction
+- Retrieval: `query(question, top_k=TOP_K)` with TOP_K=5. Score threshold 0.45 is NOT
+  applied here — callers filter (see `react_engine.SCORE_THRESHOLD`)
+- Files: rag_pipeline.py, backend/tools/ingest_files.py, tests/test_rag.py
 
 ### ReAct Engine (react_engine.py)
-- Redis memory: `react:{sid}:question/plan/steps`, TTL 3600s
-- Tools: rag_search, doc_summary, web_search (DuckDuckGo, max 5)
-- LLM: OpenAI-compatible wrapper (MiniMax-M2.5 default)
-- Files: react_engine.py
+- Legacy module — core logic migrated to langgraph_agent.py
+- Redis memory: `react:{sid}:question/plan/steps`, TTL 3600s (REDIS_TTL)
+- Tools: rag_search (Milvus, filters at SCORE_THRESHOLD 0.45), doc_summary, web_search
+- web_search: primary path is Bocha AI (`api.bochaai.com/v1/web-search`, count=10,
+  15s timeout) served by mcp_server.py `/tools/web_search`. DuckDuckGo (`ddgs.DDGS`,
+  WEB_MAX_RESULTS=5) is only the in-process fallback inside react_engine.py.
+- MAX_STEPS = 5
+- LLM: OpenAI-compatible wrapper; LLM_MODEL env var is REQUIRED (no hardcoded default —
+  raises if unset). .env.example ships MiniMax-M2.5.
+- Files: react_engine.py, mcp_server.py (Bocha web_search), mcp_client.py
 
-### Text2SQL (tools/text2sql_tool.py)
-- Pipeline: ambiguity detection → SQL generation → summarization
-- Schema: sales(id,product,region,amount,sale_date) + products(id,name,category,unit_price)
-- term_dict: Chinese business terms → SQL (e.g., "营收"→"SUM(amount)")
-- Files: tools/text2sql_tool.py, data/schema_metadata.json, data/sales.db
+### Text2SQL (backend/tools/text2sql_tool.py)
+- Pipeline: ambiguity detection → schema retrieval (keyword, non-LLM) → SQL generation →
+  validation → execution → summarization (3 LLM calls total)
+- Entry point: `Text2SQLTool.run(query: str) -> dict{sql, result, summary, error}`
+- DB: `resources/data/energy.db` (SQLite opened `mode=ro`, PRAGMA query_only,
+  5s thread timeout, auto-append `LIMIT 50`, DML/DDL rejected before any LLM call)
+- Schema (3 energy-industry tables):
+  - `company_finance(id, company_name, year, quarter, revenue_billion, profit_billion, debt_ratio, region)`
+  - `capacity_stats(id, company_name, energy_type, installed_mw, year, province)`
+  - `price_index(id, date, energy_type, region, price_yuan_kwh, spot_price, forward_price)`
+- Joins: `company_finance` x `capacity_stats` on `company_name` (the only shared key; price_index has no company dimension)
+- term_dict: Chinese energy terms → SQL (e.g., "营收"→"SUM(revenue_billion)",
+  "装机容量"→"SUM(installed_mw)", "电价"→"AVG(price_yuan_kwh)", "高负债"→"debt_ratio > 0.7")
+- Bad cases appended to `resources/data/badcases.jsonl`
+- Files: backend/tools/text2sql_tool.py, resources/data/schema_metadata.json,
+  resources/data/energy.db, tests/test_text2sql.py, tests/test_text2sql_edge.py
+- Sales-schema migration is complete: create_db.py, sales.db references, the
+  `"total_amount"` allowlist entry and the `类别|category|产品类` JOIN hint are all gone.
+  JOIN detection now requires a finance term AND a capacity term — see
+  `_FINANCE_RE` / `_CAPACITY_RE` / `_JOINABLE_TABLES` in text2sql_tool.py.
 
 ### LangGraph Agent (langgraph_agent.py)
-- Nodes: Router → Planner → Executor → Reflector ↔ Critic
-- Intent types: data_query, analysis, research, general
-- Confidence threshold: ≥0.7 → skip to Critic; max 3 iterations
-- Redis: `langgraph:{sid}:summary`, TTL 7200s
-- Files: langgraph_agent.py, agent_state.py
+- Dual-graph architecture:
+  - Graph 1 (legacy /chat, `build_graph`): router → planner → executor → reflector → critic → END.
+    Router and reflector both branch conditionally to planner or critic.
+  - Graph 2 (deep research, `build_research_graph`): router → chief_architect → deep_scout →
+    data_analyst → lead_writer → critic_master → [human_gate | deep_scout | synthesizer] → END
+- Intent types: policy_query, market_analysis, data_query, research, general (agent_state.py)
+- Graph 1 convergence: confidence ≥0.7 → critic; MAX_ITER = 3
+- Graph 2 convergence: CriticMaster sets `awaiting_human` when quality_score < 0.7 (HITL,
+  OPT-003); iteration ≥2 forces `done` (convergence guard); re_researching loops back to
+  deep_scout while iteration < MAX_ITER
+- Redis: `langgraph:{sid}:summary`, TTL 7200s (LANGGRAPH_TTL)
+- Files: langgraph_agent.py, agent_state.py, llm_router.py,
+  backend/agents/{chief_architect,deep_scout,data_analyst,lead_writer,critic_master,synthesizer}.py
 
 ---
 

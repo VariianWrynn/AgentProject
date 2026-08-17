@@ -151,9 +151,9 @@ SECTION2_TESTS = [
         "id": "S2-R2", "tags": ["react-multistep", "text2sql+rag"],
         "session_id": "s2_r2",
         "question": (
-            "结合知识库中的VectorDB知识和我们的销售数据，"
+            "结合知识库中的VectorDB知识和我们的能源业务数据，"
             "告诉我：1）HNSW索引适合什么场景；"
-            "2）我们华东地区销售额最高的产品类别是什么"
+            "2）我们华东地区营收最高的能源企业是哪家"
         ),
         "expected_keywords": ["精度", "内存"],
         "expected_min_steps": 2,
@@ -200,14 +200,14 @@ SECTION2_TESTS = [
     {
         "id": "S2-M1", "tags": ["memory-write"],
         "session_id": "fulltest_m1",
-        "question": "我是华南区数据分析师，主要研究电子产品销售趋势，偏好用SQL查询数据",
-        "assert_core_memory_human_contains": ["华南", "数据分析师", "电子产品"],
+        "question": "我是华南区数据分析师，主要研究储能装机趋势，偏好用SQL查询数据",
+        "assert_core_memory_human_contains": ["华南", "数据分析师", "储能"],
         "assert_memory_action": "core_memory_append",
     },
     {
         "id": "S2-M2", "tags": ["memory-archival"],
         "session_id": "fulltest_m2",
-        "question": "帮我查询华南区各产品类别上个季度的销售总额排名",
+        "question": "帮我查询华南地区各能源企业上个季度的营收排名",
         "assert_archival_insert_triggered": True,
         "assert_tools_used_contains": ["text2sql"],
     },
@@ -215,7 +215,7 @@ SECTION2_TESTS = [
         "id": "S2-M3", "tags": ["memory-retrieval"],
         "session_id": "fulltest_m3",
         "depends_on": "S2-M2",
-        "question": "上次分析华南区销售的主要结论是什么？",
+        "question": "上次分析华南地区营收的主要结论是什么？",
         "assert_archival_search_triggered": True,
         "assert_archival_top1_score_gte": 0.3,  # relaxed from 0.4
     },
@@ -299,9 +299,9 @@ SECTION3_TESTS = [
     {
         "id": "S3-F7", "tags": ["fusion", "memory-guided-sql"],
         "session_id": "fulltest_m1",
-        "question": "根据我之前说过的工作重点，帮我查一下相关产品类别的销售总额",
+        "question": "根据我之前说过的工作重点，帮我查一下相关能源类型的装机容量",
         "assert_tools_used_contains": ["text2sql"],
-        "assert_answer_contains_any": ["华南", "电子产品", "销售"],
+        "assert_answer_contains_any": ["华南", "储能", "装机"],
     },
     {
         "id": "S3-F8", "tags": ["fusion", "replan-on-miss"],

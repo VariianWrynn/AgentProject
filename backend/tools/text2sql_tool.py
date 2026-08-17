@@ -10,7 +10,7 @@ Converts natural-language questions into SQLite queries via a 3-LLM-call pipelin
 Usage:
     from backend.tools.text2sql_tool import Text2SQLTool
     tool = Text2SQLTool()
-    result = tool.run("华东地区上个月的总销售额是多少？")
+    result = tool.run("华东地区2023年各企业总营收排名？")
     print(result["summary"])
 """
 
@@ -40,6 +40,12 @@ _DML_RE = re.compile(
     r"^\s*(DELETE|DROP|INSERT|UPDATE|ALTER|CREATE|TRUNCATE)\b",
     re.IGNORECASE,
 )
+
+# company_finance and capacity_stats are the only tables sharing a join key
+# (company_name); price_index has no company dimension.
+_JOINABLE_TABLES = ("company_finance", "capacity_stats")
+_FINANCE_RE  = re.compile(r"营收|收入|利润|负债|财务|revenue|profit|debt")
+_CAPACITY_RE = re.compile(r"装机|容量|发电|机组|installed|capacity")
 
 # ---------------------------------------------------------------------------
 # LLM Client (inline — avoids importing react_engine.py and its heavy deps)
@@ -237,12 +243,15 @@ class Text2SQLTool:
             query_words = set(re.findall(r"[\w\u4e00-\u9fff]+", combined_text))
             scores[tbl_name] = len(words & query_words)
 
-        # Force JOIN when category/product queries appear
-        if re.search(r"类别|category|产品类", combined_text):
+        # Force JOIN when a question mixes a finance metric with a capacity metric
+        if _FINANCE_RE.search(combined_text) and _CAPACITY_RE.search(combined_text):
             join_hint = True
 
-        # Select tables: both if join_hint or both score > 0; else highest scorer; fallback all
-        if join_hint or all(s > 0 for s in scores.values()):
+        # Select tables: the joinable pair if join_hint; all if every table scores > 0;
+        # else the highest scorer; fallback all
+        if join_hint:
+            selected = [name for name in tables if name in _JOINABLE_TABLES]
+        elif all(s > 0 for s in scores.values()):
             selected = list(tables.keys())
         else:
             best = max(scores, key=lambda k: scores[k])
@@ -316,7 +325,7 @@ class Text2SQLTool:
             "inner", "left", "right", "outer", "cross", "sum", "count", "avg",
             "min", "max", "distinct", "case", "when", "then", "else", "end",
             "like", "in", "between", "is", "null", "strftime", "date", "now",
-            "start", "month", "year", "day", "rev", "total_amount", "total_revenue",
+            "start", "month", "year", "day", "rev", "total_revenue",
         }
         # Table names are not column names
         table_names = set(self._metadata["tables"].keys())

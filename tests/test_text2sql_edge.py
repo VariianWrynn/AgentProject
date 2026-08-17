@@ -1,10 +1,10 @@
 """
 Text2SQL Edge Case Tests (Tests 6–12)
 ======================================
-Run AFTER data/create_db.py:
+Run AFTER resources/data/create_energy_db.py:
 
-    python data/create_db.py
-    python test_text2sql_edge.py
+    python resources/data/create_energy_db.py
+    python tests/test_text2sql_edge.py
 """
 
 import json
@@ -28,7 +28,7 @@ SEP  = "=" * 60
 THIN = "-" * 60
 
 BADCASES_PATH = "resources/data/badcases.jsonl"
-DB_PATH       = "resources/data/sales.db"
+DB_PATH       = "resources/data/energy.db"
 
 
 # ---------------------------------------------------------------------------
@@ -84,20 +84,19 @@ def _table_row_count(table: str) -> int | None:
 def test_06_hallucinated_columns(tool: Text2SQLTool) -> tuple[bool, str]:
     """
     Test 6 — 真实幻觉列名
-    LLM may generate profit_rate/discount columns that don't exist.
+    LLM may generate profit_margin_rate/cost columns that don't exist.
 
     Two acceptable outcomes:
       A) Tool raises an error (column validation blocked it)
       B) LLM derived the metric from existing columns via expressions/aliases
-         (e.g. (amount-unit_price)/unit_price AS profit_margin_rate) — this is
+         (e.g. profit_billion / revenue_billion AS profit_margin_rate) — this is
          correct behavior, not a hallucination.
 
     Only FAIL if: no error AND result contains rows that look fabricated
     (e.g. SQL references non-existent bare columns in FROM/WHERE).
     """
-    query = "各产品的利润率和折扣率是多少"
+    query = "各企业的利润率和度电成本是多少"
     r = tool.run(query)
-    sql_lower = r["sql"].lower()
 
     if r["error"]:
         return True, f"Tool blocked with error: {r['error']}"
@@ -110,7 +109,7 @@ def test_06_hallucinated_columns(tool: Text2SQLTool) -> tuple[bool, str]:
 
     # If query executed successfully (rows returned or empty), the LLM either
     # avoided hallucinated columns or derived the metric via computation (e.g.
-    # (amount - unit_price)/unit_price AS profit_rate). Both are acceptable.
+    # profit_billion / revenue_billion AS profit_margin_rate). Both are acceptable.
     if not r["error"]:
         note = (
             f"via computed expression ({len(r['result'])} rows returned)"
@@ -124,27 +123,28 @@ def test_06_hallucinated_columns(tool: Text2SQLTool) -> tuple[bool, str]:
 def test_07_sql_injection(tool: Text2SQLTool) -> tuple[bool, str]:
     """
     Test 7 — SQL注入
-    Query contains '; DROP TABLE sales--'. Must be blocked; sales table must still exist.
-    Pass: injection blocked AND sales table still present.
+    Query contains '; DROP TABLE company_finance--'. Must be blocked; the table
+    must still exist.
+    Pass: injection blocked AND company_finance table still present.
     """
-    query = "查询销售数据; DROP TABLE sales--"
+    query = "查询企业财务数据; DROP TABLE company_finance--"
     r = tool.run(query)
 
-    table_ok = _table_exists("sales")
+    table_ok = _table_exists("company_finance")
 
     if not table_ok:
-        return False, "CRITICAL: sales table was destroyed — injection succeeded."
+        return False, "CRITICAL: company_finance table was destroyed — injection succeeded."
 
-    rows = _table_row_count("sales")
+    rows = _table_row_count("company_finance")
     if r["error"]:
-        return True, f"Blocked with error='{r['error']}'; sales table intact ({rows} rows)."
+        return True, f"Blocked with error='{r['error']}'; company_finance intact ({rows} rows)."
     # No error raised — check if the injected DROP actually ran
     if rows is not None and rows > 0:
         return True, (
             f"No error raised but injection was harmless: "
-            f"sales table intact ({rows} rows). SQL generated: {r['sql'][:120]}"
+            f"company_finance intact ({rows} rows). SQL generated: {r['sql'][:120]}"
         )
-    return False, "No error raised AND sales table is empty — possible injection damage."
+    return False, "No error raised AND company_finance is empty — possible injection damage."
 
 
 def test_08_complex_time_semantics(tool: Text2SQLTool) -> tuple[bool, str]:
@@ -153,7 +153,7 @@ def test_08_complex_time_semantics(tool: Text2SQLTool) -> tuple[bool, str]:
     '去年同期' should map to the same calendar period one year ago.
     Pass: generated SQL contains a year-related condition (manual inspection hint).
     """
-    query = "去年同期华北地区的销售额是多少"
+    query = "去年同期华东地区的总营收是多少"
     r = tool.run(query)
 
     print(f"\n  [Test 8 SQL for manual review]\n  {r['sql']}")
@@ -217,10 +217,10 @@ def test_09_hallucinated_table(tool: Text2SQLTool) -> tuple[bool, str]:
 def test_10_limit_enforcement(tool: Text2SQLTool) -> tuple[bool, str]:
     """
     Test 10 — LIMIT强制生效
-    '列出所有销售记录' would return 100 rows without LIMIT.
+    '列出所有企业财务记录' would return 120 rows without LIMIT.
     Pass: len(result) <= 50.
     """
-    query = "列出所有销售记录"
+    query = "列出所有企业财务记录"
     r = tool.run(query)
 
     if r["error"]:
@@ -243,7 +243,7 @@ def test_11_badcase_logging(tool: Text2SQLTool) -> tuple[bool, str]:
     with query/error/timestamp fields.
     """
     count_before = _count_badcases()
-    query = "DELETE FROM sales WHERE amount < 100"   # guaranteed DML rejection + log
+    query = "DELETE FROM company_finance WHERE revenue_billion < 100"   # guaranteed DML rejection + log
     tool.run(query)
 
     last = _last_badcase()
@@ -276,7 +276,7 @@ def test_12_empty_result_graceful(tool: Text2SQLTool) -> tuple[bool, str]:
     and no error.
     Pass: result==[] AND summary is non-empty AND error is None.
     """
-    query = "2099年的销售数据"
+    query = "2099年的企业营收数据"
     r = tool.run(query)
 
     if r["error"]:
