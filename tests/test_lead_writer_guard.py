@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.agents.deep_scout import freeze_evidence  # noqa: E402
 from backend.agents.lead_writer import _write_with_guard, run as lead_writer_run  # noqa: E402
+from backend.agents.synthesizer import run as synthesizer_run  # noqa: E402
 from backend.tools.citation_guard import guard_enabled  # noqa: E402
 
 EVIDENCE = {
@@ -40,8 +41,8 @@ class ScriptedLLM:
 
 def test_guard_rewrites_fabricated_number():
     llm = ScriptedLLM([
-        "宁德时代2023年营收4100.2亿元[E1]。",          # fabricated → must fail verify
-        "宁德时代2023年营收4009.2亿元[E1]。",          # corrected on rewrite
+        "宁德时代2023年营收4100.2亿元[E1](#evidence-E1)。",          # fabricated → must fail verify
+        "宁德时代2023年营收4009.2亿元[E1](#evidence-E1)。",          # corrected on rewrite
     ])
     content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
     assert stats["violations_first"] == 1
@@ -54,8 +55,8 @@ def test_guard_rewrites_fabricated_number():
 
 def test_guard_annotates_when_rewrite_still_fails():
     llm = ScriptedLLM([
-        "营收4100.2亿元[E1]。",
-        "营收4200.2亿元[E1]。",   # still wrong after rewrite
+        "营收4100.2亿元[E1](#evidence-E1)。",
+        "营收4200.2亿元[E1](#evidence-E1)。",   # still wrong after rewrite
     ])
     content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
     assert stats["violations_final"] == 1
@@ -63,10 +64,21 @@ def test_guard_annotates_when_rewrite_still_fails():
 
 
 def test_guard_passes_clean_draft_without_rewrite():
-    llm = ScriptedLLM(["宁德时代2023年营收4009.2亿元，同比增长22.01%[E1]。"])
+    llm = ScriptedLLM(["宁德时代2023年营收4009.2亿元，同比增长22.01%[E1](#evidence-E1)。"])
     content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
     assert stats == {"violations_first": 0, "rewrites": 0, "violations_final": 0}
     assert len(llm.calls) == 1
+
+
+def test_guard_rewrites_bare_label_in_numeric_sentence():
+    llm = ScriptedLLM([
+        "营收4009.2亿元[E1]。",
+        "营收4009.2亿元[E1](#evidence-E1)。",
+    ])
+    content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
+    assert stats["violations_first"] == 1
+    assert stats["violations_final"] == 0
+    assert "[E1](#evidence-E1)" in content
 
 
 def test_freeze_evidence_binds_chunk_ids():
@@ -93,8 +105,8 @@ def test_fact_guard_switch():
 def test_lead_writer_run_guard_end_to_end():
     """Full run(): one section + summary, guard on, scripted LLM."""
     llm = ScriptedLLM([
-        "本章分析宁德时代业绩。公司营收4009.2亿元[E1]。行业保持增长态势。",  # section
-        "报告显示宁德时代营收4009.2亿元[E1]，表现稳健。",                     # summary
+        "本章分析宁德时代业绩。公司营收4009.2亿元[E1](#evidence-E1)。行业保持增长态势。",  # section
+        "报告显示宁德时代营收4009.2亿元[E1](#evidence-E1)，表现稳健。",                     # summary
     ])
     state = {
         "question": "宁德时代2023年业绩如何",
@@ -111,3 +123,21 @@ def test_lead_writer_run_guard_end_to_end():
     assert update["guard_stats"]["s1"]["violations_final"] == 0
     refs = update["references"]
     assert refs[0]["label"] == "E1" and refs[0]["chunk_id"] == 1001
+
+
+def test_final_report_retains_distinct_targets_for_same_url():
+    state = {
+        "question": "业绩如何",
+        "outline": [{"id": "s1", "title": "业绩", "description": ""}],
+        "draft_sections": {"s1": "营收4009.2亿元[E1](#evidence-E1)，净利441.21亿元[E2](#evidence-E2)。"},
+        "references": [
+            {"label": "E1", "title": "年报", "url": "https://example.com/report"},
+            {"label": "E2", "title": "年报", "url": "https://example.com/report"},
+        ],
+        "critic_issues": [],
+        "quality_score": 0.8,
+    }
+    report = synthesizer_run(state, None)["final_answer"]
+    assert "[E1](#evidence-E1)" in report
+    assert '<a id="evidence-E1"></a>' in report
+    assert '<a id="evidence-E2"></a>' in report

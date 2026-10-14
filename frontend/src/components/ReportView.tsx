@@ -96,7 +96,8 @@ export function ReportView({ report }: Props) {
           <h3 className={styles.sectionTitle}>参考来源</h3>
           <ol className={styles.refList}>
             {references.map((ref, i) => (
-              <li key={i}>
+              <li key={i} id={ref.label ? `evidence-${ref.label}` : undefined}>
+                {ref.label && <span>[{ref.label}] </span>}
                 {ref.url && ref.url.startsWith('http') ? (
                   <a href={ref.url} target="_blank" rel="noopener noreferrer">
                     {ref.title || ref.url}

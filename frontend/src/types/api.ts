@@ -21,6 +21,7 @@ export interface ChartData {
 }
 
 export interface Reference {
+  label?: string
   title: string
   url: string
   date: string

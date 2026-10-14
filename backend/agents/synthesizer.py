@@ -13,6 +13,14 @@ Output: final_answer (complete Markdown report)
 import logging
 import time
 
+from backend.tools.citation_guard import (
+    build_guard_evidence,
+    build_rewrite_feedback,
+    guard_enabled,
+    verify,
+)
+from backend.tools.report_references import visible_references
+
 logger = logging.getLogger("synthesizer")
 
 _REVISE_SYSTEM = """\
@@ -130,15 +138,22 @@ def _build_markdown_report(
     if references:
         lines.append("## 参考来源")
         lines.append("")
-        for i, ref in enumerate(references[:15]):
+        # Guarded reports need one target for every citation label, including
+        # labels whose evidence items share a source URL.
+        shown_refs = visible_references(references, limit=15)
+        for i, ref in enumerate(shown_refs):
             title = ref.get("title", "")
             url   = ref.get("url", "")
             date  = ref.get("date", "")
             date_str = f" ({date[:10]})" if date else ""
+            label = ref.get("label", "")
+            if label:
+                lines.append(f'<a id="evidence-{label}"></a>')
+            prefix = f"[{label}] " if label else ""
             if url and url.startswith("http"):
-                lines.append(f"{i+1}. [{title}]({url}){date_str}")
+                lines.append(f"{i+1}. {prefix}[{title}]({url}){date_str}")
             else:
-                lines.append(f"{i+1}. {title or url}{date_str}")
+                lines.append(f"{i+1}. {prefix}{title or url}{date_str}")
         lines.append("")
 
     return "\n".join(lines)
@@ -149,6 +164,7 @@ def _apply_revisions(
     critic_issues: list[dict],
     outline: list[dict],
     llm,
+    guard_evidence: dict | None = None,
 ) -> dict:
     """Apply targeted revisions to sections flagged by CriticMaster."""
     if not critic_issues:
@@ -181,9 +197,28 @@ def _apply_revisions(
             f"审核发现的问题：\n{issues_desc}\n\n"
             "请根据审核意见修订章节内容。"
         )
+        system = _REVISE_SYSTEM
+        if guard_evidence is not None:
+            system += "\n保留正确的 Markdown 证据引用链接，如 [E1](#evidence-E1)；含数字的句子必须标注对应链接。\n"
 
         try:
-            revised_content = llm.chat(_REVISE_SYSTEM, user_msg, temperature=0.3)
+            revised_content = llm.chat(system, user_msg, temperature=0.3)
+            if guard_evidence is not None:
+                check = verify(revised_content, guard_evidence)
+                if not check.ok:
+                    retry_msg = (
+                        f"{user_msg}\n\n你上一版修订如下：\n{revised_content}\n\n"
+                        f"【引用校验失败】\n{build_rewrite_feedback(check.violations)}\n\n"
+                        "请重新修订全文，保留所有正确的证据链接；无法核实的数字请删除。"
+                    )
+                    revised_content = llm.chat(system, retry_msg, temperature=0.2)
+                    check = verify(revised_content, guard_evidence)
+                if not check.ok:
+                    logger.warning(
+                        "[Synthesizer] Rejected revision of '%s': %d citation violations; keeping original",
+                        sec_id, len(check.violations),
+                    )
+                    continue
             revised[sec_id] = revised_content
             logger.info("[Synthesizer] Revised section '%s'", sec_id)
         except Exception as exc:
@@ -215,24 +250,32 @@ def run(state: dict, llm) -> dict:
     quality_score  = state.get("quality_score", 0.7)
     question       = state.get("question", "")
 
-    # Deduplicate references by URL (keep first occurrence, preserve order)
-    _seen_urls: set = set()
+    # Guarded evidence labels must remain individually addressable even when
+    # several chunks came from the same URL.
+    _seen_refs: set = set()
     references: list = []
     for ref in references_raw:
         url = ref.get("url", "")
-        if url and url in _seen_urls:
+        label = ref.get("label", "")
+        key = ("label", label) if label else ("url", url)
+        if (label or url) and key in _seen_refs:
             continue
-        if url:
-            _seen_urls.add(url)
+        if label or url:
+            _seen_refs.add(key)
         references.append(ref)
 
     # Apply targeted revisions for high/medium severity issues
     # Skip in demo_mode (CriticMaster auto-passes → no issues to revise)
+    guard_evidence = (
+        build_guard_evidence(state["evidence_frozen"], data_points)
+        if guard_enabled(state) and state.get("evidence_frozen") else None
+    )
     if (not state.get("demo_mode", False)
             and critic_issues
             and any(i.get("severity") in ("high", "medium") for i in critic_issues)):
         print(f"[Synthesizer] Applying revisions for {len(critic_issues)} critic issues ...")
-        draft_sections = _apply_revisions(draft_sections, critic_issues, outline, llm)
+        draft_sections = _apply_revisions(
+            draft_sections, critic_issues, outline, llm, guard_evidence)
     elif state.get("demo_mode", False):
         logger.info("[Synthesizer] demo_mode: skipping LLM revisions")
 

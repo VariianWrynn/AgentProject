@@ -21,6 +21,7 @@ OFFLINE_TESTS=(
   tests/test_perf_report.py                # 性能报告统计口径
   tests/test_eval_set_integrity.py         # 评测集防编造校验
   tests/test_lead_writer_guard.py          # 事实约束写作回路（脚本化假 LLM）
+  tests/test_synthesizer_guard.py          # 最终修订后引用校验
   tests/test_text2sql_schema_retrieval.py  # 跨表 schema 选择
 )
 

@@ -14,6 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from backend.tools.citation_guard import (
+    build_guard_evidence,
     build_rewrite_feedback,
     format_evidence,
     guard_enabled,
@@ -27,7 +28,7 @@ _GUARD_SECTION_SYSTEM = """\
 
 【事实约束 — 必须严格遵守】
 1. 只允许使用下方「证据集」原文中出现的数字；禁止使用你自己知识中的任何数字。
-2. 每个包含数字的句子，句末必须标注证据编号，格式 [E3]，可多个如 [E1][E4]；数据指标用 [D1] 格式。
+2. 每个包含数字的句子，句末必须使用 Markdown 引用链接，格式 [E3](#evidence-E3)，可多个如 [E1](#evidence-E1)[E4](#evidence-E4)；数据指标用 [D1](#evidence-D1)。单独的 [E1] 只是普通文字，不算引用。链接文字与锚点编号必须一致。
 3. 数字必须与证据原文完全一致：不得四舍五入、不得换算单位、不得改写（如证据写 4009.2亿元 就写 4009.2亿元）。
 4. 证据集中没有依据的内容只做定性描述，不要编造任何数据；证据不足时明确写"现有证据未覆盖"。
 
@@ -42,7 +43,7 @@ _GUARD_SUMMARY_SYSTEM = """\
 
 【事实约束 — 必须严格遵守】
 1. 只允许使用报告正文中已出现且带证据编号的数字。
-2. 每个数字后保留其证据编号，如 装机7376万千瓦[E2]。
+2. 每个数字后保留其明确的 Markdown 引用链接，如 装机7376万千瓦[E2](#evidence-E2)。单独的 [E2] 不算引用。
 3. 不得引入报告正文之外的任何数字。
 
 只输出摘要正文。
@@ -211,18 +212,12 @@ def run(state: dict, llm) -> dict:
     sources_text = _format_sources(raw_sources)
 
     # Fact-constraint mode: writer sees only the frozen evidence set and must
-    # cite [E*]/[D*] labels; numbers are back-checked against evidence verbatim.
+    # cite explicit [E*]/[D*] links; numbers are checked against evidence.
     use_guard = guard_enabled(state) and bool(state.get("evidence_frozen"))
     guard_evidence: dict = {}
     guard_stats: dict = {}
     if use_guard:
-        guard_evidence = dict(state["evidence_frozen"])
-        for i, dp in enumerate(data_points):
-            guard_evidence[f"D{i + 1}"] = {
-                "text": f"{dp.get('metric', '')}: {dp.get('value', '')}",
-                "chunk_id": f"sql:{i + 1}",
-                "source": "text2sql",
-            }
+        guard_evidence = build_guard_evidence(state["evidence_frozen"], data_points)
         evidence_text = format_evidence(guard_evidence)
         print(f"[LeadWriter] FACT_GUARD on: {len(guard_evidence)} evidence items bound")
 
@@ -250,7 +245,7 @@ def run(state: dict, llm) -> dict:
                 f"章节描述：{sec_desc}\n"
                 f"关键词：{'、'.join(keywords)}\n\n"
                 f"研究假设：\n" + "\n".join(f"• {h}" for h in hypotheses[:3]) + "\n\n"
-                f"证据集（数字只能来自这里，引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
+                f"证据集（数字只能来自这里，引用格式 [E1](#evidence-E1)/[D1](#evidence-D1)）：\n{evidence_text}\n\n"
                 "请基于证据集撰写本章节内容（400-700字）。"
             )
         else:

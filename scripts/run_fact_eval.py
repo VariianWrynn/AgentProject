@@ -37,6 +37,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from backend.tools.citation_guard import has_citation
+
 EVAL_DIR = os.path.join("resources", "data", "eval")
 RUNS_DIR = os.path.join("docs", "reports", "fact_eval_runs")
 
@@ -116,10 +118,10 @@ def score_answer(item: dict, answer: str, guard_stats: dict | None = None) -> di
             return {"correct": True, "reason": "refused"}
         # An answer backed by verified citations (frozen web evidence) is NOT a
         # hallucination — the metric is "answered WITHOUT evidence", not "answered".
-        has_citation = bool(re.search(r"\[[ED]\d+\]", answer))
+        cited = has_citation(answer)
         zero_violations = bool(guard_stats) and all(
             s.get("violations_final", 1) == 0 for s in guard_stats.values())
-        if has_citation and zero_violations:
+        if cited and zero_violations:
             return {"correct": True, "reason": "answered_with_verified_citations"}
         return {"correct": False, "reason": "answered_without_evidence"}
     nums_ok = all(n in ans for n in item["key_numbers"])
