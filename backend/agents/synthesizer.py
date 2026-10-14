@@ -130,15 +130,22 @@ def _build_markdown_report(
     if references:
         lines.append("## 参考来源")
         lines.append("")
-        for i, ref in enumerate(references[:15]):
+        # Guarded reports need one target for every citation label, including
+        # labels whose evidence items share a source URL.
+        shown_refs = references if any(ref.get("label") for ref in references) else references[:15]
+        for i, ref in enumerate(shown_refs):
             title = ref.get("title", "")
             url   = ref.get("url", "")
             date  = ref.get("date", "")
             date_str = f" ({date[:10]})" if date else ""
+            label = ref.get("label", "")
+            if label:
+                lines.append(f'<a id="evidence-{label}"></a>')
+            prefix = f"[{label}] " if label else ""
             if url and url.startswith("http"):
-                lines.append(f"{i+1}. [{title}]({url}){date_str}")
+                lines.append(f"{i+1}. {prefix}[{title}]({url}){date_str}")
             else:
-                lines.append(f"{i+1}. {title or url}{date_str}")
+                lines.append(f"{i+1}. {prefix}{title or url}{date_str}")
         lines.append("")
 
     return "\n".join(lines)
@@ -215,15 +222,18 @@ def run(state: dict, llm) -> dict:
     quality_score  = state.get("quality_score", 0.7)
     question       = state.get("question", "")
 
-    # Deduplicate references by URL (keep first occurrence, preserve order)
-    _seen_urls: set = set()
+    # Guarded evidence labels must remain individually addressable even when
+    # several chunks came from the same URL.
+    _seen_refs: set = set()
     references: list = []
     for ref in references_raw:
         url = ref.get("url", "")
-        if url and url in _seen_urls:
+        label = ref.get("label", "")
+        key = ("label", label) if label else ("url", url)
+        if (label or url) and key in _seen_refs:
             continue
-        if url:
-            _seen_urls.add(url)
+        if label or url:
+            _seen_refs.add(key)
         references.append(ref)
 
     # Apply targeted revisions for high/medium severity issues

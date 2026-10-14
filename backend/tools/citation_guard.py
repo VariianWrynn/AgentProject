@@ -4,7 +4,8 @@ backend/tools/citation_guard.py — Pre-hoc citation guard (fact constraints).
 Enforces, at write time, that every statistic in a drafted section is bound to
 a frozen evidence item:
 
-  1. citation labels ([E1], [E2] …) must exist in the frozen evidence set
+  1. explicit citation links ([E1](#evidence-E1), etc.) must exist in the
+     frozen evidence set; plain [E1] in prose is never a citation
   2. every significant number in a cited sentence must appear verbatim
      (after normalization) in the text of the evidence it cites
   3. any sentence containing a significant number must carry a citation
@@ -39,8 +40,16 @@ _FULLWIDTH = str.maketrans("０１２３４５６７８９．", "0123456789.")
 # number possibly containing thousand separators, e.g. 1,294.98 / 98,521
 _NUM_RE = re.compile(r"\d[\d,，]*(?:\.\d+)?")
 
-# E = frozen search/RAG evidence, D = structured data points (Text2SQL)
-_CITE_RE = re.compile(r"\[([ED]\d+)\]")
+# E = frozen search/RAG evidence, D = structured data points (Text2SQL).
+# The matching fragment is intentional: a bare [E1] may be literal prose.
+# Back-reference requires the visible label and destination to agree.
+_CITE_RE = re.compile(r"\[([ED]\d+)\]\(#evidence-\1\)")
+_LITERAL_LABEL_RE = re.compile(r"\[[ED]\d+\]")
+
+
+def has_citation(text: str) -> bool:
+    """Recognize only explicit evidence links, never bare label text."""
+    return _CITE_RE.search(text) is not None
 
 _SENT_SPLIT_RE = re.compile(r"(?<=[。！？\n])")
 
@@ -78,7 +87,9 @@ def extract_claims(text: str) -> list[dict]:
         if not sent:
             continue
         citations = _CITE_RE.findall(sent)
-        body = _CITE_RE.sub("", sent)
+        # Keep literal labels in the displayed sentence, but their digits are
+        # identifiers, not statistics to check against evidence.
+        body = _LITERAL_LABEL_RE.sub("", _CITE_RE.sub("", sent))
         claims.append({
             "sentence": sent,
             "citations": citations,
@@ -152,7 +163,7 @@ def verify(text: str, evidence: dict) -> VerifyResult:
 
 def build_rewrite_feedback(violations: list[dict]) -> str:
     """Format violations as rewrite instructions for the retry prompt."""
-    lines = ["以下句子未通过证据校验，请逐条修正（只允许使用证据原文中的数字，并正确标注 [E编号]）："]
+    lines = ["以下句子未通过证据校验，请逐条修正（只允许使用证据原文中的数字，并用 [E1](#evidence-E1) 这种明确链接标注引用；单独的 [E1] 是普通文字）："]
     for i, v in enumerate(violations, 1):
         lines.append(f"{i}. {v['detail']}\n   问题句：{v['sentence'][:80]}")
     return "\n".join(lines)
