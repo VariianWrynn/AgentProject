@@ -13,6 +13,13 @@ Output: final_answer (complete Markdown report)
 import logging
 import time
 
+from backend.tools.citation_guard import (
+    build_guard_evidence,
+    build_rewrite_feedback,
+    guard_enabled,
+    verify,
+)
+
 logger = logging.getLogger("synthesizer")
 
 _REVISE_SYSTEM = """\
@@ -156,6 +163,7 @@ def _apply_revisions(
     critic_issues: list[dict],
     outline: list[dict],
     llm,
+    guard_evidence: dict | None = None,
 ) -> dict:
     """Apply targeted revisions to sections flagged by CriticMaster."""
     if not critic_issues:
@@ -188,9 +196,28 @@ def _apply_revisions(
             f"审核发现的问题：\n{issues_desc}\n\n"
             "请根据审核意见修订章节内容。"
         )
+        system = _REVISE_SYSTEM
+        if guard_evidence is not None:
+            system += "\n保留正确的 Markdown 证据引用链接，如 [E1](#evidence-E1)；含数字的句子必须标注对应链接。\n"
 
         try:
-            revised_content = llm.chat(_REVISE_SYSTEM, user_msg, temperature=0.3)
+            revised_content = llm.chat(system, user_msg, temperature=0.3)
+            if guard_evidence is not None:
+                check = verify(revised_content, guard_evidence)
+                if not check.ok:
+                    retry_msg = (
+                        f"{user_msg}\n\n你上一版修订如下：\n{revised_content}\n\n"
+                        f"【引用校验失败】\n{build_rewrite_feedback(check.violations)}\n\n"
+                        "请重新修订全文，保留所有正确的证据链接；无法核实的数字请删除。"
+                    )
+                    revised_content = llm.chat(system, retry_msg, temperature=0.2)
+                    check = verify(revised_content, guard_evidence)
+                if not check.ok:
+                    logger.warning(
+                        "[Synthesizer] Rejected revision of '%s': %d citation violations; keeping original",
+                        sec_id, len(check.violations),
+                    )
+                    continue
             revised[sec_id] = revised_content
             logger.info("[Synthesizer] Revised section '%s'", sec_id)
         except Exception as exc:
@@ -238,11 +265,16 @@ def run(state: dict, llm) -> dict:
 
     # Apply targeted revisions for high/medium severity issues
     # Skip in demo_mode (CriticMaster auto-passes → no issues to revise)
+    guard_evidence = (
+        build_guard_evidence(state["evidence_frozen"], data_points)
+        if guard_enabled(state) and state.get("evidence_frozen") else None
+    )
     if (not state.get("demo_mode", False)
             and critic_issues
             and any(i.get("severity") in ("high", "medium") for i in critic_issues)):
         print(f"[Synthesizer] Applying revisions for {len(critic_issues)} critic issues ...")
-        draft_sections = _apply_revisions(draft_sections, critic_issues, outline, llm)
+        draft_sections = _apply_revisions(
+            draft_sections, critic_issues, outline, llm, guard_evidence)
     elif state.get("demo_mode", False):
         logger.info("[Synthesizer] demo_mode: skipping LLM revisions")
 

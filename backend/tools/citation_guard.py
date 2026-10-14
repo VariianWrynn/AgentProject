@@ -102,6 +102,18 @@ def _evidence_text(item) -> str:
     return item["text"] if isinstance(item, dict) else str(item)
 
 
+def build_guard_evidence(frozen: dict, data_points: list[dict]) -> dict:
+    """Use the same E/D label-to-text mapping at writing and final revision."""
+    evidence = dict(frozen)
+    for i, dp in enumerate(data_points, 1):
+        evidence[f"D{i}"] = {
+            "text": f"{dp.get('metric', '')}: {dp.get('value', '')}",
+            "chunk_id": f"sql:{i}",
+            "source": "text2sql",
+        }
+    return evidence
+
+
 @dataclass
 class VerifyResult:
     ok: bool

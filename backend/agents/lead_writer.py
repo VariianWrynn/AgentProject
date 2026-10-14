@@ -14,6 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from backend.tools.citation_guard import (
+    build_guard_evidence,
     build_rewrite_feedback,
     format_evidence,
     guard_enabled,
@@ -216,13 +217,7 @@ def run(state: dict, llm) -> dict:
     guard_evidence: dict = {}
     guard_stats: dict = {}
     if use_guard:
-        guard_evidence = dict(state["evidence_frozen"])
-        for i, dp in enumerate(data_points):
-            guard_evidence[f"D{i + 1}"] = {
-                "text": f"{dp.get('metric', '')}: {dp.get('value', '')}",
-                "chunk_id": f"sql:{i + 1}",
-                "source": "text2sql",
-            }
+        guard_evidence = build_guard_evidence(state["evidence_frozen"], data_points)
         evidence_text = format_evidence(guard_evidence)
         print(f"[LeadWriter] FACT_GUARD on: {len(guard_evidence)} evidence items bound")
 
