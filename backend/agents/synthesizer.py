@@ -19,6 +19,7 @@ from backend.tools.citation_guard import (
     guard_enabled,
     verify,
 )
+from backend.tools.report_references import visible_references
 
 logger = logging.getLogger("synthesizer")
 
@@ -139,7 +140,7 @@ def _build_markdown_report(
         lines.append("")
         # Guarded reports need one target for every citation label, including
         # labels whose evidence items share a source URL.
-        shown_refs = references if any(ref.get("label") for ref in references) else references[:15]
+        shown_refs = visible_references(references, limit=15)
         for i, ref in enumerate(shown_refs):
             title = ref.get("title", "")
             url   = ref.get("url", "")

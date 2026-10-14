@@ -44,6 +44,7 @@ _NUM_RE = re.compile(r"\d[\d,，]*(?:\.\d+)?")
 # The matching fragment is intentional: a bare [E1] may be literal prose.
 # Back-reference requires the visible label and destination to agree.
 _CITE_RE = re.compile(r"\[([ED]\d+)\]\(#evidence-\1\)")
+_EVIDENCE_LINK_RE = re.compile(r"\[([ED]\d+)\]\(#evidence-([ED]\d+)\)")
 _LITERAL_LABEL_RE = re.compile(r"\[[ED]\d+\]")
 
 
@@ -131,6 +132,13 @@ def verify(text: str, evidence: dict) -> VerifyResult:
 
     claims = extract_claims(text)
     for claim in claims:
+        for label, target in _EVIDENCE_LINK_RE.findall(claim["sentence"]):
+            if label != target:
+                violations.append({
+                    "type": "invalid_citation",
+                    "sentence": claim["sentence"],
+                    "detail": f"引用标签 [{label}] 与链接目标 [{target}] 不一致",
+                })
         cited_texts = []
         for label in claim["citations"]:
             if label not in evidence:

@@ -112,6 +112,12 @@ def test_mismatched_link_target_is_not_a_citation():
     assert any(v["type"] == "uncited_number" for v in verify(text, EVIDENCE).violations)
 
 
+def test_mismatched_link_target_fails_even_without_numbers():
+    result = verify("政策变化[E1](#evidence-E2)。", EVIDENCE)
+    assert not result.ok
+    assert any(v["type"] == "invalid_citation" for v in result.violations)
+
+
 def test_fact_eval_does_not_count_literal_label_as_verified_citation():
     item = {"type": "unanswerable", "key_numbers": []}
     stats = {"s1": {"violations_final": 0}}

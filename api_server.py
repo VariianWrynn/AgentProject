@@ -159,6 +159,7 @@ from typing import Literal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import langgraph_agent as _lga
+from backend.tools.report_references import visible_references
 
 # ── singletons ────────────────────────────────────────────────────────────────
 print("[API] Building LangGraph …")
@@ -451,9 +452,10 @@ def _build_report_result(state: dict, sid: str, elapsed_ms: float) -> dict:
         "title":           state.get("question", "")[:80],
         "intent":          state.get("intent", ""),
         "sections":        sections,
-        "summary":         summary_content[:300] if summary_content else "",
+        "summary":         (summary_content if any(r.get("label") for r in references)
+                            else summary_content[:300]),
         "charts_data":     charts_data,
-        "references":      references[:10],
+        "references":      visible_references(references, limit=10),
         "quality_score":   quality_score,
         "knowledge_graph": {},
         "latency_ms":      elapsed_ms,
