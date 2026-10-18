@@ -5,9 +5,9 @@ import { HITLDecisionCard } from './HITLDecisionCard'
 import styles from './ProgressStream.module.css'
 
 interface Props {
-  question: string
   sessionId: string
   onComplete: () => void
+  onError: (message: string) => void
 }
 
 interface DisplayEvent {
@@ -30,6 +30,7 @@ const EVENT_ICONS: Record<string, string> = {
   answer:          'ℹ️',
   error:           '❌',
   awaiting_review: '⚠️',
+  route:           '↪️',
 }
 
 function eventLabel(ev: SSEEvent): string {
@@ -41,7 +42,7 @@ function eventLabel(ev: SSEEvent): string {
   return ev.type
 }
 
-export function ProgressStream({ question, sessionId, onComplete }: Props) {
+export function ProgressStream({ sessionId, onComplete, onError }: Props) {
   const [events, setEvents] = useState<DisplayEvent[]>([])
   const [connected, setConnected] = useState(false)
   const [done, setDone] = useState(false)
@@ -51,13 +52,14 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
     issueSummary: string
   } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const startTimeRef = useRef(Date.now())
+  const startTimeRef = useRef(0)
   const esRef = useRef<EventSource | null>(null)
   const counterRef = useRef(0)
 
   useEffect(() => {
     startTimeRef.current = Date.now()
-    const es = api.streamResearch(question, sessionId)
+    let completed = false
+    const es = api.streamQuery(sessionId)
     esRef.current = es
 
     es.onopen = () => setConnected(true)
@@ -94,6 +96,7 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
         }
 
         if (ev.type === 'done') {
+          completed = true
           setDone(true)
           es.close()
           // Small delay so user sees the "done" event before report loads
@@ -102,6 +105,7 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
 
         if (ev.type === 'error') {
           es.close()
+          onError(ev.content ?? '执行失败')
         }
       } catch {
         // ignore parse errors
@@ -110,8 +114,10 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
 
     es.onerror = () => {
       setConnected(false)
+      es.close()
+      if (!completed) onError('进度连接中断')
       // If done is already set, error is just the stream closing — ignore
-      if (!done) {
+      if (!completed) {
         setEvents((prev) => [
           ...prev,
           {
@@ -127,7 +133,7 @@ export function ProgressStream({ question, sessionId, onComplete }: Props) {
     return () => {
       es.close()
     }
-  }, [question, sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll to bottom on new events
   useEffect(() => {

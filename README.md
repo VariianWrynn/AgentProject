@@ -127,9 +127,11 @@ npm run dev
 API 服务器 FastAPI :8003  api_server.py
     │
     ▼
-LangGraph 多智能体流水线  langgraph_agent.py
-  ChiefArchitect → DeepScout → DataAnalyst
-  → LeadWriter → CriticMaster → Synthesizer
+任务复杂度识别  query_entry.py
+    ├── 简短问答 → ReAct 图  langgraph_agent.py
+    └── 综合研究/明确报告 → Multiagent 图  langgraph_agent.py
+        ChiefArchitect → DeepScout → DataAnalyst
+        → LeadWriter → CriticMaster → Synthesizer
     │
     ▼
 MCP 工具服务器 FastAPI :8002  mcp_server.py  [Redis 缓存]
@@ -138,6 +140,12 @@ MCP 工具服务器 FastAPI :8002  mcp_server.py  [Redis 缓存]
     ├─── SQLite energy.db    Text2SQL 能源财务数据
     └─── Bocha 网页搜索      中文互联网检索（HTTPS）
 ```
+
+前端统一调用 `POST /query`（`question`、可选 `session_id` 和 `demo_mode`），并通过
+`GET /query/stream?session_id=...` 获取进度。响应中的 `route` 为 `react` 时读取
+`answer`，为 `multiagent` 时读取 `report`；两种响应都包含 `route_reason` 和领域
+`intent`。明确要求研究报告时直接进入 Multiagent；其余问题由独立分类器判断，
+分类失败或不确定时进入 ReAct。原有 `/chat` 与 `/research/report` 继续可用。
 
 **智能体角色说明：**
 
@@ -195,7 +203,7 @@ python backend/tools/ingest_files.py
 | 服务 | 端口 | 用途 |
 |------|------|------|
 | MCP 服务器 | 8002 | 工具接口（RAG、SQL、网页搜索） |
-| API 服务器 | 8003 | 用户接口 `/chat` + `/research/*` |
+| API 服务器 | 8003 | 统一接口 `/query` + 兼容接口 `/chat`、`/research/*` |
 | 前端（开发） | 5173 | React 开发服务器 |
 | Milvus | 19530 | 向量数据库 |
 | Redis | 6379 | 会话缓存 + 智能体记忆 |
@@ -238,6 +246,7 @@ python tests/test_mcp_api.py     # MCP 工具接口
 | 文件 | 用途 |
 |------|------|
 | `api_server.py` | 用户接口 FastAPI 服务器（端口 8003） |
+| `query_entry.py` | 独立复杂度识别与双图调度 |
 | `mcp_server.py` | 带 Redis 缓存的工具服务（端口 8002） |
 | `langgraph_agent.py` | LangGraph 编排（双图流水线） |
 | `llm_router.py` | 按智能体角色路由 API Key |
