@@ -34,6 +34,22 @@ def test_classifier_failure_falls_back_to_react():
     assert classify_route("问题", fail).route == "react"
 
 
+def test_cross_document_question_stays_short_answer_even_if_classifier_prefers_report():
+    question = "What are the major acquisitions a company made across three fiscal years?"
+    decision = classify_route(question, lambda _q: {
+        "route": "multiagent", "confidence": 0.99, "reason": "several years and sources"})
+    assert decision.route == "react"
+
+
+@pytest.mark.parametrize("question", [
+    "Does the company have positive working capital? Explain why if not.",
+    "Among operating, investing and financing activities, which had the most cash flow?",
+])
+def test_direct_qa_with_followup_instruction_stays_react(question):
+    assert classify_route(question, lambda _q: {
+        "route": "multiagent", "confidence": 0.99}).route == "react"
+
+
 def test_dispatch_react_shape_and_events():
     events = []
     result = dispatch_query(

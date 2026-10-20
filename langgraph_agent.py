@@ -72,7 +72,7 @@ _REFLECTOR_SYSTEM_V2 = _REFLECTOR_SYSTEM.replace(
 ).replace(
     '- If rag_search returned relevant content, prefer "done" over further steps.',
     '- Choose "done" only when the retrieved content supports every part of the answer.',
-) + "\nFor numerical or comparative answers, check the operands, period, and units in the retrieved source. Cite the source filename beside each factual conclusion. If the evidence is insufficient, say which part cannot be verified instead of inferring it.\n"
+) + "\nFor numerical or comparative answers, check the operands, period, and units in the retrieved source. Cite the source filename beside each factual conclusion. Answer only what the question asks; omit background and explanations that are not directly supported by retrieved evidence. If the evidence is insufficient, say which part cannot be verified instead of inferring it.\n"
 
 # Router system prompt
 _ROUTER_SYSTEM = """\
@@ -106,6 +106,7 @@ You are a final-answer synthesiser. Using ONLY the research steps provided,
 write a clear, well-structured answer to the original question.
 For each factual conclusion cite the retrieved source filename. Check calculations,
 periods, and units against the source; state any unsupported part as uncertain.
+Answer only what the question asks; omit unsupported background and extra analysis.
 Output plain text only — no XML tags, no tool calls, no JSON, no markdown code blocks.
 """
 
@@ -264,7 +265,7 @@ def executor_node(state: AgentState) -> dict:
 # ---------------------------------------------------------------------------
 
 def reflector_node(state: AgentState) -> dict:
-    ctx     = _steps_context(state["steps_executed"])
+    ctx     = _steps_context(state["steps_executed"], max_result_chars=5000)
     user_msg = (
         f"Original question: {state['question']}\n\n"
         f"Steps executed:\n{ctx}"
@@ -344,7 +345,8 @@ def critic_node(state: AgentState) -> dict:
 
     if not answer:
         # Synthesise from accumulated steps
-        ctx = _steps_context(state["steps_executed"]) if state["steps_executed"] else "(no steps executed)"
+        ctx = (_steps_context(state["steps_executed"], max_result_chars=5000)
+               if state["steps_executed"] else "(no steps executed)")
         raw = _llm.chat(
             _CRITIC_SYSTEM,
             f"Question: {state['question']}\n\nResearch steps:\n{ctx}\n\nAnswer:",

@@ -5,9 +5,11 @@ No Milvus, Redis, web search, or SQL server is used in this evaluation track.
 """
 
 import argparse
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -49,6 +51,11 @@ class FrozenCorpus:
                 segment = compact[offset:offset + 850]
                 if segment:
                     self.chunks.append((name, offset, segment))
+        self.term_counts = [Counter(re.findall(r"[a-z0-9]+", chunk.lower()))
+                            for _, _, chunk in self.chunks]
+        self.doc_freq = Counter(term for counts in self.term_counts for term in counts)
+        self.avg_terms = (sum(sum(counts.values()) for counts in self.term_counts)
+                          / len(self.term_counts))
 
     def check(self) -> None:
         current = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
@@ -64,15 +71,27 @@ class FrozenCorpus:
     def query(self, question: str, top_k: int = 5) -> list[dict]:
         self.check()
         query = self._grams(question)
+        english_terms = set(re.findall(r"[a-z0-9]+", question.lower()))
+        use_bm25 = bool(english_terms) and not re.search(r"[\u4e00-\u9fff]", question)
         scored = []
-        for name, offset, content in self.chunks:
-            overlap = len(query & self._grams(content)) / max(1, len(query))
-            if overlap:
-                scored.append((overlap, name, offset, content))
+        for (name, offset, content), counts in zip(self.chunks, self.term_counts):
+            if use_bm25:
+                length = sum(counts.values())
+                score = sum(
+                    math.log(1 + (len(self.chunks) - self.doc_freq[term] + 0.5)
+                             / (self.doc_freq[term] + 0.5))
+                    * (counts[term] * 2.2)
+                    / (counts[term] + 1.2 * (0.25 + 0.75 * length / self.avg_terms))
+                    for term in english_terms if counts[term]
+                )
+            else:
+                score = len(query & self._grams(content)) / max(1, len(query))
+            if score:
+                scored.append((score, name, offset, content))
         scored.sort(key=lambda x: (-x[0], x[1], x[2]))
         return [{"source": name, "chunk_id": offset, "content": content,
-                 "score": round(0.5 + 0.5 * overlap, 4)}
-                for overlap, name, offset, content in scored[:top_k]]
+                 "score": round(0.5 + 0.5 * score / (score + 1), 4)}
+                for score, name, offset, content in scored[:top_k]]
 
     def list_sources(self) -> list[str]:
         self.check()
@@ -170,7 +189,7 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path) -> dict:
         hits = []
         for question in questions:
             hits.extend({"title": h["source"], "url": h["source"],
-                         "snippet": h["content"][:400], "score": h["score"],
+                         "snippet": h["content"], "score": h["score"],
                          "chunk_id": h["chunk_id"], "source_type": "rag", "query": question}
                         for h in corpus.query(question, 3))
         return hits

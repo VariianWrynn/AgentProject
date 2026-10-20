@@ -16,6 +16,23 @@ def test_frozen_corpus_refuses_changed_files(tmp_path):
         corpus.query("宁德时代净利润", 1)
 
 
+def test_english_frozen_search_prioritizes_rare_subject_terms(tmp_path):
+    (tmp_path / "target.txt").write_text(
+        "Optical coherence tomography OCT dispersion compensation by hardware.",
+        encoding="utf-8")
+    (tmp_path / "distractor.txt").write_text(
+        "How to compensate a computational method by hardware or "
+        "computational method in many contexts.",
+        encoding="utf-8")
+    for index in range(10):
+        (tmp_path / f"common_{index}.txt").write_text(
+            "How to use a computational method by hardware in many contexts.",
+            encoding="utf-8")
+    corpus = FrozenCorpus(tmp_path)
+    hits = corpus.query("How to compensate dispersion in OCT by hardware or computational method", 2)
+    assert hits[0]["source"] == "target.txt"
+
+
 def test_paired_summary_keeps_missing_and_failed_runs_out_of_accuracy():
     cases = [{"id": "q1", "track": "qa", "category": "factual"},
              {"id": "q2", "track": "qa", "category": "factual"}]

@@ -33,7 +33,17 @@ def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
     citation in the final report is auditable back to a concrete chunk/page.
     """
     evidence: dict[str, dict] = {}
-    for i, item in enumerate(unique[:max_items]):
+    primary = []
+    extra = []
+    seen_sources = set()
+    for item in unique:
+        source = item.get("url") or item.get("title") or item.get("snippet")
+        if source in seen_sources:
+            extra.append(item)
+        else:
+            seen_sources.add(source)
+            primary.append(item)
+    for i, item in enumerate((primary + extra)[:max_items]):
         if item.get("source_type") == "rag" and item.get("chunk_id") is not None:
             cid = item["chunk_id"]
         else:
@@ -98,7 +108,7 @@ async def _search_rag(session: Any, query: str) -> list[dict]:
         return [
             {
                 "title":   it.get("source", ""),
-                "snippet": it.get("content", "")[:400],
+                "snippet": it.get("content", ""),
                 "url":     it.get("source", ""),
                 "score":   it.get("score", 0.0),
                 "chunk_id": it.get("chunk_id"),
@@ -139,13 +149,17 @@ async def _search_all(questions: list[str]) -> list[dict]:
 
 
 def _deduplicate(results: list[dict]) -> list[dict]:
-    """Remove duplicate results by URL/content fingerprint."""
+    """Keep separate RAG chunks while removing repeated hits and web pages."""
     seen = set()
     unique = []
     for r in results:
-        key = r.get("url") or hashlib.md5(
-            (r.get("snippet") or "").encode("utf-8")
-        ).hexdigest()
+        url = r.get("url") or r.get("title")
+        if r.get("source_type") == "rag" and r.get("chunk_id") is not None:
+            key = ("rag", url, r["chunk_id"])
+        else:
+            key = ("source", url or hashlib.md5(
+                (r.get("snippet") or "").encode("utf-8")
+            ).hexdigest())
         if key not in seen and key:
             seen.add(key)
             unique.append(r)

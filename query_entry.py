@@ -8,8 +8,8 @@ from typing import Callable, Iterable
 
 ROUTE_PROMPT = """你是任务复杂度分类器，只决定执行路径，不判断领域意图。
 用户明确要求研究报告时选择 multiagent。
-需要多个子问题、跨文档或跨来源核实、综合研究时选择 multiagent。
-单一事实查询、普通问答、局部解释选择 react。
+要求长篇综合研究或系统比较时选择 multiagent。
+普通问答即使需要多个年份、子问题或来源核实，也选择 react。
 拿不准时选择 uncertain。只输出 JSON：
 {"route":"react|multiagent|uncertain","reason":"简短原因","confidence":0.0}
 """
@@ -18,6 +18,11 @@ _REPORT_REQUEST = re.compile(
     r"(?:生成|撰写|写|出|制作|给我|提供).{0,12}(?:(?:研究|调研|分析|深度)?报告)"
     r"|(?:research report|detailed report|in-depth report|write a report|"
     r"structured literature synthesis|literature review)", re.IGNORECASE,
+)
+_DIRECT_QUESTION = re.compile(
+    r"^\s*(?:what|which|who|when|where|why|how|is|are|was|were|"
+    r"do|does|did|has|have|had|can|could|should|will|among)\b",
+    re.IGNORECASE,
 )
 
 
@@ -30,6 +35,9 @@ class RouteDecision:
 def classify_route(question: str, classify_json: Callable[[str], dict]) -> RouteDecision:
     if _REPORT_REQUEST.search(question):
         return RouteDecision("multiagent", "明确要求研究报告")
+    first_line = question.split("\n\n", 1)[0].strip()
+    if ("?" in first_line or "？" in first_line) and _DIRECT_QUESTION.match(first_line):
+        return RouteDecision("react", "直接问答")
     try:
         result = classify_json(question)
         route = result.get("route")

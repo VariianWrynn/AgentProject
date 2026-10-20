@@ -1,3 +1,5 @@
+import pytest
+
 from backend.agents.chief_architect import run as plan_research
 from backend.agents import data_analyst
 from backend.agents import deep_scout
@@ -56,3 +58,48 @@ def test_literature_search_keeps_original_question_without_writing_instructions(
              "research_questions": ["What is speckle variance in OCT?"]}
     assert deep_scout._search_queries(state) == [
         "How can OCT detect dynamic signals?", "What is speckle variance in OCT?"]
+
+
+def test_rag_dedup_preserves_distinct_chunks_from_one_document():
+    hits = [
+        {"url": "paper.txt", "source_type": "rag", "chunk_id": 0, "snippet": "first"},
+        {"url": "paper.txt", "source_type": "rag", "chunk_id": 700, "snippet": "second"},
+        {"url": "paper.txt", "source_type": "rag", "chunk_id": 0, "snippet": "duplicate"},
+        {"url": "https://example.org", "source_type": "web", "snippet": "web"},
+        {"url": "https://example.org", "source_type": "web", "snippet": "duplicate web"},
+    ]
+    assert [hit["snippet"] for hit in deep_scout._deduplicate(hits)] == [
+        "first", "second", "web"]
+
+
+def test_rag_search_retains_complete_returned_chunk(monkeypatch):
+    chunk = "evidence " * 90
+
+    class Response:
+        def json(self):
+            return {"result": [{"source": "paper.txt", "content": chunk,
+                                "score": 0.9, "chunk_id": 0}]}
+
+    class InlineLoop:
+        async def run_in_executor(self, _executor, call):
+            return call()
+
+    monkeypatch.setattr(deep_scout.requests, "post", lambda *_a, **_k: Response())
+    monkeypatch.setattr(deep_scout.asyncio, "get_event_loop", lambda: InlineLoop())
+    with pytest.raises(StopIteration) as finished:
+        deep_scout._search_rag(None, "research question").send(None)
+    hits = finished.value.value
+    assert hits[0]["snippet"] == chunk
+
+
+def test_frozen_evidence_prioritizes_distinct_sources_before_extra_chunks():
+    hits = [
+        {"title": "a.txt", "url": "a.txt", "source_type": "rag",
+         "chunk_id": 0, "snippet": "first", "score": 0.9},
+        {"title": "a.txt", "url": "a.txt", "source_type": "rag",
+         "chunk_id": 700, "snippet": "second", "score": 0.8},
+        {"title": "b.txt", "url": "b.txt", "source_type": "rag",
+         "chunk_id": 0, "snippet": "another source", "score": 0.7},
+    ]
+    evidence = deep_scout.freeze_evidence(hits, max_items=2)
+    assert [item["source"] for item in evidence.values()] == ["a.txt", "b.txt"]
