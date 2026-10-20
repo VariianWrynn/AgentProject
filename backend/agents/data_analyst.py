@@ -140,26 +140,10 @@ def _generate_demo_chart(question: str) -> list[dict]:
 
 
 def _build_queries(state: dict) -> list[str]:
-    """Build SQL queries from outline + question context."""
+    """Only explicit structured-data questions need the optional SQL tool."""
     question   = state["question"]
     intent     = state.get("intent", "research")
-    outline    = state.get("outline", [])
-
-    queries = []
-    if intent in ("data_query", "market_analysis"):
-        # Primary: direct data query
-        queries.append(question)
-    # Add one query per outline section that implies data
-    data_sections = [s for s in outline if any(
-        kw in s.get("title", "") for kw in ("数据", "分析", "装机", "价格", "财务", "规模")
-    )]
-    for sec in data_sections[:2]:
-        kws = sec.get("keywords", [])
-        if kws:
-            queries.append(kws[0] + "数据统计")
-    # Always add a company comparison query
-    queries.append("各能源企业2023年营收对比")
-    return list(dict.fromkeys(queries))[:4]   # deduplicate, limit to 4
+    return [question] if intent == "data_query" else []
 
 
 def run(state: dict, llm) -> dict:
@@ -181,6 +165,8 @@ def run(state: dict, llm) -> dict:
         return {"data_points": [], "charts_data": charts_data, "phase": "writing"}
 
     queries = _build_queries(state)
+    if not queries:
+        return {"data_points": [], "charts_data": [], "phase": "writing"}
     data_points: list[dict] = []
     charts_data: list[dict] = []
     all_rows: list[dict]    = []

@@ -168,7 +168,7 @@ def _extract_facts(results: list[dict], llm) -> list[dict]:
 要求：
 - 每个事实必须有具体数字、时间或来源
 - 排除主观判断或推测性内容
-- 用中文表达，简洁准确（30字内）
+- 保留原资料的语言、实体和专业术语，简洁准确
 
 返回JSON格式：
 {"facts": [{"content": "事实描述", "source": "来源URL或文档名", "credibility": 0.8}]}
@@ -195,6 +195,14 @@ def _extract_facts(results: list[dict], llm) -> list[dict]:
         return []
 
 
+def _search_queries(state: dict) -> list[str]:
+    """Keep the user's core question in retrieval alongside planned queries."""
+    question = state["question"].split("\n\n", 1)[0].strip()
+    planned = state.get("research_questions") or []
+    pending = state.get("pending_queries") or []
+    return list(dict.fromkeys([question] + planned + pending))
+
+
 def run(state: dict, llm) -> dict:
     """
     Run DeepScout parallel search.
@@ -206,11 +214,7 @@ def run(state: dict, llm) -> dict:
     Returns:
         partial state update
     """
-    questions = state.get("research_questions") or [state["question"]]
-    pending   = state.get("pending_queries") or []
-
-    # Merge original questions + pending re-research queries
-    all_questions = list(dict.fromkeys(questions + pending))
+    all_questions = _search_queries(state)
 
     # demo_mode: limit to 1 question for faster completion (ChiefArchitect already sends 1)
     demo_mode = state.get("demo_mode", False)

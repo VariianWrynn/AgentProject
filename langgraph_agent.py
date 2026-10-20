@@ -61,33 +61,31 @@ HITL_TIMEOUT       = 300   # seconds before auto-approving when no user response
 # Prompt variants
 # ---------------------------------------------------------------------------
 
-# Planner: inject text2sql tool between doc_summary and web_search
-_PLANNER_SYSTEM_V2 = _PLANNER_SYSTEM.replace(
-    "  web_search(query)       — searches the internet (last resort fallback)",
-    "  text2sql(query)         — query structured energy database (company financials,\n"
-    "                            capacity stats, price index) PREFERRED for data_query\n"
-    "                            and market_analysis intents\n"
-    "  web_search(query)       — searches the internet (last resort fallback)",
-)
+# Keep the retrieval-first planner for general questions. The optional SQL
+# tool remains available to explicit callers, but is not a default data source.
+_PLANNER_SYSTEM_V2 = _PLANNER_SYSTEM
 
 # Reflector: add confidence field to JSON schema
 _REFLECTOR_SYSTEM_V2 = _REFLECTOR_SYSTEM.replace(
     '"answer": "complete, well-structured answer — REQUIRED when decision is done, else empty string"',
     '"confidence": 0.85,\n  "answer": "complete answer when done, else empty string"',
-)
+).replace(
+    '- If rag_search returned relevant content, prefer "done" over further steps.',
+    '- Choose "done" only when the retrieved content supports every part of the answer.',
+) + "\nFor numerical or comparative answers, check the operands, period, and units in the retrieved source. Cite the source filename beside each factual conclusion. If the evidence is insufficient, say which part cannot be verified instead of inferring it.\n"
 
 # Router system prompt
 _ROUTER_SYSTEM = """\
-你是能源行业研究助手的意图分类器。将用户问题分类为以下5种意图之一：
+你是通用研究助手的意图分类器。将用户问题分类为以下5种意图之一：
 
-- policy_query：政策法规查询（碳中和、新能源补贴、电力市场改革、能源安全等政策）
-- market_analysis：市场分析（光伏/风电/储能市场规模、价格趋势、竞争格局）
-- data_query：结构化数据查询（企业财务数据、电力装机数据、需要SQL查询的数字）
+- policy_query：政策、法规或监管问题
+- market_analysis：市场规模、价格趋势或竞争格局问题
+- data_query：要求从结构化数据中查找具体指标的问题
 - research：深度研究（需要多步搜索和综合分析的复杂问题）
 - general：一般问答（不需要检索的简单对话）
 
 分类规则：
-- 含"政策"、"补贴"、"法规"、"碳"关键词 → policy_query
+- 含"政策"、"补贴"、"法规"关键词 → policy_query
 - 含"市场"、"规模"、"价格"、"竞争"关键词 → market_analysis
 - 含"数据"、"多少"、"查询"、"统计"且涉及具体数字 → data_query
 - 含技术概念（Vector Database、VDB、RAG、向量、Embedding、嵌入、架构、Agent、LLM、模型、算法、pipeline）→ research
@@ -106,6 +104,8 @@ IMPORTANT: 不确定时优先选 research，而非 general。RAG 检索有额外
 _CRITIC_SYSTEM = """\
 You are a final-answer synthesiser. Using ONLY the research steps provided,
 write a clear, well-structured answer to the original question.
+For each factual conclusion cite the retrieved source filename. Check calculations,
+periods, and units against the source; state any unsupported part as uncertain.
 Output plain text only — no XML tags, no tool calls, no JSON, no markdown code blocks.
 """
 

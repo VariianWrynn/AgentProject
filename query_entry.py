@@ -16,7 +16,8 @@ ROUTE_PROMPT = """你是任务复杂度分类器，只决定执行路径，不�
 
 _REPORT_REQUEST = re.compile(
     r"(?:生成|撰写|写|出|制作|给我|提供).{0,12}(?:(?:研究|调研|分析|深度)?报告)"
-    r"|(?:research report|detailed report|in-depth report|write a report)", re.IGNORECASE,
+    r"|(?:research report|detailed report|in-depth report|write a report|"
+    r"structured literature synthesis|literature review)", re.IGNORECASE,
 )
 
 

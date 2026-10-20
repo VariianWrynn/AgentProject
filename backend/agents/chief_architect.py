@@ -4,7 +4,7 @@ ChiefArchitect Agent
 Intent decoding + hypothesis generation + dynamic outline planning.
 
 Input:  state["question"] + state["intent"]
-Output: hypotheses, outline (6 sections), research_questions (5-8 sub-questions)
+Output: hypotheses, outline (4-6 sections), research_questions (4-8 sub-questions)
 """
 
 import json
@@ -14,24 +14,17 @@ import re
 logger = logging.getLogger("chief_architect")
 
 _SYSTEM = """\
-你是一位能源行业首席研究分析师。你的职责是：
-1. 解析用户问题的核心研究需求
-2. 提出3个可验证的研究假设
-3. 规划一份6章节的研究大纲（针对能源行业优化）
-4. 将问题拆解为5-8个具体子问题供后续并行搜索
-
-章节结构（能源行业标准）：
-  1. 市场概况 — 规模/现状/关键指标
-  2. 政策环境 — 法规/补贴/监管趋势
-  3. 竞争格局 — 主要玩家/市场份额/差异化
-  4. 技术趋势 — 技术路线/创新方向/效率指标
-  5. 数据分析 — 量化数据/财务指标/装机数据
-  6. 未来展望 — 市场预测/投资机会/风险因素
+你是一位通用研究规划员。你的职责是：
+1. 识别用户真正要回答的问题和交付形式
+2. 提出至多3个需要证据检验的假设；没有合理假设时返回空列表
+3. 按问题本身规划4-6个章节，不强加市场、政策或财务章节
+4. 将问题拆解为4-8个具体、互不重复的检索子问题
 
 要求：
-- 假设必须可验证（含具体数字或时间节点，如"假设2025年光伏组件成本将降至0.7元/W以下"）
-- 每个章节要包含3个搜索关键词（中文），关键词必须是章节描述中的核心术语，例如描述"市场规模与行业增速分析"的关键词应为["市场规模","行业增速","分析"]
-- 子问题要具体可搜索，避免过于宽泛
+- 每个章节要包含与描述一致的搜索关键词
+- 检索子问题应保留原问题中的实体、专业术语和语言；英文问题用英文检索
+- 优先覆盖用户要求的比较维度、来源、局限与不确定性
+- 不要预设事实、数字、结论或与问题无关的行业背景
 
 输出JSON格式：
 {
@@ -96,7 +89,7 @@ def run(state: dict, llm) -> dict:
     # demo_mode: skip LLM call, use fixed 1-section outline + 1 question (saves ~15s)
     if state.get("demo_mode", False):
         outline = _default_outline(question)[:1]
-        hypotheses = [f"关于{question}的核心竞争态势待验证"]
+        hypotheses = []
         research_questions = [question]
         logger.info("[ChiefArchitect] demo_mode: fixed 1-section outline (no LLM call)")
         print("[ChiefArchitect] demo_mode: 1 section, 1 question (skip LLM)")
@@ -127,9 +120,6 @@ def run(state: dict, llm) -> dict:
     if not research_questions:
         research_questions = [question]
 
-    if not hypotheses:
-        hypotheses = [f"关于{question}的研究假设待验证"]
-
     # Ensure at least 4 sections
     if len(outline) < 4:
         outline.extend(_default_outline(question)[len(outline):4])
@@ -157,12 +147,10 @@ def run(state: dict, llm) -> dict:
 def _default_outline(question: str) -> list[dict]:
     """Fallback outline when LLM fails."""
     topics = [
-        ("sec_1", "市场概况", "市场规模、行业增速、主要指标分析",   ["市场规模", "行业增速", "主要指标"]),
-        ("sec_2", "政策环境", "能源政策、补贴政策与碳中和监管趋势", ["能源政策", "补贴政策", "碳中和"]),
-        ("sec_3", "竞争格局", "企业排名、市场份额与竞争分析",       ["企业排名", "市场份额", "竞争分析"]),
-        ("sec_4", "技术趋势", "技术路线、效率提升与降本增效方向",   ["技术路线", "效率提升", "降本增效"]),
-        ("sec_5", "数据分析", "财务数据、装机数据与价格指数",       ["财务数据", "装机数据", "价格指数"]),
-        ("sec_6", "未来展望", "市场预测、投资机会与发展趋势",       ["市场预测", "投资机会", "发展趋势"]),
+        ("sec_1", "问题与范围", "界定研究问题、关键概念和适用范围", ["研究问题", "关键概念", "适用范围"]),
+        ("sec_2", "证据与主要发现", "梳理相关来源的证据和主要发现", ["来源", "证据", "主要发现"]),
+        ("sec_3", "比较与解释", "比较不同来源的结果并解释差异", ["比较", "结果", "差异"]),
+        ("sec_4", "局限与结论", "说明证据局限和可支持的结论", ["证据局限", "结论"]),
     ]
     return [
         {"id": sid, "title": title, "description": desc, "keywords": kws}

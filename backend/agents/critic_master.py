@@ -16,7 +16,7 @@ import time
 logger = logging.getLogger("critic_master")
 
 _CRITIC_SYSTEM = """\
-你是一位客观的研究报告质量审核专家（能源行业）。对报告草稿进行专业审核。
+你是一位客观的研究报告质量审核专家。按原问题和提供的证据审核报告草稿。
 
 审核6类问题：
 1. hallucination（幻觉）— 无数据支撑的虚假陈述、编造数字
