@@ -97,7 +97,7 @@ def score_qa(item: dict, answer: str, verdict: dict) -> dict:
 def score_external_qa(item: dict, answer: str, verdict: dict) -> dict:
     """FinanceBench answers may be prose or calculated values, so use a blind judge.
 
-    The retrieved-evidence gate is enforced by the runner after this verdict.
+    The runner additionally checks the labeled evidence page for frozen-corpus runs.
     """
     for key in ("answer_correct", "evidence_supported", "abstained", "answered_without_evidence"):
         if type(verdict.get(key)) is not bool:

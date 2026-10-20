@@ -48,8 +48,8 @@ OPENAI_API_KEY=sk-...        # 主密钥（所有角色的兜底 key）
 OPENAI_BASE_URL=https://api.scnet.cn/api/llm/v1
 LLM_MODEL=MiniMax-M2.5
 
-# 必填 — 从 bochaai.com 获取
-BOCHA_API_KEY=sk-...         # 中文网页搜索
+# 必填 — 从 api.deepseek.com 获取；若主密钥已连接 DeepSeek，可省略
+DEEPSEEK_API_KEY=sk-...      # 网页搜索
 
 # 可选：多 Key 配置（并行提速约 3 倍）
 LLM_KEY_1=sk-...             # ChiefArchitect + Router
@@ -60,7 +60,7 @@ LLM_KEY_5=sk-...             # Synthesizer
 LLM_KEY_6=sk-...             # 备用 / 溢出
 ```
 
-> **最简启动：** 只填 `OPENAI_API_KEY` 和 `BOCHA_API_KEY` 即可运行。
+> **最简启动：** 主模型使用 DeepSeek 时只需填写 `OPENAI_API_KEY`；其他模型需另填 `DEEPSEEK_API_KEY` 以启用网页搜索。
 > 多 Key 配置为可选项，但可带来约 3 倍吞吐提升。
 
 ### 4. 启动后端基础服务
@@ -138,7 +138,7 @@ MCP 工具服务器 FastAPI :8002  mcp_server.py  [Redis 缓存]
     │
     ├─── Milvus :19530       RAG 知识库（BGE-m3 向量嵌入）
     ├─── SQLite energy.db    Text2SQL 能源财务数据
-    └─── Bocha 网页搜索      中文互联网检索（HTTPS）
+    └─── DeepSeek Search    网页检索（HTTPS）
 ```
 
 前端统一调用 `POST /query`（`question`、可选 `session_id` 和 `demo_mode`），并通过
@@ -232,8 +232,8 @@ python tests/test_mcp_api.py     # MCP 工具接口
 | 现象 | 解决方案 |
 |------|---------|
 | 健康检查返回 `milvus: error` | `docker compose up` 后等待 45 秒，Milvus 启动较慢 |
-| `bocha: http_401` | 检查 `.env` 中的 `BOCHA_API_KEY` |
-| MCP 健康检查超时（3–5 秒） | 正常现象，MCP 每次健康检查都会调用 Bocha |
+| `deepseek_search: missing_key` | 检查 `.env` 中的 `DEEPSEEK_API_KEY`，或确认主模型连接 DeepSeek |
+| 网页搜索返回 401 | 检查 DeepSeek API 密钥及账号权限 |
 | 前端显示 API 错误 | API 服务未启动，执行 `python api_server.py` |
 | 报告卡在"审核报告质量" | CriticMaster 循环 bug（已修复），重启 `api_server.py` |
 | 图表中文显示方块 □□□ | 执行 `pip install matplotlib` 后重启 `api_server.py` |

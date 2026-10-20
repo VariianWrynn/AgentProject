@@ -151,6 +151,7 @@ def router_node(state: AgentState) -> dict:
 
 def planner_node(state: AgentState) -> dict:
     # Build knowledge-base hint
+    sources = []
     try:
         sources = _rag.list_sources()
         kb_hint = "currently indexed: " + ", ".join(sources) if sources else "(empty knowledge base)"
@@ -163,6 +164,8 @@ def planner_node(state: AgentState) -> dict:
         f"human: {core_mem['human']}\n\n"
     )
     system = mem_prefix + _PLANNER_SYSTEM_V2.replace("{kb_sources_hint}", kb_hint)
+    if not sources:
+        system += "\nThe knowledge base is empty. Use web_search for factual retrieval; do not plan rag_search or doc_summary.\n"
 
     # When replanning, provide prior step context
     user_msg = state["question"]
@@ -216,8 +219,8 @@ def executor_node(state: AgentState) -> dict:
                 try:
                     items = mcp.call("web_search", query, {}, state["session_id"])
                     result = "\n\n".join(
-                        f"[{i+1}] {it.get('title','')}\n    {it.get('url','')}\n    {it.get('snippet','')[:300]}"
-                        for i, it in enumerate(items)
+                        f"[{i+1}] {it.get('title','')}\n    {it.get('url','')}\n    {it.get('snippet','')[:800]}"
+                        for i, it in enumerate(items[:5])
                     )
                 except MCPCallError as _e:
                     print(f"[WARN] MCP fallback for web_search: {_e}")

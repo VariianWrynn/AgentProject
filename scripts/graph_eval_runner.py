@@ -159,7 +159,16 @@ def _fake_dependencies(corpus: FrozenCorpus) -> None:
     sys.modules["backend.tools.text2sql_tool"] = sql
 
 
-def _run_worker(case: dict, graph: str, model: str, corpus_path: Path) -> dict:
+def _live_web_results(query: str) -> list[dict]:
+    """Search the open web, excluding published benchmark answer pages."""
+    from backend.tools.deepseek_search import search
+    return [hit for hit in search(query)
+            if not any(name in (hit.get("url", "") + " " + hit.get("title", "")).lower()
+                       for name in ("financebench", "scholarqabench"))]
+
+
+def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
+                retrieval: str = "frozen") -> dict:
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env", override=False)
     os.environ["HITL_ENABLED"] = "off"
@@ -168,6 +177,16 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path) -> dict:
     import langgraph_agent as agent
     from react_engine import get_usage_totals, reset_usage_totals
     from backend.agents import deep_scout, data_analyst
+
+    live_web = retrieval == "live-web"
+    search_calls: list[str] = []
+
+    def web_search(query: str) -> list[dict]:
+        search_calls.append(query)
+        return _live_web_results(query)
+
+    if live_web:
+        corpus.list_sources = lambda: []
 
     # react_engine loads .env with override=True during import, so set the
     # comparison model only after all production imports have completed.
@@ -178,11 +197,13 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path) -> dict:
 
     def local_tool(name, query, params, session_id):
         if name == "rag_search":
-            return corpus.query(query, int(params.get("top_k", 5)))
+            return [] if live_web else corpus.query(query, int(params.get("top_k", 5)))
         if name == "doc_summary":
-            return {"summary": corpus.doc_summary(query)}
+            return {"summary": "[NO_MATCH]" if live_web else corpus.doc_summary(query)}
         if name == "text2sql":
             return {"result": [], "summary": "[EVAL_SQL_DISABLED]"}
+        if name == "web_search" and live_web:
+            return web_search(query)
         raise RuntimeError(f"evaluation forbids tool {name}")
 
     async def local_search(questions):
@@ -195,8 +216,21 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path) -> dict:
         return hits
 
     agent.mcp.call = local_tool
-    agent._tools.web_search = lambda query: (_ for _ in ()).throw(RuntimeError("web disabled"))
-    deep_scout._search_all = local_search
+    if live_web:
+        agent._tools.rag_search = lambda query: "[NO_MATCH]"
+        agent._tools.web_search = lambda query: "\n\n".join(
+            f"{hit['title']}\n{hit['url']}\n{hit['snippet']}" for hit in web_search(query))
+
+        async def live_search(questions):
+            import asyncio
+            batches = await asyncio.gather(*(asyncio.to_thread(web_search, q) for q in questions))
+            return [{**hit, "source_type": "web", "query": question}
+                    for question, batch in zip(questions, batches) for hit in batch]
+
+        deep_scout._search_all = live_search
+    else:
+        agent._tools.web_search = lambda query: (_ for _ in ()).throw(RuntimeError("web disabled"))
+        deep_scout._search_all = local_search
     data_analyst._run_text2sql = lambda query: {"result": [], "summary": "[EVAL_SQL_DISABLED]"}
     reset_usage_totals()
     sid = f"graph_eval_{uuid.uuid4().hex}"
@@ -232,7 +266,10 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path) -> dict:
             "answer": answer, "evidence": evidence, "usage": get_usage_totals(),
             "elapsed_s": round(time.monotonic() - start, 3), "error": error,
             "corpus_hash": corpus.manifest_hash, "model": model,
-            "demo_mode": False, "web_enabled": False, "hitl_enabled": False,
+            "demo_mode": False, "web_enabled": live_web, "retrieval": retrieval,
+            "search_call_count": len(search_calls),
+            "search_cost_cny_upper_bound": round(len(search_calls) * 0.005, 4),
+            "hitl_enabled": False,
             "session_id": sid}
 
 
@@ -327,11 +364,12 @@ def _read_records(path: Path) -> list[dict]:
 
 def _evaluation_id(cases_path: Path, corpus_hash: str, model: str,
                    judge_model: str, prices_path: Path | None, jobs: int = 1,
-                   candidate_mode: str = "multiagent") -> str:
+                   candidate_mode: str = "multiagent", retrieval: str = "frozen") -> str:
     config = {"dataset_hash": hashlib.sha256(cases_path.read_bytes()).hexdigest(),
               "corpus_hash": corpus_hash, "model": model, "judge_model": judge_model,
               "prices_hash": hashlib.sha256(prices_path.read_bytes()).hexdigest() if prices_path else None,
-              "concurrent_cases": jobs, "candidate_mode": candidate_mode}
+              "concurrent_cases": jobs, "candidate_mode": candidate_mode,
+              "retrieval": retrieval}
     return hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
 
 
@@ -366,6 +404,9 @@ def render_markdown(cases: list[dict], records: list[dict]) -> str:
     run_config = next((r for r in records if r.get("evaluation_id")), {})
     lines = [f"# {title}：ReAct 与 {candidate_label} 首轮配对报告", "",
              "本报告仅为小规模方法试跑，不据此宣称统计显著优势。",
+             f"检索模式：{run_config.get('retrieval', 'frozen')}。"
+             + ("联网模式禁用本地语料检索，过滤已发布基准答案页；不执行标注证据页命中门槛。"
+                if run_config.get("retrieval") == "live-web" else ""),
              "模型费用按运行时价目表计算；若采用峰时缓存未命中单价，则为费用上界估算。",
              "候选图费用不含独立评审模型费用。", "",
              f"候选模型：{run_config.get('model', '未运行')}；评审模型：{run_config.get('judge_model', '未运行')}；"
@@ -435,6 +476,13 @@ def render_markdown(cases: list[dict], records: list[dict]) -> str:
                         else f"{sum(elapsed_rows)/len(elapsed_rows):.2f}")
         lines.append(f"| {graph} | {len(scored)} | {prompt_tokens}/{completion_tokens} | "
                      f"{amount(costs)} | {correct_amount} | {mean_elapsed} | {attempt_total} | {hit} |")
+    if run_config.get("retrieval") == "live-web":
+        lines += ["", "DeepSeek Search 按成功且非空请求计费，每次 ¥0.005。以下按全部尝试均计费估算上界：", "",
+                  "| 图 | Search 请求数 | Search 费用上界 CNY |", "|---|---:|---:|"]
+        for graph in graphs:
+            attempts = [r for r in current.values() if r.get("graph") == graph]
+            calls = sum(r.get("search_call_count", 0) for r in attempts)
+            lines.append(f"| {graph} | {calls} | ¥{calls * 0.005:.3f} |")
     lines += ["", "## 逐题状态", "", f"| 题目 | ReAct | {candidate_label} |", "|---|---|---|"]
     for case in cases:
         cells = []
@@ -494,7 +542,7 @@ def run(args, cases: list[dict], corpus: FrozenCorpus) -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     eval_id = _evaluation_id(args.cases, corpus.manifest_hash, args.model,
                              args.judge_model, args.prices, args.jobs,
-                             args.candidate_mode)
+                             args.candidate_mode, args.retrieval)
     done = {(r["case_id"], r["graph"]) for r in _read_records(args.out)
             if r.get("status") == "scored" and r.get("evaluation_id") == eval_id}
     selected = cases[:args.limit] if args.limit else cases
@@ -507,7 +555,7 @@ def run(args, cases: list[dict], corpus: FrozenCorpus) -> None:
             record = None
             cmd = [sys.executable, str(Path(__file__).resolve()), "worker", "--case-id", case["id"],
                    "--graph", graph, "--model", args.model, "--cases", str(args.cases),
-                   "--corpus", str(args.corpus)]
+                   "--corpus", str(args.corpus), "--retrieval", args.retrieval]
             try:
                 proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                                       timeout=args.timeout, encoding="utf-8", errors="replace",
@@ -537,7 +585,8 @@ def run(args, cases: list[dict], corpus: FrozenCorpus) -> None:
                               "error": repr(exc), "usage": {}, "corpus_hash": corpus.manifest_hash,
                               "model": args.model}
             record["cost_usd"] = calculate_cost(record.get("usage", {}), prices)
-            record["evidence_hit"] = evidence_hit(case, record.get("evidence", []))
+            record["evidence_hit"] = (evidence_hit(case, record.get("evidence", []))
+                                      if args.retrieval == "frozen" else None)
             if case["track"] in {"qa", "external_qa"} and record.get("status") == "scored" and record["evidence_hit"] is False:
                 record["score"]["correct"] = False
                 record["score"]["evidence_gate_failed"] = True
@@ -550,6 +599,7 @@ def run(args, cases: list[dict], corpus: FrozenCorpus) -> None:
             record["evaluation_id"] = eval_id
             record["concurrent_cases"] = args.jobs
             record["candidate_mode"] = args.candidate_mode
+            record["retrieval"] = args.retrieval
             with write_lock:
                 with args.out.open("a", encoding="utf-8") as stream:
                     stream.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -664,6 +714,7 @@ def main():
     parser.add_argument("--graph", choices=("react", "multiagent", "routed"))
     parser.add_argument("--candidate-mode", choices=("multiagent", "routed"),
                         default="multiagent")
+    parser.add_argument("--retrieval", choices=("frozen", "live-web"), default="frozen")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--timeout", type=int, default=900)
     parser.add_argument("--jobs", type=int, default=1,
@@ -680,7 +731,8 @@ def main():
         if not (args.case_id and args.graph and args.model):
             parser.error("worker requires --case-id, --graph and --model")
         case = next(c for c in cases if c["id"] == args.case_id)
-        print(MARKER + json.dumps(_run_worker(case, args.graph, args.model, args.corpus), ensure_ascii=False))
+        print(MARKER + json.dumps(_run_worker(case, args.graph, args.model, args.corpus,
+                                             args.retrieval), ensure_ascii=False))
     elif args.command == "run":
         if not args.model or not args.judge_model:
             parser.error("run requires --model and a different --judge-model")

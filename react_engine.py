@@ -4,7 +4,7 @@ ReAct Decision Engine
 =====================
 Plan → Act → Reflect loop with:
   Planner   — LLM generates a JSON multi-step execution plan
-  Executor  — runs each step via rag_search (Milvus) or web_search (DuckDuckGo)
+  Executor  — runs each step via rag_search (Milvus) or web_search (DeepSeek)
   Reflector — LLM judges step output, decides: continue | replan | done
   Memory    — Redis short-term memory per session (TTL 1 h)
 
@@ -32,9 +32,8 @@ from typing import Optional
 
 import redis
 from openai import OpenAI
-from ddgs import DDGS
-
 from rag_pipeline import RAGPipeline
+from backend.tools.deepseek_search import search as deepseek_search
 
 # Load .env when run directly (api_server.py / mcp_server.py already do this)
 try:
@@ -240,7 +239,6 @@ class LLMClient:
 class Tools:
     def __init__(self, rag: RAGPipeline) -> None:
         self._rag  = rag
-        self._ddgs = DDGS()
 
     def rag_search(self, query: str) -> str:
         logger.info("[Tool] rag_search('%s')", query)
@@ -288,15 +286,15 @@ class Tools:
     def web_search(self, query: str) -> str:
         logger.info("[Tool] web_search('%s')", query)
         try:
-            results = list(self._ddgs.text(query, max_results=WEB_MAX_RESULTS))
+            results = deepseek_search(query, count=WEB_MAX_RESULTS)
             if not results:
                 return "No web results found."
             parts = []
             for i, r in enumerate(results, 1):
                 parts.append(
                     f"[{i}] {r.get('title', '')}\n"
-                    f"    {r.get('href', '')}\n"
-                    f"    {r.get('body', '')[:300]}"
+                    f"    {r.get('url', '')}\n"
+                    f"    {r.get('snippet', '')[:1200]}"
                 )
             return "\n\n".join(parts)
         except Exception as exc:

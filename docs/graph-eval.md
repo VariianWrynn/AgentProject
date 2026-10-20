@@ -64,3 +64,15 @@ python scripts/graph_eval_runner.py export-review --cases resources/data/eval/ex
 ## 2026-10-20 分流与检索修正复测
 
 英文固定语料检索改为 BM25；报告证据按来源优先冻结，再保留同来源的额外段落，且不截断检索返回的片段。明确的英文短问答即使涉及多个年份或来源，也走 ReAct；文献综述和结构化报告仍走研究图。独立重跑后，FinanceBench 分流候选 20/20 可评分配对，证据约束正确 16/20（80%），20 题均实际走 ReAct。ScholarQA 8/8 可评分配对，分流候选的有证据支持必需结论覆盖率 61.3%，必需证据文档召回 42/53；同轮 ReAct 覆盖率 66.5%。这轮与之前的字符二元组检索试跑配置不同，分数差异不能全部归于提示词或报告图。样本量小、每题只运行一次，自动评分仍需人工盲评；以上不等于官方排行榜成绩。
+
+## DeepSeek Search 联网试跑
+
+生产环境中，ReAct 和 Multiagent 的 `web_search` 都使用 [DeepSeek Search API](https://api-docs.deepseek.com/zh-cn/guides/search/)。本地知识库 `rag_search` 继续使用 Milvus；联网评测可用 `--retrieval live-web` 禁用本地语料检索，只测网页检索。联网模式会过滤 URL 或标题中含 FinanceBench/ScholarQABench 的公开答案页，避免直接读到基准答案；仍可能存在其他泄漏，结果仅作探索性比较。它不执行冻结语料实验的标注证据页命中门槛，而由独立模型判断实际网页证据是否支持答案。联网结果不能与上面的冻结语料分数当作同条件对照。
+
+联网运行时在原有 `run` 命令加入 `--retrieval live-web`，并使用新的 `--out` 路径；对比两图时使用 `--candidate-mode multiagent`。`report` 使用相同的题集、语料路径和新输出路径。网页 Search 费用按请求单独记为人民币上界，模型费用仍按价目表记为美元上界。Search 只对 HTTP 200 且有结果的请求计费，实际账单可能低于记录的请求数估算。
+
+2026-10-20 使用 `deepseek-flash` 生成、`deepseek-v4-pro` 独立评分、每题每图一次、同时执行 4 题。FinanceBench 20/20 配对可评分：ReAct 答案正确且有网页证据支持 14/20，Multiagent 8/20；仅按答案判断分别为 15/20 和 12/20。ReAct/Multiagent 分别调用 Search 67/168 次，图模型费用上界 $0.1404/$2.2219，Search 费用上界 ¥0.335/¥0.840，平均图运行时间 19.4/105.4 秒。
+
+ScholarQA 8/8 配对可评分：ReAct/Multiagent 必需结论支持覆盖率为 16.3%/18.5%，额外无证据结论平均每题 0.625/4.25 条，任务覆盖率 21.9%/18.5%。两图分别调用 Search 40/65 次，图模型费用上界 $0.0775/$0.4820，Search 费用上界 ¥0.200/¥0.325，平均图运行时间 34.1/82.7 秒。以上图模型费用不含独立评审；评审模型费用上界在 FinanceBench 约 $1.006、ScholarQA 约 $0.932。
+
+这轮说明开放网页搜索没有稳定找回 ScholarQA 的指定论文证据，也没有让短财务问答的 Multiagent 路径超过 ReAct。它不能用于比较 DeepSeek Search 与原 Bocha 搜索的优劣：此前没有同配置的 Bocha 联网评测。此前固定语料成绩也使用不同检索范围和 FinanceBench 模型，不能直接计算增减。网页 Search 返回的摘要可能包含二次概括；自动评分和公开网页潜在答案泄漏仍需人工盲评核查。原始记录和盲评导出保存在本地 `docs/reports/graph_eval_runs/`，不随 PR 上传。

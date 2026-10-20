@@ -4,7 +4,7 @@ DeepScout Agent
 Parallel deep search across all research sub-questions.
 
 Each sub-question triggers:
-  - Bocha web search (via MCP /tools/web_search)
+  - DeepSeek web search (via MCP /tools/web_search)
   - RAG knowledge-base retrieval (via MCP /tools/rag_search)
 
 Results are deduplicated, merged, and scored for credibility.
@@ -61,8 +61,8 @@ MCP_URL = "http://localhost:8002"
 _REQUEST_TIMEOUT = 20   # seconds per individual search call
 
 
-async def _search_bocha(session: Any, query: str) -> list[dict]:
-    """Async Bocha web search via MCP endpoint."""
+async def _search_web(session: Any, query: str) -> list[dict]:
+    """Async DeepSeek web search via MCP endpoint."""
     loop = asyncio.get_event_loop()
     try:
         resp = await loop.run_in_executor(
@@ -73,7 +73,10 @@ async def _search_bocha(session: Any, query: str) -> list[dict]:
                 timeout=_REQUEST_TIMEOUT,
             ),
         )
+        resp.raise_for_status()
         data = resp.json()
+        if data.get("error"):
+            raise RuntimeError(data["error"])
         items = data.get("result") or []
         return [
             {
@@ -81,13 +84,14 @@ async def _search_bocha(session: Any, query: str) -> list[dict]:
                 "snippet": it.get("snippet", ""),
                 "url":     it.get("url", ""),
                 "date":    it.get("date", ""),
+                "score":   it.get("score", 0.0),
                 "source_type": "web",
                 "query":   query,
             }
             for it in items
         ]
     except Exception as exc:
-        logger.warning("[DeepScout] Bocha search failed for '%s': %s", query, exc)
+        logger.warning("[DeepScout] DeepSeek search failed for '%s': %s", query, exc)
         return []
 
 
@@ -124,8 +128,8 @@ async def _search_rag(session: Any, query: str) -> list[dict]:
 
 
 async def _search_single(query: str) -> list[dict]:
-    """Run Bocha + RAG for one query concurrently."""
-    web_task = _search_bocha(None, query)
+    """Run web + RAG for one query concurrently."""
+    web_task = _search_web(None, query)
     rag_task = _search_rag(None, query)
     web_results, rag_results = await asyncio.gather(web_task, rag_task)
     return web_results + rag_results
@@ -137,7 +141,7 @@ async def _search_all(questions: list[str]) -> list[dict]:
     merged: list[dict] = []
     if _os.getenv("PARALLEL", "on").lower() == "off":
         for q in questions:
-            web = await _search_bocha(None, q)
+            web = await _search_web(None, q)
             rag = await _search_rag(None, q)
             merged.extend(web + rag)
         return merged

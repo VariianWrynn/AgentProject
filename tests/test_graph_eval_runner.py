@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from scripts.graph_eval_runner import (FrozenCorpus, _evaluation_id, _records_for_report,
-                                       paired_summary, render_markdown)
+                                       paired_summary, render_markdown, _live_web_results)
 
 
 def test_frozen_corpus_refuses_changed_files(tmp_path):
@@ -115,8 +115,20 @@ def test_configuration_id_changes_with_model_corpus_and_dataset(tmp_path):
     assert first != _evaluation_id(cases_path, "corpus-b", "model-a", "judge", None)
     assert first != _evaluation_id(cases_path, "corpus-a", "model-b", "judge", None)
     assert first != _evaluation_id(cases_path, "corpus-a", "model-a", "judge", None, jobs=4)
+    assert first != _evaluation_id(cases_path, "corpus-a", "model-a", "judge", None,
+                                   retrieval="live-web")
     cases_path.write_text("[{}]", encoding="utf-8")
     assert first != _evaluation_id(cases_path, "corpus-a", "model-a", "judge", None)
+
+
+def test_live_web_search_omits_public_benchmark_answers(monkeypatch):
+    from backend.tools import deepseek_search
+    monkeypatch.setattr(deepseek_search, "search", lambda _query: [
+        {"title": "FinanceBench answers", "url": "https://example.org/financebench", "snippet": "answer"},
+        {"title": "Annual report", "url": "https://sec.gov/report", "snippet": "evidence"},
+    ])
+    assert _live_web_results("question") == [
+        {"title": "Annual report", "url": "https://sec.gov/report", "snippet": "evidence"}]
 
 
 def test_report_rejects_mixed_configurations(tmp_path):
