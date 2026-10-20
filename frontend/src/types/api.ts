@@ -41,6 +41,17 @@ export interface ResearchReport {
   cached?: boolean
 }
 
+interface QueryBase {
+  session_id: string
+  route_reason: string
+  intent: string
+  latency_ms: number
+}
+
+export type QueryResult =
+  | (QueryBase & { route: 'react'; answer: string; steps_count: number })
+  | (QueryBase & { route: 'multiagent'; report: ResearchReport })
+
 // SSE event types: new agent events + legacy graph events
 export type SSEEventType =
   | 'thinking'
@@ -56,6 +67,7 @@ export type SSEEventType =
   | 'answer'
   | 'error'
   | 'awaiting_review'
+  | 'route'
 
 export interface SSEEvent {
   type: SSEEventType
@@ -67,6 +79,7 @@ export interface SSEEvent {
   action?: string
   query?: string
   session_id?: string
+  route?: 'react' | 'multiagent'
   // HITL fields — present only on awaiting_review events
   draft_sections?: Record<string, string>
   issue_summary?: string

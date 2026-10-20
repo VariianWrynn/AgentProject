@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { api } from '../api/client'
 import { HealthBadge } from '../components/HealthBadge'
 import { ProgressStream } from '../components/ProgressStream'
 import { QueryInput } from '../components/QueryInput'
 import { ReportView } from '../components/ReportView'
-import type { ResearchReport } from '../types/api'
+import type { QueryResult } from '../types/api'
 import styles from './ResearchPage.module.css'
 
 type PageState = 'idle' | 'streaming' | 'complete' | 'error'
@@ -13,29 +14,27 @@ export function ResearchPage() {
   const [pageState, setPageState] = useState<PageState>('idle')
   const [question, setQuestion] = useState('')
   const [sessionId, setSessionId] = useState('')
-  const [report, setReport] = useState<ResearchReport | null>(null)
+  const [result, setResult] = useState<QueryResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
 
-  // Hold the in-flight report promise so we can await it when stream finishes
-  const reportPromiseRef = useRef<Promise<ResearchReport> | null>(null)
+  const queryPromiseRef = useRef<Promise<QueryResult | null> | null>(null)
 
   const handleSubmit = useCallback(
     async (q: string, sid: string, demoMode: boolean) => {
       setQuestion(q)
       setSessionId(sid)
-      setReport(null)
+      setResult(null)
       setErrorMsg('')
       setPageState('streaming')
 
-      // Fire report API and SSE stream simultaneously (same session_id)
-      reportPromiseRef.current = api
-        .submitReport(q, sid, demoMode)
+      queryPromiseRef.current = api
+        .submitQuery(q, sid, demoMode)
         .then((res) => res.data)
         .catch((err) => {
           const msg = err?.response?.data?.detail ?? err?.message ?? '请求失败'
           setErrorMsg(msg)
           setPageState('error')
-          throw err
+          return null
         })
     },
     []
@@ -44,9 +43,9 @@ export function ResearchPage() {
   // Called by ProgressStream when stream emits "done"
   const handleStreamComplete = useCallback(async () => {
     try {
-      const result = await reportPromiseRef.current
-      if (result) {
-        setReport(result)
+      const completed = await queryPromiseRef.current
+      if (completed) {
+        setResult(completed)
         setPageState('complete')
       }
     } catch {
@@ -56,7 +55,7 @@ export function ResearchPage() {
 
   const handleReset = () => {
     setPageState('idle')
-    setReport(null)
+    setResult(null)
     setErrorMsg('')
   }
 
@@ -70,8 +69,8 @@ export function ResearchPage() {
 
       {/* Hero */}
       <div className={styles.hero}>
-        <h1 className={styles.heroTitle}>能源行业深度研究助手</h1>
-        <p className={styles.heroSub}>Multi-Agent · RAG · Text2SQL · 实时流式输出</p>
+        <h1 className={styles.heroTitle}>能源行业研究助手</h1>
+        <p className={styles.heroSub}>自动选择快速问答或深度研究 · RAG · Text2SQL</p>
       </div>
 
       {/* Query input — always visible */}
@@ -87,9 +86,12 @@ export function ResearchPage() {
         <div className={styles.card}>
           <ProgressStream
             key={sessionId}
-            question={question}
             sessionId={sessionId}
             onComplete={handleStreamComplete}
+            onError={(message) => {
+              setErrorMsg(message)
+              setPageState('error')
+            }}
           />
         </div>
       )}
@@ -102,10 +104,17 @@ export function ResearchPage() {
         </div>
       )}
 
-      {/* Report */}
-      {pageState === 'complete' && report && (
+      {pageState === 'complete' && result && (
         <div className={styles.card}>
-          <ReportView report={report} />
+          {result.route === 'multiagent' ? (
+            <ReportView report={result.report} />
+          ) : (
+            <div className={styles.answer}>
+              <h2>回答</h2>
+              <p className={styles.routeReason}>{result.route_reason}</p>
+              <ReactMarkdown>{result.answer}</ReactMarkdown>
+            </div>
+          )}
         </div>
       )}
     </div>

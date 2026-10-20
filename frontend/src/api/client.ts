@@ -1,9 +1,19 @@
 import axios from 'axios'
-import type { ResearchReport, SourceList, HealthStatus, DecisionResponse } from '../types/api'
+import type { QueryResult, ResearchReport, SourceList, HealthStatus, DecisionResponse } from '../types/api'
 
 const BASE = '/api'
 
 export const api = {
+  submitQuery: (question: string, sessionId: string, demoMode = false) =>
+    axios.post<QueryResult>(`${BASE}/query`, {
+      question,
+      session_id: sessionId,
+      demo_mode: demoMode,
+    }),
+
+  streamQuery: (sessionId: string): EventSource =>
+    new EventSource(`${BASE}/query/stream?session_id=${encodeURIComponent(sessionId)}`),
+
   // Research
   submitReport: (question: string, sessionId: string, demoMode = false) =>
     axios.post<ResearchReport>(`${BASE}/research/report`, {

@@ -36,7 +36,7 @@ export function QueryInput({ onSubmit, disabled = false }: Props) {
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="输入研究问题..."
+        placeholder="输入问题，或要求生成研究报告..."
         disabled={disabled}
         rows={2}
       />
@@ -45,7 +45,7 @@ export function QueryInput({ onSubmit, disabled = false }: Props) {
           className={`${styles.demoBtn} ${demoMode ? styles.demoBtnActive : ''}`}
           onClick={() => setDemoMode(!demoMode)}
           disabled={disabled}
-          title="快速模式：仅搜索2个子问题，写2个章节，跳过RE_RESEARCHING循环"
+          title="仅深度研究路径生效：搜索2个子问题，写2个章节，跳过重新研究循环"
         >
           {demoMode ? '⚡ 快速模式 ON (~40s)' : '⚡ 快速模式 (~40s)'}
         </button>
@@ -54,7 +54,7 @@ export function QueryInput({ onSubmit, disabled = false }: Props) {
           onClick={handleSubmit}
           disabled={disabled || !question.trim()}
         >
-          分析
+          提问
         </button>
       </div>
     </div>

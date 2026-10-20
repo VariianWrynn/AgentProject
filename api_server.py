@@ -159,6 +159,8 @@ from typing import Literal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import langgraph_agent as _lga
+from llm_router import make_llm
+from query_entry import ROUTE_PROMPT, dispatch_query, iter_query_events
 
 # ── singletons ────────────────────────────────────────────────────────────────
 print("[API] Building LangGraph …")
@@ -195,6 +197,12 @@ async def log_requests(request: Request, call_next):
 class ChatRequest(BaseModel):
     question: str
     session_id: str = None   # auto-generate uuid4 when omitted
+
+
+class QueryRequest(BaseModel):
+    question: str
+    session_id: str = None
+    demo_mode: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -251,6 +259,74 @@ def _run_graph(question: str, session_id: str) -> dict:
             if isinstance(update, dict):
                 state.update(update)
     return state
+
+
+def _classify_query(question: str) -> dict:
+    return make_llm("router").chat_json(ROUTE_PROMPT, question, temperature=0.1)
+
+
+def _emit_query_event(session_id: str, event: dict) -> None:
+    key = f"query_events:{session_id}"
+    _redis.rpush(key, json.dumps(event, ensure_ascii=False))
+    _redis.expire(key, REPORT_CACHE_TTL)
+
+
+@app.post("/query")
+def query(req: QueryRequest) -> dict:
+    if not req.question.strip():
+        raise HTTPException(status_code=422, detail="question must not be empty")
+    sid = req.session_id or str(uuid.uuid4())
+    _redis.delete(f"query_events:{sid}")
+    _redis.delete(f"sse_events:{sid}")
+    t0 = time.time()
+    try:
+        result = dispatch_query(
+            req.question.strip(), sid, req.demo_mode, _classify_query, _run_graph,
+            lambda question, session_id, demo: _execute_report(
+                question, session_id, demo, allow_fallback=False),
+            lambda event: _emit_query_event(sid, event),
+        )
+    except Exception as exc:
+        _api_logger.exception("[Query] failed for session=%s", sid)
+        raise HTTPException(status_code=500, detail="query execution failed") from exc
+    result["latency_ms"] = (time.time() - t0) * 1000
+    return result
+
+
+@app.get("/query/stream")
+async def query_stream(session_id: str):
+    async def generate():
+        query_index = research_index = 0
+        research_enabled = False
+        idle_polls = 0
+        deadline = time.time() + 900
+        while time.time() < deadline:
+            query_items = _redis.lrange(f"query_events:{session_id}", query_index, -1)
+            query_index += len(query_items)
+            query_events = [json.loads(item) for item in query_items]
+            route = next((event.get("route") for event in query_events
+                          if event.get("type") == "route"), None)
+            if route == "multiagent":
+                research_enabled = True
+            elif route == "react":
+                research_enabled = False
+            research_items = (_redis.lrange(f"sse_events:{session_id}", research_index, -1)
+                              if research_enabled else [])
+            research_index += len(research_items)
+            research_events = [json.loads(item) for item in research_items]
+            for event in iter_query_events(query_events, research_events):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event.get("type") in ("done", "error"):
+                    return
+            idle_polls += 1
+            if idle_polls % 4 == 0:
+                yield 'data: {"type":"heartbeat"}\n\n'
+            await asyncio.sleep(0.5)
+        yield 'data: {"type":"error","content":"stream timeout"}\n\n'
+
+    return StreamingResponse(generate(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                                      "Connection": "keep-alive"})
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
@@ -532,24 +608,32 @@ def research_report(req: ReportRequest) -> dict:
     Results are cached in Redis for REPORT_CACHE_TTL seconds. Cache hits return
     in ~5ms with cached=True in the response.
     """
-    sid       = req.session_id or str(uuid.uuid4())
-    cache_key = f"report_cache:{hashlib.md5(req.question.encode()).hexdigest()}"
+    sid = req.session_id or str(uuid.uuid4())
+    return _execute_report(req.question, sid, req.demo_mode, allow_fallback=True)
+
+
+def _execute_report(question: str, sid: str, demo_mode: bool,
+                    allow_fallback: bool) -> dict:
+    cache_key = f"report_cache:{hashlib.md5(question.encode()).hexdigest()}"
 
     # Cache check
     cached_raw = _redis.get(cache_key)
     if cached_raw:
         result = json.loads(cached_raw)
+        result["session_id"] = sid
         result["cached"]     = True
         result["latency_ms"] = 5
-        print(f"[API] /research/report cache hit for question='{req.question[:40]}'")
+        print(f"[API] /research/report cache hit for question='{question[:40]}'")
         return result
 
     t0 = time.time()
     try:
-        state = _lga.run_deep_research(req.question, sid, demo_mode=req.demo_mode)
+        state = _lga.run_deep_research(question, sid, demo_mode=demo_mode)
     except Exception as exc:
+        if not allow_fallback:
+            raise
         print(f"[API] DeepResearch failed ({exc}), falling back to legacy graph")
-        state = _run_graph(req.question, sid)
+        state = _run_graph(question, sid)
 
     elapsed = (time.time() - t0) * 1000
     result  = _build_report_result(state, sid, elapsed)
@@ -561,7 +645,7 @@ def research_report(req: ReportRequest) -> dict:
 
     # Save local Markdown copy
     try:
-        saved_path = _save_report_markdown(result, req.question, sid)
+        saved_path = _save_report_markdown(result, question, sid)
         result["saved_path"] = saved_path
     except Exception as _md_exc:
         _api_logger.warning("[Report] Markdown save failed: %s", _md_exc)

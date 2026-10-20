@@ -21,7 +21,6 @@ import argparse
 import hashlib
 import json
 import os
-import requests
 import sqlite3
 import sys
 import time
@@ -129,7 +128,7 @@ from pydantic import BaseModel
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Load .env so BOCHA_API_KEY and other secrets are available when running directly
+# Load .env so DeepSeek and other secrets are available when running directly
 try:
     from dotenv import load_dotenv
     load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
@@ -139,10 +138,7 @@ except ImportError:
 from rag_pipeline import RAGPipeline
 from react_engine import Tools, REDIS_HOST, REDIS_PORT
 from backend.tools.text2sql_tool import Text2SQLTool
-
-# ── Bocha API config ──────────────────────────────────────────────────────────
-_BOCHA_API_KEY = os.getenv("BOCHA_API_KEY", "")
-_BOCHA_URL     = "https://api.bochaai.com/v1/web-search"
+from backend.tools.deepseek_search import search as deepseek_search
 
 # ── cache config ──────────────────────────────────────────────────────────────
 _CACHE_TTL: dict[str, int] = {
@@ -257,55 +253,12 @@ def rag_search(req: ToolRequest) -> ToolResponse:
         return ToolResponse(tool="rag_search", result=None, latency_ms=latency, error=str(exc))
 
 
-def _parse_bocha_response(raw: dict) -> list[dict]:
-    """Normalise Bocha API response to [{title, snippet, url, date}].
-    Shape 1 (standard): {"data": {"webPages": {"value": [{name, snippet, url, dateLastCrawled}]}}}
-    Shape 2 (flat list): top-level list fallback.
-    """
-    try:
-        items = raw["data"]["webPages"]["value"]
-        return [
-            {
-                "title":   item.get("name", ""),
-                "snippet": item.get("snippet", ""),
-                "url":     item.get("url", ""),
-                "date":    item.get("dateLastCrawled", ""),
-            }
-            for item in items
-        ]
-    except (KeyError, TypeError):
-        pass
-    if isinstance(raw, list):
-        return [
-            {
-                "title":   item.get("title", item.get("name", "")),
-                "snippet": item.get("snippet", item.get("body", "")),
-                "url":     item.get("url", item.get("href", "")),
-                "date":    item.get("date", item.get("dateLastCrawled", "")),
-            }
-            for item in raw
-        ]
-    return []
-
-
 @app.post("/tools/web_search", response_model=ToolResponse)
 def web_search(req: ToolRequest) -> ToolResponse:
     # NOT cached — results are time-sensitive
     t0 = time.time()
     try:
-        headers = {
-            "Authorization": f"Bearer {_BOCHA_API_KEY}",
-            "Content-Type":  "application/json",
-        }
-        body = {
-            "query":     req.query,
-            "count":     10,
-            "freshness": "noLimit",
-            "summary":   True,
-        }
-        resp   = requests.post(_BOCHA_URL, json=body, headers=headers, timeout=15)
-        resp.raise_for_status()
-        result = _parse_bocha_response(resp.json())
+        result = deepseek_search(req.query)
         latency = (time.time() - t0) * 1000
         _log("web_search", req.query, latency, cached=False)
         return ToolResponse(tool="web_search", result=result, latency_ms=latency)
@@ -381,17 +334,10 @@ def health() -> dict:
     except Exception as exc:
         status["sqlite"] = f"error: {exc}"
 
-    # Bocha API
-    try:
-        bocha_resp = requests.post(
-            _BOCHA_URL,
-            json={"query": "test", "count": 1, "freshness": "noLimit", "summary": False},
-            headers={"Authorization": f"Bearer {_BOCHA_API_KEY}", "Content-Type": "application/json"},
-            timeout=5,
-        )
-        status["bocha"] = "ok" if bocha_resp.status_code == 200 else f"http_{bocha_resp.status_code}"
-    except Exception as exc:
-        status["bocha"] = f"error: {exc}"
+    # Avoid a paid Search request on every health check.
+    status["deepseek_search"] = ("configured" if os.getenv("DEEPSEEK_API_KEY") or
+                                 ("api.deepseek.com" in os.getenv("OPENAI_BASE_URL", "")
+                                  and os.getenv("OPENAI_API_KEY")) else "missing_key")
 
     # Cache stats
     status["cache_stats"] = {
