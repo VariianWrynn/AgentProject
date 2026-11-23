@@ -4,7 +4,7 @@ A LangGraph-powered multi-agent research system that produces structured, cited 
 
 ## What You Get
 
-- **Multi-agent research pipeline** — 6 specialist roles: ChiefArchitect, DeepScout, DataAnalyst, LeadWriter, CriticMaster, Synthesizer
+- **Multi-agent research pipeline** — 4 research agents: ChiefArchitect, DeepScout, LeadWriter, and CriticMaster, with explicit evidence and human gates and deterministic report assembly
 - **Real-time SSE streaming frontend** — React/TypeScript UI shows agent progress live
 - **Energy industry knowledge base** — RAG over curated energy documents (Milvus + BGE-m3)
 - **Text2SQL on energy financial data** — natural language → SQL on `energy.db` with Chinese term support
@@ -52,9 +52,9 @@ BOCHA_API_KEY=sk-...         # Chinese web search
 # Optional multi-key setup (gives ~3x speed via parallel agents)
 LLM_KEY_1=sk-...             # ChiefArchitect + Router
 LLM_KEY_2=sk-...             # DeepScout (high concurrency)
-LLM_KEY_3=sk-...             # DataAnalyst + CriticMaster
+LLM_KEY_3=sk-...             # reserved
 LLM_KEY_4=sk-...             # LeadWriter (parallel sections)
-LLM_KEY_5=sk-...             # Synthesizer
+LLM_KEY_5=sk-...             # CriticMaster
 LLM_KEY_6=sk-...             # Spare / overflow
 ```
 
@@ -116,37 +116,23 @@ Open **http://localhost:5173**
 
 ---
 
-## Architecture Overview
+## Architecture overview
 
-```
-Frontend (React/TypeScript :5173)
-    │ SSE + REST
-    ▼
-API Server (FastAPI :8003)  api_server.py
-    │
-    ▼
-LangGraph Multi-Agent Pipeline  langgraph_agent.py
-  ChiefArchitect → DeepScout → DataAnalyst
-  → LeadWriter → CriticMaster → Synthesizer
-    │
-    ▼
-MCP Tool Server (FastAPI :8002)  mcp_server.py  [Redis-cached]
-    │
-    ├─── Milvus :19530       RAG knowledge base (BGE-m3 embeddings)
-    ├─── SQLite energy.db    Text2SQL on energy financial data
-    └─── Bocha Web Search    Chinese web search (HTTPS)
+The normal router selects a direct General answer or research. ReAct is reserved for operational research failures.
+
+```text
+API → Router → General answer
+           └→ Architect → DeepScout → Writer → Evidence gate → CriticMaster
+                                      ↑           │ fail         │
+                                      └───────────┘              ├→ Report assembly tool → Report
+                       DeepScout ← automatic or human re-research ┤
+                                                                 └→ Human gate
+DeepScout → MCPClient → RAG, web search, SQL analysis and chart tools
 ```
 
-**Agent roles:**
+The research graph lives in `backend/research_graph.py`. DataAnalyst is no longer an agent. SQL and charts are MCP tools. Failed evidence checks return to Writer and stop the run after two unsuccessful rewrites. Evidence rejection never starts ReAct. Quality review permits two additional research rounds and retains human auto-approval after 300 seconds. The assembly tool never edits approved prose or calls a model.
 
-| Agent | Role |
-|-------|------|
-| ChiefArchitect | Research planning, hypothesis generation |
-| DeepScout | Parallel async RAG + web search |
-| DataAnalyst | Text2SQL queries + matplotlib charts |
-| LeadWriter | Section-by-section parallel report writing |
-| CriticMaster | Adversarial review, triggers re-research if needed |
-| Synthesizer | Final report assembly and formatting |
+Each query has a unique `run_id`. Versioned SSE events expose node execution, committed StateGraph updates, branch decisions, and tool activity. The existing progress frontend remains supported. See [execution and demonstration API](docs/research-api.md) for replay, reconnect cursors, human decisions, and verification commands.
 
 ---
 

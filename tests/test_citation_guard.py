@@ -13,11 +13,14 @@ Run from project root:
 
 import os
 import sys
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.tools.citation_guard import (  # noqa: E402
     build_rewrite_feedback,
+    build_evidence,
+    format_evidence,
     extract_claims,
     extract_numbers,
     normalize_text,
@@ -32,6 +35,21 @@ EVIDENCE = {
     "E3": {"text": "截至2024年底，全国新型储能累计装机规模达7376万千瓦。",
            "chunk_id": 1003, "source": "market_nea_storage_2024.txt"},
 }
+
+
+def test_sql_context_reaches_writer_without_licensing_context_numbers():
+    evidence = build_evidence({"data_points": [{
+        "metric": "total_revenue", "value": 3173.36,
+        "row": {"company_name": "国家电网", "total_revenue": 3173.36},
+        "sql": "SELECT company_name,SUM(revenue_billion) FROM company_finance WHERE year=2023 LIMIT 3",
+        "row_index": 0,
+    }]})
+    prompt = format_evidence(evidence)
+    assert "国家电网" in prompt
+    assert "year=2023" in prompt
+    assert verify("国家电网营收3173.36亿元[D1]。", evidence).ok
+    assert not verify("国家电网营收2023亿元[D1]。", evidence).ok
+    assert not verify("国家电网营收9999亿元[D1]。", evidence).ok
 
 
 # ── normalization ─────────────────────────────────────────────────────────────
@@ -58,6 +76,32 @@ def test_extract_skips_years_and_small_ordinals():
     nums = extract_numbers("2023年发布的报告分为3个部分")
     assert "2023" not in nums
     assert "3" not in nums
+
+
+@pytest.mark.parametrize("scope", ["2023年", "2023 年", "year=2023", "year = 2023", "YEAR=2023"])
+def test_explicit_year_scope_does_not_require_a_numeric_source(scope):
+    evidence = {"D1": {"text": "total_revenue: 3173.36"}}
+    result = verify(f"筛选{scope}，国家电网营收3173.36亿元[D1]。", evidence)
+    assert result.ok, result.violations
+
+
+@pytest.mark.parametrize("claim", [
+    "国家电网营收2023亿元[D1]。",
+    "2023 年国家电网营收2023亿元[D1]。",
+    "year=2023亿元[D1]。",
+    "year=2023元[D1]。",
+    "year=2023美元[D1]。",
+    "year=2023亿[D1]。",
+    "year=2023 后国家电网营收9999亿元[D1]。",
+    "国家电网营收9999，来源为数据库[D1]。",
+    "year=2023.5，国家电网营收3173.36亿元[D1]。",
+])
+def test_year_scope_does_not_license_wrong_metric_values(claim):
+    assert not verify(claim, {"D1": {"text": "total_revenue: 3173.36"}}).ok
+
+
+def test_integer_followed_by_chinese_comma_matches_numeric_evidence():
+    assert verify("营收3173，按原始值展示[D1]。", {"D1": {"text": "revenue: 3173"}}).ok
 
 
 def test_extract_comma_number():

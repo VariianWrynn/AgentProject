@@ -1,29 +1,14 @@
-"""Route a question to one of the existing graphs without coupling their states."""
+"""Normal General/research routing with ReAct reserved for execution failures."""
 
 from dataclasses import dataclass
 import math
-import re
-from typing import Callable, Iterable
+from typing import Callable
 
-
-ROUTE_PROMPT = """你是任务复杂度分类器，只决定执行路径，不判断领域意图。
-用户明确要求研究报告时选择 multiagent。
-要求长篇综合研究或系统比较时选择 multiagent。
-普通问答即使需要多个年份、子问题或来源核实，也选择 react。
-拿不准时选择 uncertain。只输出 JSON：
-{"route":"react|multiagent|uncertain","reason":"简短原因","confidence":0.0}
+ROUTE_PROMPT = """你是任务路由器。无需外部研究的普通对话、常识解释选择 general。
+需要检索、证据、数据分析、比较或报告的任务选择 multiagent。
+拿不准时选择 multiagent。ReAct 仅用于运行故障兜底，不是可选路线。
+只输出 JSON：{"route":"general|multiagent","reason":"简短原因","confidence":0.0}
 """
-
-_REPORT_REQUEST = re.compile(
-    r"(?:生成|撰写|写|出|制作|给我|提供).{0,12}(?:(?:研究|调研|分析|深度)?报告)"
-    r"|(?:research report|detailed report|in-depth report|write a report|"
-    r"structured literature synthesis|literature review)", re.IGNORECASE,
-)
-_DIRECT_QUESTION = re.compile(
-    r"^\s*(?:what|which|who|when|where|why|how|is|are|was|were|"
-    r"do|does|did|has|have|had|can|could|should|will|among)\b",
-    re.IGNORECASE,
-)
 
 
 @dataclass(frozen=True)
@@ -33,64 +18,62 @@ class RouteDecision:
 
 
 def classify_route(question: str, classify_json: Callable[[str], dict]) -> RouteDecision:
-    if _REPORT_REQUEST.search(question):
-        return RouteDecision("multiagent", "明确要求研究报告")
-    first_line = question.split("\n\n", 1)[0].strip()
-    if ("?" in first_line or "？" in first_line) and _DIRECT_QUESTION.match(first_line):
-        return RouteDecision("react", "直接问答")
     try:
         result = classify_json(question)
-        route = result.get("route")
-        if route not in ("react", "multiagent"):
-            return RouteDecision("react", "复杂度不确定，采用快速问答")
         confidence = result.get("confidence", 1.0)
-        if (isinstance(confidence, bool) or not isinstance(confidence, (int, float))
+        if (result.get("route") not in ("general", "multiagent")
+                or isinstance(confidence, bool) or not isinstance(confidence, (int, float))
                 or not math.isfinite(confidence) or confidence < 0.7):
-            return RouteDecision("react", "复杂度不确定，采用快速问答")
+            return RouteDecision("multiagent", "分类不确定，进入研究流程")
         reason = result.get("reason")
-        return RouteDecision(route, reason.strip()[:100] if isinstance(reason, str) and reason.strip()
-                             else ("需要综合研究" if route == "multiagent" else "单步问答"))
+        return RouteDecision(result["route"], reason.strip()[:100]
+                             if isinstance(reason, str) and reason.strip() else "任务路由")
     except Exception:
-        return RouteDecision("react", "分类服务不可用，采用快速问答")
+        return RouteDecision("multiagent", "分类不可用，进入研究流程")
 
 
 def dispatch_query(question: str, session_id: str, demo_mode: bool,
                    classify_json: Callable[[str], dict],
                    run_react: Callable[[str, str], dict],
                    run_multiagent: Callable[[str, str, bool], dict],
-                   emit: Callable[[dict], None]) -> dict:
+                   emit: Callable[[dict], None], *,
+                   run_general: Callable[[str, str], dict] | None = None) -> dict:
     decision = classify_route(question, classify_json)
     emit({"type": "route", "route": decision.route, "content": decision.reason})
-    emit({"type": "thinking", "content": "正在回答问题..." if decision.route == "react"
+    emit({"type": "thinking", "content": "正在直接回答..." if decision.route == "general"
           else "正在生成研究报告..."})
+    result = {"session_id": session_id, "route": decision.route, "route_reason": decision.reason}
+
+    def answer(handler, workflow):
+        emit({"type": "run_started", "workflow": workflow,
+              "state": {"question": question, "session_id": session_id}})
+        state = handler(question, session_id)
+        emit({"type": "state_updated", "workflow": workflow, "delta": state})
+        emit({"type": "run_completed", "workflow": workflow})
+        return state
+
     try:
-        if decision.route == "react":
-            state = run_react(question, session_id)
-            result = {"session_id": session_id, "route": "react", "route_reason": decision.reason,
-                      "intent": state.get("intent", ""), "answer": state.get("final_answer", ""),
-                      "steps_count": len(state.get("steps_executed", []))}
+        if decision.route == "general":
+            if run_general is None:
+                raise RuntimeError("General handler is required")
+            state = answer(run_general, "general")
         else:
-            report = run_multiagent(question, session_id, demo_mode)
-            result = {"session_id": session_id, "route": "multiagent",
-                      "route_reason": decision.reason, "intent": report.get("intent", ""),
-                      "report": report}
+            from backend.research_graph import ResearchExecutionError
+            try:
+                report = run_multiagent(question, session_id, demo_mode)
+            except ResearchExecutionError as exc:
+                result.update(route="react", fallback_reason=str(exc))
+                emit({"type": "route", "route": "react", "content": "研究执行故障，启用 ReAct 兜底",
+                      "fallback_reason": str(exc)})
+                state = answer(run_react, "react")
+            else:
+                result.update(intent=report.get("intent", ""), report=report)
+                state = None
+        if state is not None:
+            result.update(intent=state.get("intent", ""), answer=state.get("final_answer", ""),
+                          steps_count=len(state.get("steps_executed", [])))
     except Exception:
         emit({"type": "error", "content": "执行失败"})
         raise
     emit({"type": "done", "session_id": session_id, "content": "完成"})
     return result
-
-
-def iter_query_events(query_events: Iterable[dict], research_events: Iterable[dict]):
-    """Merge persisted event snapshots; the dispatcher owns the terminal event."""
-    terminal = None
-    for event in query_events:
-        if event.get("type") in ("done", "error"):
-            terminal = event
-        else:
-            yield event
-    for event in research_events:
-        if event.get("type") not in ("done", "error"):
-            yield event
-    if terminal is not None:
-        yield terminal

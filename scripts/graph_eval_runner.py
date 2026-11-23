@@ -176,7 +176,7 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
     _fake_dependencies(corpus)
     import langgraph_agent as agent
     from react_engine import get_usage_totals, reset_usage_totals
-    from backend.agents import deep_scout, data_analyst
+    from mcp_client import MCPClient
 
     live_web = retrieval == "live-web"
     search_calls: list[str] = []
@@ -195,43 +195,26 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
                  "MODEL_WRITER", "MODEL_CRITIC"):
         os.environ[name] = model
 
-    def local_tool(name, query, params, session_id):
+    def local_tool(name, query, params=None, session_id="default"):
+        params = params or {}
         if name == "rag_search":
             return [] if live_web else corpus.query(query, int(params.get("top_k", 5)))
         if name == "doc_summary":
             return {"summary": "[NO_MATCH]" if live_web else corpus.doc_summary(query)}
         if name == "text2sql":
             return {"result": [], "summary": "[EVAL_SQL_DISABLED]"}
-        if name == "web_search" and live_web:
-            return web_search(query)
+        if name == "web_search":
+            return web_search(query) if live_web else []
+        if name == "data_analysis":
+            return {"data_points": [], "charts_data": []}
         raise RuntimeError(f"evaluation forbids tool {name}")
 
-    async def local_search(questions):
-        hits = []
-        for question in questions:
-            hits.extend({"title": h["source"], "url": h["source"],
-                         "snippet": h["content"], "score": h["score"],
-                         "chunk_id": h["chunk_id"], "source_type": "rag", "query": question}
-                        for h in corpus.query(question, 3))
-        return hits
-
-    agent.mcp.call = local_tool
-    if live_web:
-        agent._tools.rag_search = lambda query: "[NO_MATCH]"
-        agent._tools.web_search = lambda query: "\n\n".join(
-            f"{hit['title']}\n{hit['url']}\n{hit['snippet']}" for hit in web_search(query))
-
-        async def live_search(questions):
-            import asyncio
-            batches = await asyncio.gather(*(asyncio.to_thread(web_search, q) for q in questions))
-            return [{**hit, "source_type": "web", "query": question}
-                    for question, batch in zip(questions, batches) for hit in batch]
-
-        deep_scout._search_all = live_search
-    else:
-        agent._tools.web_search = lambda query: (_ for _ in ()).throw(RuntimeError("web disabled"))
-        deep_scout._search_all = local_search
-    data_analyst._run_text2sql = lambda query: {"result": [], "summary": "[EVAL_SQL_DISABLED]"}
+    MCPClient.call = lambda self, *args, **kwargs: local_tool(*args, **kwargs)
+    agent._tools.rag_search = lambda query: "[NO_MATCH]" if live_web else "\n".join(
+        hit["content"] for hit in corpus.query(query))
+    agent._tools.web_search = lambda query: "\n\n".join(
+        f"{hit['title']}\n{hit['url']}\n{hit['snippet']}" for hit in web_search(query)
+    ) if live_web else "[EVAL_WEB_DISABLED]"
     reset_usage_totals()
     sid = f"graph_eval_{uuid.uuid4().hex}"
     start = time.monotonic()
@@ -251,6 +234,10 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
             evidence = [{"source": step.get("query"), "action": step.get("action"),
                          "result": str(step.get("result", ""))[:8000]}
                         for step in state.get("steps_executed", [])]
+        elif execution_route == "general":
+            from backend.research_graph import general_node
+            state = general_node({"question": case["question"]})
+            evidence = []
         else:
             state = agent.run_deep_research(case["question"], sid, demo_mode=False, fact_guard=True)
             evidence = list((state.get("evidence_frozen") or {}).values())

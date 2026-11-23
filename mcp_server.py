@@ -138,6 +138,7 @@ except ImportError:
 from rag_pipeline import RAGPipeline
 from react_engine import Tools, REDIS_HOST, REDIS_PORT
 from backend.tools.text2sql_tool import Text2SQLTool
+from backend.tools.data_analysis import run as analyze_data
 from backend.tools.deepseek_search import search as deepseek_search
 
 # ── cache config ──────────────────────────────────────────────────────────────
@@ -272,22 +273,38 @@ def web_search(req: ToolRequest) -> ToolResponse:
 def text2sql(req: ToolRequest) -> ToolResponse:
     t0 = time.time()
     try:
-        cached_result = _cache_get("text2sql", req.query)
-        if cached_result is not None:
-            latency = (time.time() - t0) * 1000
-            _log("text2sql", req.query, latency, cached=True)
-            return ToolResponse(tool="text2sql", result=cached_result,
-                                latency_ms=latency, cached=True)
-
-        result  = _text2sql.run(req.query)
-        _cache_set("text2sql", req.query, result)
+        result, cached = _cached_text2sql(req.query)
         latency = (time.time() - t0) * 1000
-        _log("text2sql", req.query, latency, cached=False)
-        return ToolResponse(tool="text2sql", result=result, latency_ms=latency)
+        _log("text2sql", req.query, latency, cached=cached)
+        return ToolResponse(tool="text2sql", result=result, latency_ms=latency, cached=cached)
     except Exception as exc:
         latency = (time.time() - t0) * 1000
         _log("text2sql", req.query, latency, error=str(exc))
         return ToolResponse(tool="text2sql", result=None, latency_ms=latency, error=str(exc))
+
+
+def _cached_text2sql(query: str) -> tuple[dict, bool]:
+    cached = _cache_get("text2sql", query)
+    if cached is not None:
+        return cached, True
+    result = _text2sql.run(query)
+    if not result.get("error"):
+        _cache_set("text2sql", query, result)
+    return result, False
+
+
+@app.post("/tools/data_analysis", response_model=ToolResponse)
+def data_analysis(req: ToolRequest) -> ToolResponse:
+    started = time.time()
+    try:
+        result = analyze_data(req.query, lambda query: _cached_text2sql(query)[0])
+        latency = (time.time() - started) * 1000
+        _log("data_analysis", req.query, latency)
+        return ToolResponse(tool="data_analysis", result=result, latency_ms=latency)
+    except Exception as exc:
+        latency = (time.time() - started) * 1000
+        _log("data_analysis", req.query, latency, error=str(exc))
+        return ToolResponse(tool="data_analysis", result=None, latency_ms=latency, error=str(exc))
 
 
 @app.post("/tools/doc_summary", response_model=ToolResponse)

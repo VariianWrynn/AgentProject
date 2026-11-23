@@ -1,107 +1,88 @@
 import pytest
 
-from query_entry import classify_route, dispatch_query, iter_query_events
+from backend.research_graph import EvidenceRejected, ResearchExecutionError
+from query_entry import classify_route, dispatch_query
 
 
-def test_explicit_report_skips_classifier():
-    def classifier(_question):
-        raise AssertionError("classifier should not run")
-
-    decision = classify_route("请生成一份储能行业研究报告", classifier)
-    assert decision.route == "multiagent"
-
-
-def test_generic_report_request_also_skips_classifier():
-    assert classify_route("帮我写一份报告", lambda _q: {}).route == "multiagent"
-
-
-@pytest.mark.parametrize("result,route", [
-    ({"route": "react", "reason": "single fact"}, "react"),
-    ({"route": "multiagent", "reason": "cross-source research"}, "multiagent"),
-    ({"route": "uncertain", "reason": "unclear"}, "react"),
-    ({"route": "multiagent", "confidence": 0.4}, "react"),
-    ({"route": "multiagent", "confidence": float("nan")}, "react"),
-    ({"route": "unexpected"}, "react"),
+@pytest.mark.parametrize("classification,expected", [
+    ({"route": "general", "confidence": 0.9}, "general"),
+    ({"route": "multiagent", "confidence": 0.9}, "multiagent"),
+    ({"route": "react", "confidence": 1}, "multiagent"),
+    ({"route": "general", "confidence": 0.4}, "multiagent"),
+    ({"route": "general", "confidence": float("nan")}, "multiagent"),
+    ({"route": "general", "confidence": True}, "multiagent"),
+    ({}, "multiagent"), (None, "multiagent"),
 ])
-def test_classifier_result_and_uncertain_fallback(result, route):
-    assert classify_route("问题", lambda _q: result).route == route
+def test_normal_routing_never_selects_react(classification, expected):
+    assert classify_route("question", lambda _: classification).route == expected
 
 
-def test_classifier_failure_falls_back_to_react():
-    def fail(_question):
-        raise RuntimeError("provider unavailable")
-
-    assert classify_route("问题", fail).route == "react"
-
-
-def test_cross_document_question_stays_short_answer_even_if_classifier_prefers_report():
-    question = "What are the major acquisitions a company made across three fiscal years?"
-    decision = classify_route(question, lambda _q: {
-        "route": "multiagent", "confidence": 0.99, "reason": "several years and sources"})
-    assert decision.route == "react"
+def test_classifier_failure_chooses_research():
+    def unavailable(_):
+        raise ConnectionError("provider unavailable")
+    assert classify_route("question", unavailable).route == "multiagent"
 
 
-@pytest.mark.parametrize("question", [
-    "Does the company have positive working capital? Explain why if not.",
-    "Among operating, investing and financing activities, which had the most cash flow?",
-])
-def test_direct_qa_with_followup_instruction_stays_react(question):
-    assert classify_route(question, lambda _q: {
-        "route": "multiagent", "confidence": 0.99}).route == "react"
-
-
-def test_dispatch_react_shape_and_events():
+def test_general_uses_direct_callback_and_separate_workflow():
     events = []
     result = dispatch_query(
-        "2023 年装机量是多少？", "sid", False,
-        lambda _q: {"route": "react", "reason": "single fact"},
-        lambda q, sid: {"intent": "data_query", "final_answer": "42", "steps_executed": []},
-        lambda *_args: pytest.fail("research graph called"),
-        events.append,
+        "hello", "sid", False, lambda _: {"route": "general"},
+        lambda *_: pytest.fail("General must not use ReAct"),
+        lambda *_: pytest.fail("General must not research"), events.append,
+        run_general=lambda *_: {"final_answer": "hello", "intent": "general"},
     )
-    assert result == {"session_id": "sid", "route": "react", "route_reason": "single fact",
-                      "intent": "data_query", "answer": "42", "steps_count": 0}
-    assert [event["type"] for event in events] == ["route", "thinking", "done"]
+    assert result["route"] == "general"
+    assert result["answer"] == "hello"
+    updates = [event for event in events if event["type"] == "state_updated"]
+    assert updates == [{"type": "state_updated", "workflow": "general",
+                        "delta": {"final_answer": "hello", "intent": "general"}}]
+    assert events[-1]["type"] == "done"
 
 
-def test_dispatch_multiagent_passes_demo_mode_and_report():
-    events = []
-    calls = []
-
-    def research(q, sid, demo):
-        calls.append((q, sid, demo))
-        return {"intent": "research", "sections": [], "summary": "result"}
-
-    result = dispatch_query(
-        "比较两家公司", "sid", True,
-        lambda _q: {"route": "multiagent", "reason": "multi-source"},
-        lambda *_args: pytest.fail("react graph called"), research, events.append,
-    )
-    assert calls == [("比较两家公司", "sid", True)]
+def test_research_success_passes_demo_mode_without_react():
+    calls, events = [], []
+    def research(*args):
+        calls.append(args)
+        return {"intent": "research", "summary": "report"}
+    result = dispatch_query("compare", "sid", True, lambda _: {"route": "multiagent"},
+                            lambda *_: pytest.fail("ReAct called"), research, events.append)
+    assert calls == [("compare", "sid", True)]
+    assert result["report"]["summary"] == "report"
     assert result["route"] == "multiagent"
-    assert result["report"]["summary"] == "result"
-    assert [event["type"] for event in events] == ["route", "thinking", "done"]
 
 
-def test_dispatch_failure_emits_error_without_switching_graphs():
+def test_operational_failure_falls_back_exactly_once():
+    calls, events = [], []
+    def research(*_):
+        raise ResearchExecutionError("MCP unavailable")
+    def react(*args):
+        calls.append(args)
+        return {"intent": "research", "final_answer": "fallback", "steps_executed": []}
+    result = dispatch_query("compare", "sid", False, lambda _: {}, react, research, events.append)
+    assert calls == [("compare", "sid")]
+    assert result["route"] == "react"
+    assert result["fallback_reason"] == "MCP unavailable"
+    assert result["answer"] == "fallback"
+    assert [e["workflow"] for e in events if e["type"] == "state_updated"] == ["react"]
+
+
+@pytest.mark.parametrize("failure", [EvidenceRejected("unchecked"), ValueError("bug"),
+                                     AssertionError("bug"), RuntimeError("bug")])
+def test_policy_rejection_and_programmer_errors_never_fallback(failure):
     events = []
-
-    def fail(*_args):
-        raise RuntimeError("research failed")
-
-    with pytest.raises(RuntimeError, match="research failed"):
-        dispatch_query("请生成研究报告", "sid", False, lambda _q: {},
-                       lambda *_args: pytest.fail("react fallback called"), fail, events.append)
+    def research(*_):
+        raise failure
+    with pytest.raises(type(failure)):
+        dispatch_query("compare", "sid", False, lambda _: {},
+                       lambda *_: pytest.fail("unexpected fallback"), research, events.append)
     assert events[-1]["type"] == "error"
 
 
-def test_stream_forwards_review_and_research_progress_before_done():
-    query = [{"type": "route", "route": "multiagent"}, {"type": "done"}]
-    research = [{"type": "searching", "content": "检索"},
-                {"type": "awaiting_review", "content": "审核"}, {"type": "done"}]
-    assert list(iter_query_events(query, research)) == [query[0], *research[:2], query[1]]
-
-
-def test_stream_react_has_terminal_event():
-    query = [{"type": "route", "route": "react"}, {"type": "thinking"}, {"type": "done"}]
-    assert list(iter_query_events(query, [])) == query
+def test_general_failure_never_uses_react():
+    def general(*_):
+        raise ResearchExecutionError("provider unavailable")
+    with pytest.raises(ResearchExecutionError):
+        dispatch_query("hello", "sid", False, lambda _: {"route": "general"},
+                       lambda *_: pytest.fail("unexpected fallback"),
+                       lambda *_: pytest.fail("unexpected research"), lambda _: None,
+                       run_general=general)

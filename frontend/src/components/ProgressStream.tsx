@@ -10,176 +10,55 @@ interface Props {
   onError: (message: string) => void
 }
 
-interface DisplayEvent {
-  id: number
-  type: SSEEventType
-  label: string
-  elapsedMs: number
+const STAGES: Partial<Record<SSEEventType, string>> = {
+  thinking: '正在理解你的问题', plan: '正在制定研究计划',
+  searching: '正在查找相关资料', analyzing: '正在分析数据',
+  writing: '正在整理研究报告', reviewing: '正在核对结论与来源',
+  answer: '正在整理回答', awaiting_review: '等待你的确认',
 }
 
-const EVENT_ICONS: Record<string, string> = {
-  thinking:        '🧠',
-  searching:       '🔍',
-  analyzing:       '📊',
-  writing:         '✍️',
-  reviewing:       '🔎',
-  done:            '✅',
-  intent:          'ℹ️',
-  plan:            'ℹ️',
-  step:            'ℹ️',
-  answer:          'ℹ️',
-  error:           '❌',
-  awaiting_review: '⚠️',
-  route:           '↪️',
-}
-
-function eventLabel(ev: SSEEvent): string {
-  if (ev.content) return ev.content
-  if (ev.type === 'intent') return `意图分类: ${ev.content ?? ''}`
-  if (ev.type === 'step') return `执行: ${ev.action ?? ''} — ${ev.query ?? ''}`
-  if (ev.type === 'plan') return '规划步骤...'
-  if (ev.type === 'answer') return '生成答案...'
-  return ev.type
-}
+type Review = { content: string; draftSections: Record<string, string>; issueSummary: string; runId: string; reviewId: number }
 
 export function ProgressStream({ sessionId, onComplete, onError }: Props) {
-  const [events, setEvents] = useState<DisplayEvent[]>([])
-  const [connected, setConnected] = useState(false)
-  const [done, setDone] = useState(false)
-  const [pendingDecision, setPendingDecision] = useState<{
-    content: string
-    draftSections: Record<string, string>
-    issueSummary: string
-  } | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const startTimeRef = useRef(0)
-  const esRef = useRef<EventSource | null>(null)
-  const counterRef = useRef(0)
-
+  const [stage, setStage] = useState('正在开始研究')
+  const [pendingDecision, setPendingDecision] = useState<Review | null>(null)
+  const callbacks = useRef({ onComplete, onError })
+  useEffect(() => { callbacks.current = { onComplete, onError } }, [onComplete, onError])
   useEffect(() => {
-    startTimeRef.current = Date.now()
-    let completed = false
-    const es = api.streamQuery(sessionId)
-    esRef.current = es
-
-    es.onopen = () => setConnected(true)
-
-    es.onmessage = (e: MessageEvent) => {
-      try {
-        const ev: SSEEvent = JSON.parse(e.data)
-
-        // Skip heartbeats silently
-        if (ev.type === 'heartbeat') return
-
-        const elapsedMs = Date.now() - startTimeRef.current
-        const label = eventLabel(ev)
-
-        setEvents((prev) => [
-          ...prev,
-          {
-            id: counterRef.current++,
-            type: ev.type,
-            label,
-            elapsedMs,
-          },
-        ])
-
-        if (ev.type === 'awaiting_review') {
-          // Pipeline paused waiting for human decision — show decision card.
-          // Do NOT close stream or call onComplete; stream must stay open to
-          // receive subsequent events after the user submits their decision.
-          setPendingDecision({
-            content: ev.content ?? '',
-            draftSections: ev.draft_sections ?? {},
-            issueSummary: ev.issue_summary ?? '',
-          })
-        }
-
-        if (ev.type === 'done') {
-          completed = true
-          setDone(true)
-          es.close()
-          // Small delay so user sees the "done" event before report loads
-          setTimeout(onComplete, 400)
-        }
-
-        if (ev.type === 'error') {
-          es.close()
-          onError(ev.content ?? '执行失败')
-        }
-      } catch {
-        // ignore parse errors
+    let finished = false
+    const stream = api.streamQuery(sessionId)
+    stream.onmessage = (message: MessageEvent) => {
+      let event: SSEEvent
+      try { event = JSON.parse(message.data) } catch { return }
+      const label = STAGES[event.type]
+      if (label) setStage(label)
+      if (event.type === 'awaiting_review' && event.run_id && typeof event.review_id === 'number') {
+        setPendingDecision({ content: event.content ?? '', draftSections: event.draft_sections ?? {}, issueSummary: event.issue_summary ?? '', runId: event.run_id, reviewId: event.review_id })
+      }
+      if (event.type === 'done') {
+        finished = true
+        setPendingDecision(null)
+        stream.close()
+        callbacks.current.onComplete()
+      }
+      if (event.type === 'error') {
+        finished = true
+        stream.close()
+        callbacks.current.onError(event.content ?? '研究暂时未能完成，请重试。')
       }
     }
-
-    es.onerror = () => {
-      setConnected(false)
-      es.close()
-      if (!completed) onError('进度连接中断')
-      // If done is already set, error is just the stream closing — ignore
-      if (!completed) {
-        setEvents((prev) => [
-          ...prev,
-          {
-            id: counterRef.current++,
-            type: 'error',
-            label: '连接中断',
-            elapsedMs: Date.now() - startTimeRef.current,
-          },
-        ])
-      }
+    stream.onerror = () => {
+      stream.close()
+      if (!finished) callbacks.current.onError('连接中断，请重试。')
     }
-
-    return () => {
-      es.close()
-    }
-  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-scroll to bottom on new events
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [events])
-
-  return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <span className={connected && !done ? styles.pulse : ''}>
-          {done ? '✅ 完成' : connected ? '⏳ 分析中...' : '⚫ 连接中...'}
-        </span>
-      </div>
-      <div className={styles.eventList}>
-        {events.map((ev) => (
-          <div key={ev.id} className={`${styles.event} ${styles[ev.type] ?? ''}`}>
-            <span className={styles.icon}>{EVENT_ICONS[ev.type] ?? 'ℹ️'}</span>
-            <span className={styles.label}>{ev.label}</span>
-            <span className={styles.elapsed}>{(ev.elapsedMs / 1000).toFixed(1)}s</span>
-          </div>
-        ))}
-        {pendingDecision && (
-          <HITLDecisionCard
-            content={pendingDecision.content}
-            draftSections={pendingDecision.draftSections}
-            issueSummary={pendingDecision.issueSummary}
-            sessionId={sessionId}
-            onDecisionSubmitted={(decision) => {
-              setPendingDecision(null)
-              setEvents((prev) => [
-                ...prev,
-                {
-                  id: counterRef.current++,
-                  type: decision === 'approve' ? 'reviewing' : 'searching',
-                  label:
-                    decision === 'approve'
-                      ? '已通过审核，继续生成报告...'
-                      : '已提交补充研究请求，重新搜索...',
-                  elapsedMs: Date.now() - startTimeRef.current,
-                },
-              ])
-            }}
-          />
-        )}
-        <div ref={bottomRef} />
-      </div>
-    </div>
-  )
+    return () => stream.close()
+  }, [sessionId])
+  return <div className={styles.container}>
+    <div className={styles.status} role="status" aria-live="polite"><span className={styles.pulse} aria-hidden="true" />{stage}</div>
+    <p className={styles.note}>研究完成后，报告将在这里展示。</p>
+    {pendingDecision && <HITLDecisionCard {...pendingDecision} sessionId={sessionId} onDecisionSubmitted={(decision) => {
+      setPendingDecision(null)
+      setStage(decision === 'approve' ? '正在整理研究报告' : '正在补充研究资料')
+    }} />}
+  </div>
 }

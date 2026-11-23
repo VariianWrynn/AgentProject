@@ -56,10 +56,8 @@ from llm_router import make_llm  # noqa: E402
 # Agent modules live in backend/agents/ (already on sys.path above).
 import chief_architect  # noqa: E402
 import deep_scout       # noqa: E402
-import data_analyst     # noqa: E402
 import lead_writer      # noqa: E402
 import critic_master    # noqa: E402
-import synthesizer      # noqa: E402
 
 # =============================================================================
 # Constants
@@ -71,15 +69,12 @@ TEST_CASES_FILE = PROJECT_ROOT / "tests" / "agent_quality_test_cases.json"
 AGENT_MAP: dict[str, tuple] = {
     "ChiefArchitect": (chief_architect.run, "chief_architect"),
     "DeepScout":      (deep_scout.run,      "deep_scout"),
-    "DataAnalyst":    (data_analyst.run,    "data_analyst"),
     "LeadWriter":     (lead_writer.run,     "lead_writer"),
     "CriticMaster":   (critic_master.run,   "critic_master"),
-    "Synthesizer":    (synthesizer.run,     "synthesizer"),
 }
 
 AGENT_ORDER = [
-    "ChiefArchitect", "DeepScout", "DataAnalyst",
-    "LeadWriter", "CriticMaster", "Synthesizer",
+    "ChiefArchitect", "DeepScout", "LeadWriter", "CriticMaster",
 ]
 
 # Minimal valid AgentState — every field present so nodes never KeyError.
@@ -389,6 +384,10 @@ def main() -> None:
     with TEST_CASES_FILE.open(encoding="utf-8") as f:
         data = json.load(f)
     cases: list[dict] = data["test_cases"]
+    retired = [case["test_id"] for case in cases if case["agent"] not in AGENT_MAP]
+    if retired:
+        print(f"Retired agent cases excluded; tool behavior is covered by test_research_tools.py and test_report_assembly.py: {retired}")
+    cases = [case for case in cases if case["agent"] in AGENT_MAP]
 
     # ── Filter ────────────────────────────────────────────────────────────────
     if args.test_id:
