@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 import os
 import re
+import json
 
 
 def guard_enabled(state: dict) -> bool:
@@ -31,13 +32,13 @@ def guard_enabled(state: dict) -> bool:
 # Statistical units that mark a number as a checkable claim
 _UNITS = (
     "亿元|万元|亿千瓦时|万千瓦时|亿千瓦|万千瓦|亿吨|万吨|亿度|亿立方米|"
-    "GWh|MWh|kWh|GW|MW|元/瓦|元/W|万元/吨|元/吨|%|个百分点|亿股"
+    "GWh|MWh|kWh|GW|MW|元/瓦|元/W|万元/吨|元/吨|%|个百分点|亿股|元|美元|亿"
 )
 
 _FULLWIDTH = str.maketrans("０１２３４５６７８９．", "0123456789.")
 
-# number possibly containing thousand separators, e.g. 1,294.98 / 98,521
-_NUM_RE = re.compile(r"\d[\d,，]*(?:\.\d+)?")
+# Thousand separators are removed by normalize_text before extraction.
+_NUM_RE = re.compile(r"\d+(?:\.\d+)?")
 
 # E = frozen search/RAG evidence, D = structured data points (Text2SQL)
 _CITE_RE = re.compile(r"\[([ED]\d+)\]")
@@ -57,10 +58,16 @@ def extract_numbers(sentence: str) -> list[str]:
     out: list[str] = []
     for m in _NUM_RE.finditer(sent):
         num = m.group()
-        tail = sent[m.end():]
-        if tail.startswith("年") or tail.startswith("月") or tail.startswith("日"):
-            continue  # calendar dates are narrative, not statistics
+        tail = sent[m.end():].lstrip()
         has_unit = re.match(_UNITS, tail) is not None
+        calendar_date = tail.startswith(("年", "月", "日"))
+        year_filter = (
+            re.fullmatch(r"[12]\d{3}", num) is not None
+            and re.search(r"(?<![A-Za-z0-9_])year\s*=\s*$", sent[:m.start()], re.IGNORECASE) is not None
+            and re.match(r"[A-Za-z0-9_.]", tail) is None
+        )
+        if not has_unit and (calendar_date or year_filter):
+            continue
         significant = "." in num or len(num) >= 3 or has_unit
         if significant and num not in out:
             out.append(num)
@@ -164,4 +171,26 @@ def format_evidence(evidence: dict) -> str:
     for label, item in evidence.items():
         src = item.get("source", "") if isinstance(item, dict) else ""
         lines.append(f"[{label}] ({src}) {_evidence_text(item)}")
+        if isinstance(item, dict) and item.get("source_type") == "sql":
+            context = {key: item[key] for key in ("row", "sql", "row_index") if key in item}
+            lines.append("结构化查询上下文（用于识别实体与口径，SQL 年份和 LIMIT 不能当作指标值）："
+                         + json.dumps(context, ensure_ascii=False))
     return "\n".join(lines)
+
+
+def build_evidence(state: dict) -> dict:
+    """Bind the same frozen sources and SQL labels for writing and verification."""
+    evidence = dict(state.get("evidence_frozen", {}))
+    for index, point in enumerate(state.get("data_points", []), 1):
+        evidence[f"D{index}"] = {
+            "text": f"{point.get('metric', '')}: {point.get('value', '')}",
+            "chunk_id": f"sql:{index}",
+            "source": "text2sql",
+            "url": "",
+            "source_type": "sql",
+            "row": dict(point.get("row", {})),
+            "sql": point.get("sql", ""),
+            "query": point.get("query", ""),
+            "row_index": point.get("row_index"),
+        }
+    return evidence

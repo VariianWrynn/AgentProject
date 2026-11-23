@@ -1,0 +1,10 @@
+.citation { position: relative; display: inline; font-size: .86em; white-space: nowrap; }
+.citation > a { color: #256659; font-weight: 650; padding: 2px 3px; border-radius: 4px; text-decoration: none; }
+.citation > a:hover, .citation > a:focus-visible { background: #e4f2ed; outline: 2px solid #84b9a9; outline-offset: 2px; }
+.tooltip { position: fixed; z-index: 20; display: grid; gap: 9px; width: min(360px, calc(100vw - 32px)); max-height: min(320px, calc(100vh - 32px)); overflow-y: auto; padding: 16px; border: 1px solid #d8e4de; border-radius: 12px; background: #fff; color: #283c35; box-shadow: 0 12px 40px #17392c24; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.7; font-weight: 400; }
+.tooltip strong { font-size: 12px; color: #256659; }
+.context { border-top: 1px solid #e5ece8; padding-top: 9px; color: #617169; }
+.tableScroll { overflow-x: auto; max-width: 100%; margin: 18px 0; }
+.tableScroll table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tableScroll th, .tableScroll td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e1e9e3; vertical-align: top; }
+.tableScroll th { color: #3f5b4e; background: #f1f6f2; font-weight: 600; }

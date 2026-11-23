@@ -1,113 +1,144 @@
-"""
-tests/test_lead_writer_guard.py — Offline tests for the guarded writing loop (Task 3).
+"""Writer behavior at the LLM boundary, independent of graph verification."""
 
-Uses a scripted fake LLM (no network, no services):
-  draft 1 contains a fabricated number → guard must trigger a rewrite
-  draft 2 is clean → accepted
+from copy import deepcopy
+import threading
 
-Also covers freeze_evidence (chunk_id binding) and the FACT_GUARD switch.
+import pytest
 
-Run from project root:
-    python -m pytest tests/test_lead_writer_guard.py -v
-"""
-
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from backend.agents.deep_scout import freeze_evidence  # noqa: E402
-from backend.agents.lead_writer import _write_with_guard, run as lead_writer_run  # noqa: E402
-from backend.tools.citation_guard import guard_enabled  # noqa: E402
-
-EVIDENCE = {
-    "E1": {"text": "2023年，公司营收4009.2亿元，同比增长22.01%。",
-           "chunk_id": 1001, "source": "finance_catl_2023.txt", "url": ""},
-}
+from backend.agents.lead_writer import run
+from backend.tools.citation_guard import build_evidence, verify
 
 
 class ScriptedLLM:
-    """Returns queued responses in order; records every prompt."""
-
     def __init__(self, responses):
-        self.responses = list(responses)
+        self.responses = iter(responses)
         self.calls = []
 
     def chat(self, system, user, temperature=0.3):
         self.calls.append({"system": system, "user": user})
-        return self.responses.pop(0)
+        response = next(self.responses)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
-def test_guard_rewrites_fabricated_number():
-    llm = ScriptedLLM([
-        "宁德时代2023年营收4100.2亿元[E1]。",          # fabricated → must fail verify
-        "宁德时代2023年营收4009.2亿元[E1]。",          # corrected on rewrite
-    ])
-    content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
-    assert stats["violations_first"] == 1
-    assert stats["rewrites"] == 1
-    assert stats["violations_final"] == 0
-    assert "4009.2" in content and "⚠" not in content
-    # the retry prompt must carry the violation feedback
-    assert "4100.2" in llm.calls[1]["user"]
-
-
-def test_guard_annotates_when_rewrite_still_fails():
-    llm = ScriptedLLM([
-        "营收4100.2亿元[E1]。",
-        "营收4200.2亿元[E1]。",   # still wrong after rewrite
-    ])
-    content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
-    assert stats["violations_final"] == 1
-    assert "未通过证据核验" in content
-
-
-def test_guard_passes_clean_draft_without_rewrite():
-    llm = ScriptedLLM(["宁德时代2023年营收4009.2亿元，同比增长22.01%[E1]。"])
-    content, stats = _write_with_guard(llm, "sys", "写一段", EVIDENCE, "test")
-    assert stats == {"violations_first": 0, "rewrites": 0, "violations_final": 0}
-    assert len(llm.calls) == 1
-
-
-def test_freeze_evidence_binds_chunk_ids():
-    unique = [
-        {"source_type": "rag", "chunk_id": 42, "snippet": "文本A", "title": "doc_a.txt", "url": "doc_a.txt"},
-        {"source_type": "web", "snippet": "文本B", "title": "新闻B", "url": "https://example.com/b"},
-    ]
-    ev = freeze_evidence(unique)
-    assert ev["E1"]["chunk_id"] == 42
-    assert str(ev["E2"]["chunk_id"]).startswith("web:")
-
-
-def test_fact_guard_switch():
-    assert guard_enabled({"fact_guard": True}) is True
-    assert guard_enabled({"fact_guard": False}) is False
-    os.environ["FACT_GUARD"] = "off"
-    try:
-        assert guard_enabled({}) is False
-    finally:
-        os.environ["FACT_GUARD"] = "on"
-    assert guard_enabled({}) is True
-
-
-def test_lead_writer_run_guard_end_to_end():
-    """Full run(): one section + summary, guard on, scripted LLM."""
-    llm = ScriptedLLM([
-        "本章分析宁德时代业绩。公司营收4009.2亿元[E1]。行业保持增长态势。",  # section
-        "报告显示宁德时代营收4009.2亿元[E1]，表现稳健。",                     # summary
-    ])
-    state = {
-        "question": "宁德时代2023年业绩如何",
-        "outline": [{"id": "s1", "title": "业绩分析", "description": "", "keywords": []}],
-        "hypotheses": [],
-        "facts": [],
-        "data_points": [],
-        "raw_sources": [],
-        "evidence_frozen": EVIDENCE,
-        "fact_guard": True,
+@pytest.fixture
+def state():
+    return {
+        "question": "公司业绩如何",
+        "outline": [{"id": "s1", "title": "业绩分析"}],
+        "evidence_frozen": {"E1": {"text": "营收4009.2亿元", "chunk_id": 42, "source": "年报"}},
+        "data_points": [{"metric": "营收", "value": 4009.2}],
     }
-    update = lead_writer_run(state, llm)
-    assert "s1" in update["draft_sections"] and "summary" in update["draft_sections"]
-    assert update["guard_stats"]["s1"]["violations_final"] == 0
-    refs = update["references"]
-    assert refs[0]["label"] == "E1" and refs[0]["chunk_id"] == 1001
+
+
+def test_writer_returns_draft_for_independent_gate_without_rewriting(state):
+    llm = ScriptedLLM(["营收9999.2亿元[E1]。", "营收9999.2亿元[E1]。"])
+    result = run(state, llm)
+    assert result["draft_sections"]["s1"] == "营收9999.2亿元[E1]。"
+    assert not verify(result["draft_sections"]["s1"], build_evidence(state)).ok
+    assert len(llm.calls) == 2
+    assert [reference["label"] for reference in result["references"]] == ["E1", "D1"]
+
+
+def test_feedback_rewrites_only_failed_section_and_refreshes_summary(state):
+    state["outline"].append({"id": "s2", "title": "行业"})
+    state["draft_sections"] = {"s1": "营收9999.2亿元[E1]。", "s2": "证据有限。", "summary": "旧摘要。"}
+    state["guard_feedback"] = [{"section": "s1", "type": "number_mismatch",
+                                "sentence": "营收9999.2亿元[E1]。", "detail": "数字9999.2未在证据中出现"}]
+    original = deepcopy(state)
+    llm = ScriptedLLM(["营收4009.2亿元[E1]。", "营收4009.2亿元[E1]。"])
+    result = run(state, llm)
+    assert result["draft_sections"] == {"s1": "营收4009.2亿元[E1]。", "s2": "证据有限。", "summary": "营收4009.2亿元[E1]。"}
+    assert "数字9999.2未在证据中出现" in llm.calls[0]["user"]
+    assert "营收4009.2亿元[E1]。" in llm.calls[1]["user"]
+    assert state == original
+
+
+@pytest.mark.parametrize("responses", [[RuntimeError("transport")], ["章节。", RuntimeError("summary")]])
+def test_generation_failure_propagates(state, responses):
+    with pytest.raises(RuntimeError):
+        run(state, ScriptedLLM(responses))
+
+
+def test_empty_outline_fails_before_generation():
+    llm = ScriptedLLM([])
+    with pytest.raises(ValueError):
+        run({"outline": []}, llm)
+    assert not llm.calls
+
+
+def test_empty_evidence_cannot_enable_legacy_prompt(monkeypatch, state):
+    monkeypatch.setenv("FACT_GUARD", "off")
+    state.update(evidence_frozen={}, data_points=[], fact_guard=False, demo_mode=True)
+    llm = ScriptedLLM(["证据不足。", "现有证据不足以判断。"])
+    result = run(state, llm)
+    assert result["draft_sections"]["summary"] == "现有证据不足以判断。"
+    assert result["references"] == []
+    assert all("[E编号]" in call["system"] and "[D编号]" in call["system"] for call in llm.calls)
+    assert all("证据集为空" in call["user"] for call in llm.calls)
+
+
+def test_parallel_completion_preserves_outline_order(state):
+    state["outline"].append({"id": "s2", "title": "先完成"})
+    second_completed = threading.Event()
+
+    class ParallelLLM:
+        def chat(self, system, user, temperature=0.3):
+            if "本章节：业绩分析" in user:
+                assert second_completed.wait(2)
+                return "第一章。"
+            if "本章节：先完成" in user:
+                second_completed.set()
+                return "第二章。"
+            return "摘要。"
+
+    result = run(state, ParallelLLM())
+    assert list(result["draft_sections"]) == ["s1", "s2", "summary"]
+
+
+def test_writer_and_gate_share_evidence_without_mutating_frozen_sources(state):
+    original = deepcopy(state)
+    evidence = build_evidence(state)
+    assert verify("营收4009.2亿元[D1]。", evidence).ok
+    assert evidence["E1"]["chunk_id"] == 42
+    assert state == original
+
+
+def test_reference_preview_retains_exact_source_and_keeps_sql_context_separate(state):
+    state["data_points"] = [{"metric": "total_revenue", "value": 3173.36,
+        "row_index": 0, "row": {"company_name": "国家电网", "total_revenue": 3173.36},
+        "sql": "SELECT company_name, SUM(revenue_billion) AS total_revenue FROM company_finance WHERE year=2023 GROUP BY company_name",
+        "query": "2023年营收合计"}]
+    original = deepcopy(state)
+    llm = ScriptedLLM(["国家电网营收合计3173.36亿元[D1]。", "营收合计3173.36亿元[D1]。"])
+    result = run(state, llm)
+    source, data = result["references"]
+    assert source["text"] == "营收4009.2亿元"
+    assert source["context"] == "年报"
+    assert data["text"] == "total_revenue: 3173.36"
+    assert data["title"] == "本地数据查询"
+    assert "企业名称 国家电网" in data["context"] and "2023 年" in data["context"]
+    assert "SELECT" not in data["context"] and "2023年营收合计" not in data["context"]
+    assert data["sql"] == state["data_points"][0]["sql"]
+    assert "合计营收（亿元）" in data["context"]
+    assert all("合计营收（亿元）" in call["user"] for call in llm.calls)
+    assert not verify("营收2023亿元[D1]。", build_evidence(state)).ok
+    assert state == original
+
+
+def test_each_section_receives_other_chapter_boundaries_without_unverified_hypotheses(state):
+    state["hypotheses"] = ["未证实的行业领先假设"]
+    state["outline"] = [
+        {"id": "s1", "title": "营收排名", "description": "按企业汇总全年营收"},
+        {"id": "s2", "title": "主营业务", "description": "仅介绍上榜企业的主营业务"},
+    ]
+    original = deepcopy(state)
+    llm = ScriptedLLM(["营收4009.2亿元[E1]。", "现有资料未提供主营业务。", "教学数据展示营收结果。"])
+    result = run(state, llm)
+    for call in llm.calls[:2]:
+        assert "营收排名：按企业汇总全年营收" in call["user"]
+        assert "主营业务：仅介绍上榜企业的主营业务" in call["user"]
+        assert "未证实的行业领先假设" not in call["user"]
+    assert result["references"][0]["text"] == state["evidence_frozen"]["E1"]["text"]
+    assert state == original

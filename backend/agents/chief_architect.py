@@ -4,7 +4,7 @@ ChiefArchitect Agent
 Intent decoding + hypothesis generation + dynamic outline planning.
 
 Input:  state["question"] + state["intent"]
-Output: hypotheses, outline (4-6 sections), research_questions (4-8 sub-questions)
+Output: hypotheses, outline, research_questions sized to the user's question.
 """
 
 import json
@@ -17,14 +17,19 @@ _SYSTEM = """\
 你是一位通用研究规划员。你的职责是：
 1. 识别用户真正要回答的问题和交付形式
 2. 提出至多3个需要证据检验的假设；没有合理假设时返回空列表
-3. 按问题本身规划4-6个章节，不强加市场、政策或财务章节
-4. 将问题拆解为4-8个具体、互不重复的检索子问题
+3. 简短报告、数据查询或单一问题只规划1-3个必要章节；复杂研究再按覆盖需要增加章节
+4. 只生成回答问题所需的互不重复的检索子问题，不为凑数量扩展范围
 
 要求：
 - 每个章节要包含与描述一致的搜索关键词
 - 检索子问题应保留原问题中的实体、专业术语和语言；英文问题用英文检索
 - 优先覆盖用户要求的比较维度、来源、局限与不确定性
 - 不要预设事实、数字、结论或与问题无关的行业背景
+- 章节围绕读者关心的发现组织，不设独立的 SQL、数据库结构、执行过程、统计口径或图表操作说明章节
+- 章节标题简短明确，尽量不超过18个汉字，不使用括号附加写作要求；写作要求放入 description
+- 每章只负责一个必要问题，数据结果与资料缺口不在多个章节重复；资料缺口随其所属章节用一句话说明
+- 时间、分组、聚合和单位应直接融入数据表标题、列名和结果解释，不另起章节重复
+- 用户仅查询本地样例时不安排外部财报或行业比较，样例限制随结果简要说明即可
 
 输出JSON格式：
 {
@@ -120,10 +125,6 @@ def run(state: dict, llm) -> dict:
     if not research_questions:
         research_questions = [question]
 
-    # Ensure at least 4 sections
-    if len(outline) < 4:
-        outline.extend(_default_outline(question)[len(outline):4])
-
     # Guarantee keyword–description alignment (deterministic post-process)
     outline = _fix_keyword_alignment(outline)
 
@@ -147,10 +148,7 @@ def run(state: dict, llm) -> dict:
 def _default_outline(question: str) -> list[dict]:
     """Fallback outline when LLM fails."""
     topics = [
-        ("sec_1", "问题与范围", "界定研究问题、关键概念和适用范围", ["研究问题", "关键概念", "适用范围"]),
-        ("sec_2", "证据与主要发现", "梳理相关来源的证据和主要发现", ["来源", "证据", "主要发现"]),
-        ("sec_3", "比较与解释", "比较不同来源的结果并解释差异", ["比较", "结果", "差异"]),
-        ("sec_4", "局限与结论", "说明证据局限和可支持的结论", ["证据局限", "结论"]),
+        ("sec_1", "主要发现", "直接回答研究问题，结果注明必要的时间、单位和证据局限", ["研究问题", "结果", "证据局限"]),
     ]
     return [
         {"id": sid, "title": title, "description": desc, "keywords": kws}

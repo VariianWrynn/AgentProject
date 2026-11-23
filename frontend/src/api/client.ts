@@ -43,13 +43,15 @@ export const api = {
   getHealth: () => axios.get<HealthStatus>(`${BASE}/health`),
 
   // HITL: submit human approve/reject decision
-  submitDecision: (sessionId: string, decision: 'approve' | 'reject') =>
+  submitDecision: (sessionId: string, runId: string, reviewId: number, decision: 'approve' | 'reject') =>
     axios.post<DecisionResponse>(`${BASE}/research/decision`, {
       session_id: sessionId,
+      run_id: runId,
+      review_id: reviewId,
       decision,
     }),
 
-  // Demo warmup — pre-runs pipeline and caches result
+  // Run a live research request before the demonstration.
   warmup: (question?: string) =>
     axios.post(
       `${BASE}/demo/warmup`,

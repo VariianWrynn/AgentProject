@@ -21,16 +21,14 @@ BASE_URL = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
 # Key distribution: spread concurrency across 6 keys
 # KEY_1: Router, ChiefArchitect              — 1 call at a time
 # KEY_2: DeepScout                           — parallel Bocha/RAG calls
-# KEY_3: DataAnalyst                         — medium concurrency
+# KEY_3: available for tool-specific model configuration
 # KEY_4: LeadWriter                          — parallel section writes
 # KEY_5: CriticMaster                        — split from KEY_3
-# KEY_6: Synthesizer                         — split from KEY_1
+# KEY_6: available for overflow
 ROLE_TO_KEY_ENV: dict[str, str] = {
     "router":          "LLM_KEY_1",
     "chief_architect": "LLM_KEY_1",
-    "synthesizer":     "LLM_KEY_6",
     "deep_scout":      "LLM_KEY_2",
-    "data_analyst":    "LLM_KEY_3",
     "critic_master":   "LLM_KEY_5",
     "lead_writer":     "LLM_KEY_4",
 }
@@ -38,9 +36,7 @@ ROLE_TO_KEY_ENV: dict[str, str] = {
 ROLE_TO_MODEL_ENV: dict[str, str] = {
     "router":          "MODEL_ROUTER",
     "chief_architect": "MODEL_PLANNER",
-    "synthesizer":     "MODEL_PLANNER",
     "deep_scout":      "MODEL_SCOUT",
-    "data_analyst":    "MODEL_ANALYST",
     "critic_master":   "MODEL_CRITIC",
     "lead_writer":     "MODEL_WRITER",
 }

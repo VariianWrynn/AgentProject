@@ -1,364 +1,119 @@
-"""
-LeadWriter Agent
-================
-Section-by-section research report writing.
-Sections are written in parallel via ThreadPoolExecutor (one thread per section,
-each using the lead_writer API key to avoid rate-limit collisions).
+"""Draft evidence-bound sections. The graph owns verification and retry routing."""
 
-Input:  outline + facts + data_points + raw_sources
-Output: draft_sections {section_id: content}, references
-"""
+import os
+from concurrent.futures import ThreadPoolExecutor
 
-import logging
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from backend.tools.citation_guard import build_evidence, build_rewrite_feedback, format_evidence
+from backend.tools.data_analysis import sql_field_label, sql_scope
 
-from backend.tools.citation_guard import (
-    build_rewrite_feedback,
-    format_evidence,
-    guard_enabled,
-    verify,
-)
+_SECTION_SYSTEM = """你是一位研究分析师，负责撰写指定章节，沿用问题的语言。
+只使用证据集支持的事实。每个含数字的句子必须引用 [E编号] 或 [D编号]。
+每个证据编号单独标注，例如 [D1][D2][D3]，不合并为 [D1-D3] 或 [D1,D2]。
+数字必须与被引证据原文一致，不得换算、四舍五入或添加证据外的数字。
+证据不足时明确说明缺口，使用定性描述，不得编造数字或引用。
+面向最终读者直接呈现发现，先给结果，再给必要解释。简单数据问题优先用一张简洁表格回答。
+在表格标题、列名或紧邻数据的一句话中自然注明时间范围、分组方式、聚合方法与单位，不另设重复的“统计口径”章节。
+单位只能来自证据或提供的字段释义，不能根据英文列名猜测币种；没有释义时注明“单位未提供”。
+教学样例与真实公开数据必须明确区分，不对样例作外部行业推断。
+不复述工作流程、SQL、数据库结构、字段名、元数据文件名、单位推导过程、内部假设清单或生成图表的操作指令。没有用户要求时不展示代码。
+实际图表由工具单独展示，不输出 ASCII 图、字符柱形图、Mermaid 或图片占位符，也不重复抄写图表说明。
+全篇大纲用于划分内容边界，只回答本章节指定的问题；其他章节负责的内容不在本章重复。
+默认除表格外本章说明文字尽量控制在180字以内，用户明确要求详尽时可按需扩展。表格已经说明的数值、排名、口径不再逐项复述；图表由工具展示，无需交代如何绘制。
+本章节所需资料不足时，用一句简短的话说明缺失，不罗列无关企业或无关检索结果，不讨论后续如何补资料。
+只输出章节正文，不包含章节标题或开头的小标题。"""
 
-logger = logging.getLogger("lead_writer")
-
-_GUARD_SECTION_SYSTEM = """\
-你是一位研究分析师，负责撰写研究报告的指定章节。沿用问题的语言和专业术语。
-
-【事实约束 — 必须严格遵守】
-1. 只允许使用下方「证据集」原文中出现的数字；禁止使用你自己知识中的任何数字。
-2. 每个包含数字的句子，句末必须标注证据编号，格式 [E3]，可多个如 [E1][E4]；数据指标用 [D1] 格式。
-3. 数字必须与证据原文完全一致：不得四舍五入、不得换算单位、不得改写（如证据写 4009.2亿元 就写 4009.2亿元）。
-4. 证据集中没有依据的内容只做定性描述，不要编造任何数据；证据不足时明确写"现有证据未覆盖"。
-
-写作要求：
-- 每章中文约400-700字、英文约250-450词；篇幅以证据充分性为准
-- 语言与问题一致，客观区分证据、解释和不确定性
-只输出章节正文，不要包含章节标题。
-"""
-
-_GUARD_SUMMARY_SYSTEM = """\
-你是一位研究报告编辑，负责撰写执行摘要。沿用问题的语言；中文约200-300字、英文约120-180词。
-
-【事实约束 — 必须严格遵守】
-1. 只允许使用报告正文中已出现且带证据编号的数字。
-2. 每个数字后保留其证据编号，如 装机7376万千瓦[E2]。
-3. 不得引入报告正文之外的任何数字。
-
-只输出摘要正文。
-"""
-
-
-def _write_with_guard(llm, system: str, user_msg: str, evidence: dict,
-                      label: str) -> tuple[str, dict]:
-    """Generate → verify against frozen evidence → one feedback-guided rewrite →
-    annotate anything still unverified. Returns (content, stats)."""
-    content = llm.chat(system, user_msg, temperature=0.3)
-    result = verify(content, evidence)
-    stats = {"violations_first": len(result.violations), "rewrites": 0,
-             "violations_final": 0}
-    if not result.ok:
-        stats["rewrites"] = 1
-        feedback = build_rewrite_feedback(result.violations)
-        retry_msg = (
-            f"{user_msg}\n\n你上一稿如下：\n{content}\n\n"
-            f"【校验失败，必须修正】\n{feedback}\n\n"
-            "请重写全文：修正以上问题；无法在证据中找到依据的数字必须删除或改为定性表述。"
-        )
-        content = llm.chat(system, retry_msg, temperature=0.2)
-        result = verify(content, evidence)
-    if not result.ok:
-        # final fallback: annotate the surviving violations so nothing
-        # unverified reads as established fact
-        stats["violations_final"] = len(result.violations)
-        notes = "\n".join(f"- {v['detail']}" for v in result.violations[:5])
-        content += f"\n\n> ⚠ 以下表述未通过证据核验，仅供参考：\n{notes}"
-    logger.info("[LeadWriter] guard '%s': first=%d final=%d rewrites=%d",
-                label, stats["violations_first"], stats["violations_final"],
-                stats["rewrites"])
-    return content, stats
-
-_SECTION_SYSTEM = """\
-你是一位研究分析师，负责撰写研究报告的指定章节。沿用问题的语言和专业术语。
-
-写作要求：
-- 每章中文约400-700字、英文约250-450词；篇幅以证据充分性为准
-- 只引用与本章问题相关、在资料中确实出现的事实
-- 资料不足时说明缺口，不凑数据来源
-- 语言与问题一致，客观区分证据、解释和不确定性
-- 使用适合本章问题的段落结构
-
-引用格式：在有证据支持的事实后加[来源N]标注。
-
-只输出章节正文，不要包含章节标题（标题会由系统添加）。
-"""
-
-_SUMMARY_SYSTEM = """\
-你是一位研究报告编辑，负责撰写执行摘要。沿用问题的语言。
-
-要求：
-- 中文约200-300字、英文约120-180词的精炼摘要
-- 涵盖核心发现、关键数据、主要结论
-- 提炼3-5个最重要的洞察
-- 关键事实和数据必须标注来源，格式：事实[来源N]
-- 语言简洁有力
-
-只输出摘要正文。
-"""
-
-
-def _format_facts(facts: list[dict], max_facts: int = 8) -> str:
-    """Format facts for LLM context."""
-    top = facts[:max_facts]
-    lines = []
-    for i, f in enumerate(top):
-        src = f.get("source", "")
-        cred = f.get("credibility", 0.7)
-        lines.append(f"[事实{i+1}] (可信度{cred:.1f}) {f.get('content', '')} — 来源: {src}")
-    return "\n".join(lines) if lines else "（暂无结构化事实）"
-
-
-def _format_data_points(data_points: list[dict], max_pts: int = 6) -> str:
-    """Format numeric data points for LLM context."""
-    top = data_points[:max_pts]
-    lines = []
-    for dp in top:
-        metric = dp.get("metric", "")
-        value  = dp.get("value", 0)
-        query  = dp.get("query", "")
-        lines.append(f"• {metric}: {value}  （来自查询: {query[:40]}）")
-    return "\n".join(lines) if lines else "（暂无结构化数据）"
-
-
-def _format_sources(raw_sources: list[dict], max_src: int = 5) -> str:
-    """Format top sources as brief context."""
-    top = [s for s in raw_sources if s.get("snippet")][:max_src]
-    lines = []
-    for i, s in enumerate(top):
-        title   = s.get("title", "")[:40]
-        snippet = s.get("snippet", "")[:200]
-        lines.append(f"[来源{i+1}] {title}\n  {snippet}")
-    return "\n\n".join(lines) if lines else "（暂无搜索资料）"
-
-
-def _inject_missing_facts(content: str, facts: list[dict]) -> str:
-    """
-    Ensure verbatim fact content appears in a section.
-
-    The factual-grounding test formula checks whether fact[:20] is a literal
-    substring of the section text.  LLMs frequently paraphrase numbers, so
-    this deterministic post-processor appends any fact whose first 20 chars
-    are not already present in the generated content.
-
-    Only facts that are genuinely missing are injected; sections that already
-    quote the fact verbatim are left untouched.
-    """
-    missing = [f for f in facts if f.get("content", "")[:20] not in content]
-    if not missing:
-        return content
-    lines = ["\n\n**关键数据（原始来源）：**"]
-    for f in missing[:5]:
-        src = f.get("source", "")
-        src_label = f"（来源：{src}）" if src else ""
-        lines.append(f"• {f.get('content', '')}{src_label}")
-    return content + "\n".join(lines)
-
-
-def _build_references(raw_sources: list[dict]) -> list[dict]:
-    """Build deduplicated reference list from sources."""
-    seen = set()
-    refs = []
-    for s in raw_sources:
-        url = s.get("url") or s.get("title", "")
-        if url and url not in seen:
-            seen.add(url)
-            refs.append({
-                "title": s.get("title", url)[:80],
-                "url":   url,
-                "date":  s.get("date", ""),
-            })
-    return refs[:20]
+_SUMMARY_SYSTEM = """你是一位研究报告编辑，负责撰写执行摘要，沿用问题的语言。
+只总结报告正文中有依据的发现，不引入新的事实或数字。
+保留事实的 [E编号] 或 [D编号] 引用，数字必须与证据原文一致。
+证据不足时明确说明，不得编造数字或引用。
+用一句话直接回答用户最重要的问题，尽量不超过80字；不重复整张表、全部章节或操作过程，不添加“摘要”等标题。
+数字出现时在同一句保留时间和单位，单位只能采用证据或提供的字段释义。只输出摘要正文。"""
 
 
 def run(state: dict, llm) -> dict:
-    """
-    Run LeadWriter to draft all report sections.
-
-    Args:
-        state: current AgentState dict
-        llm: LLMClient instance
-
-    Returns:
-        partial state update: {draft_sections, references, phase}
-    """
-    outline      = state.get("outline", [])
-    facts        = state.get("facts", [])
-    data_points  = state.get("data_points", [])
-    raw_sources  = state.get("raw_sources", [])
-    question     = state.get("question", "")
-    hypotheses   = state.get("hypotheses", [])
-
+    """Return drafts and auditable references; propagate generation failures."""
+    outline = state.get("outline", [])
     if not outline:
-        logger.warning("[LeadWriter] No outline found, generating minimal draft")
-        return {
-            "draft_sections": {"summary": f"关于「{question}」的研究摘要待生成。"},
-            "references":     _build_references(raw_sources),
-            "phase":          "reviewing",
-        }
-
-    facts_text   = _format_facts(facts)
-    data_text    = _format_data_points(data_points)
-    sources_text = _format_sources(raw_sources)
-
-    # Fact-constraint mode: writer sees only the frozen evidence set and must
-    # cite [E*]/[D*] labels; numbers are back-checked against evidence verbatim.
-    use_guard = guard_enabled(state) and bool(state.get("evidence_frozen"))
-    guard_evidence: dict = {}
-    guard_stats: dict = {}
-    if use_guard:
-        guard_evidence = dict(state["evidence_frozen"])
-        for i, dp in enumerate(data_points):
-            guard_evidence[f"D{i + 1}"] = {
-                "text": f"{dp.get('metric', '')}: {dp.get('value', '')}",
-                "chunk_id": f"sql:{i + 1}",
-                "source": "text2sql",
-            }
-        evidence_text = format_evidence(guard_evidence)
-        print(f"[LeadWriter] FACT_GUARD on: {len(guard_evidence)} evidence items bound")
-
-    draft_sections: dict[str, str] = {}
-    t0 = time.time()
-
-    # demo_mode: only write first 2 sections
-    sections_to_write = outline[:2] if state.get("demo_mode", False) else outline
-    if state.get("demo_mode", False):
-        print(f"[LeadWriter] demo_mode: writing 2/{len(outline)} sections")
-
-    print(f"[LeadWriter] Writing {len(sections_to_write)} sections in parallel ...")
-
-    def _write_one(sec: dict) -> tuple[str, str]:
-        """Write a single section; returns (sec_id, content)."""
-        sec_id    = sec.get("id", f"sec_{id(sec)}")
-        sec_title = sec.get("title", "")
-        sec_desc  = sec.get("description", "")
-        keywords  = sec.get("keywords", [])
-
-        if use_guard:
-            user_msg = (
-                f"研究主题：{question}\n\n"
-                f"本章节：{sec_title}\n"
-                f"章节描述：{sec_desc}\n"
-                f"关键词：{'、'.join(keywords)}\n\n"
-                f"研究假设：\n" + "\n".join(f"• {h}" for h in hypotheses[:3]) + "\n\n"
-                f"证据集（数字只能来自这里，引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
-                "请基于证据集撰写本章节内容。"
-            )
-        else:
-            user_msg = (
-                f"研究主题：{question}\n\n"
-                f"本章节：{sec_title}\n"
-                f"章节描述：{sec_desc}\n"
-                f"关键词：{'、'.join(keywords)}\n\n"
-                f"研究假设：\n" + "\n".join(f"• {h}" for h in hypotheses[:3]) + "\n\n"
-                f"可用事实：\n{facts_text}\n\n"
-                f"数据指标：\n{data_text}\n\n"
-                f"参考资料：\n{sources_text}\n\n"
-                "请基于以上信息撰写本章节内容。"
-            )
-
-        _max_retries = 2
-        for _attempt in range(_max_retries + 1):
-            try:
-                if use_guard:
-                    content, stats = _write_with_guard(
-                        llm, _GUARD_SECTION_SYSTEM, user_msg, guard_evidence, sec_title)
-                    guard_stats[sec_id] = stats
-                else:
-                    content = llm.chat(_SECTION_SYSTEM, user_msg, temperature=0.4)
-                    # Ensure verbatim fact content appears for factual-grounding checks
-                    content = _inject_missing_facts(content, facts)
-                logger.info("[LeadWriter] section '%s' → %d chars (attempt %d)",
-                            sec_title, len(content), _attempt + 1)
-                return sec_id, content
-            except Exception as exc:
-                if _attempt < _max_retries:
-                    logger.warning("[LeadWriter] Section '%s' attempt %d failed: %s, retrying...",
-                                   sec_title, _attempt + 1, exc)
-                    time.sleep(2)
-                else:
-                    logger.error("[LeadWriter] Section '%s' failed after %d attempts: %s",
-                                 sec_title, _max_retries + 1, exc)
-                    return sec_id, f"[{sec_title}内容生成失败，请重试]"
-
-    # Parallel execution: all sections fire simultaneously, each on its own thread.
-    # PARALLEL=off forces serial writing (perf-benchmark baseline).
-    import os as _os
-    max_workers = 1 if _os.getenv("PARALLEL", "on").lower() == "off" else min(len(sections_to_write), 6)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_write_one, sec): sec for sec in sections_to_write}
-        for future in as_completed(futures):
-            try:
-                sec_id, content = future.result()
-                draft_sections[sec_id] = content
-            except Exception as exc:
-                sec = futures[future]
-                sid = sec.get("id", "?")
-                logger.error("[LeadWriter] Future for '%s' raised: %s", sid, exc)
-                draft_sections[sid] = f"[章节生成失败，请重试]"
-
-    # Generate executive summary from all sections
-    # demo_mode: skip summary LLM call, use short auto-generated text (saves ~19s)
-    if state.get("demo_mode", False):
-        draft_sections["summary"] = f"本报告研究主题：{question}。已生成{len(draft_sections)}个章节的快速分析。"
-        logger.info("[LeadWriter] demo_mode: skipping summary LLM call")
-        print("[LeadWriter] demo_mode: skipping summary generation")
-    else:
-        all_content = "\n\n".join(
-            f"## {outline[i].get('title','')}\n{draft_sections.get(sec.get('id',''), '')}"
-            for i, sec in enumerate(outline)
-            if sec.get("id") in draft_sections
-        )
-        try:
-            summary_msg = (
-                f"研究主题：{question}\n\n"
-                f"报告全文：\n{all_content[:3000]}\n\n"
-                "请撰写执行摘要。"
-            )
-            if use_guard:
-                summary, s_stats = _write_with_guard(
-                    llm, _GUARD_SUMMARY_SYSTEM, summary_msg, guard_evidence, "summary")
-                guard_stats["summary"] = s_stats
-            else:
-                summary = llm.chat(_SUMMARY_SYSTEM, summary_msg, temperature=0.3)
-                # Ensure verbatim fact content appears in summary too
-                summary = _inject_missing_facts(summary, facts)
-            draft_sections["summary"] = summary
-        except Exception as exc:
-            logger.warning("[LeadWriter] Summary generation failed: %s", exc)
-            draft_sections["summary"] = f"本报告研究主题：{question}。包含{len(outline)}个章节。"
-
-    elapsed = time.time() - t0
-    if use_guard:
-        # auditable reference list: label → chunk_id → source
-        references = [
-            {"label": label, "title": str(ev.get("source", ""))[:80],
-             "url": ev.get("url", ""), "chunk_id": ev.get("chunk_id", ""), "date": ""}
-            for label, ev in guard_evidence.items()
-        ]
-    else:
-        references = _build_references(raw_sources)
-
-    logger.info(
-        "[LeadWriter] %d sections + summary | %d references | %.1fs",
-        len(outline), len(references), elapsed,
+        raise ValueError("Writer requires a nonempty outline")
+    sections = outline[:2] if state.get("demo_mode", False) else outline
+    evidence = build_evidence(state)
+    evidence_text = format_evidence(evidence) or "（证据集为空，只能说明证据缺口，不得编造引用或数字。）"
+    field_labels = []
+    for point in state.get("data_points", []):
+        label = sql_field_label(point.get("metric", ""), point.get("sql", ""))
+        if label and label not in field_labels:
+            field_labels.append(label)
+    if field_labels:
+        evidence_text += "\n字段释义（用于正确表达单位，不增加可引用指标值）：\n" + "\n".join(field_labels)
+    outline_text = "\n".join(
+        f"- {section.get('title', '')}：{section.get('description', '')}" for section in sections
     )
-    print(f"[LeadWriter] {len(draft_sections)} sections (incl. summary) | {len(references)} refs | {elapsed:.1f}s")
+    previous = state.get("draft_sections", {})
+    feedback = state.get("guard_feedback", [])
+    feedback_by_section: dict[str, list[dict]] = {}
+    for violation in feedback:
+        feedback_by_section.setdefault(violation["section"], []).append(violation)
 
-    update = {
-        "draft_sections": draft_sections,
-        "references":     references,
-        "phase":          "reviewing",
-    }
-    if use_guard:
-        update["guard_stats"] = guard_stats
-    return update
+    def correction(section_id: str) -> str:
+        issues = feedback_by_section.get(section_id, [])
+        if not issues:
+            return ""
+        return (
+            f"\n\n上一稿：\n{previous.get(section_id, '')}\n\n"
+            f"校验反馈：\n{build_rewrite_feedback(issues)}\n"
+            "请重写该部分，无法依据证据修正的数字必须删除或改为定性表述。"
+        )
+
+    def write_section(section: dict) -> tuple[str, str]:
+        section_id = section["id"]
+        if feedback and section_id in previous and section_id not in feedback_by_section:
+            return section_id, previous[section_id]
+        prompt = (
+            f"研究主题：{state.get('question', '')}\n"
+            f"本章节：{section.get('title', '')}\n"
+            f"章节描述：{section.get('description', '')}\n"
+            f"关键词：{'、'.join(section.get('keywords', []))}\n"
+            f"全篇大纲（各章只负责自己的内容）：\n{outline_text}\n\n"
+            f"证据集（引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
+            "请基于证据集撰写本章节内容。" + correction(section_id)
+        )
+        return section_id, llm.chat(_SECTION_SYSTEM, prompt, temperature=0.3)
+
+    workers = 1 if os.getenv("PARALLEL", "on").lower() == "off" else min(len(sections), 6)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        drafts = dict(executor.map(write_section, sections))
+    body = "\n\n".join(
+        f"## {section.get('title', '')}\n{drafts[section['id']]}" for section in sections
+    )
+    prompt = (
+        f"研究主题：{state.get('question', '')}\n\n"
+        f"证据集（引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
+        f"报告正文：\n{body}\n\n请撰写执行摘要。" + correction("summary")
+    )
+    drafts["summary"] = llm.chat(_SUMMARY_SYSTEM, prompt, temperature=0.3)
+    references = []
+    for label, item in evidence.items():
+        if not isinstance(item, dict):
+            item = {"text": str(item)}
+        if item.get("source_type") == "sql":
+            sql = item.get("sql", "")
+            context = " · ".join(f"{sql_field_label(key, sql) or key} {value}" for key, value in item.get("row", {}).items())
+            for point in state.get("data_points", []):
+                if (point.get("sql") == item.get("sql") and point.get("row_index") == item.get("row_index")
+                        and item.get("text") == f"{point.get('metric', '')}: {point.get('value', '')}"):
+                    meaning = sql_field_label(point.get("metric", ""), point.get("sql", ""))
+                    context += "\n" + sql_scope(sql, meaning or point.get("metric", "") + "（单位未提供）")
+                    break
+        else:
+            context = " · ".join(str(item[key]) for key in ("source", "date") if item.get(key))
+        references.append({
+            "label": label,
+            "title": "本地数据查询" if item.get("source_type") == "sql" else item.get("title") or str(item.get("source", "")) or label,
+            "url": item.get("url", ""),
+            "chunk_id": item.get("chunk_id", ""),
+            "date": item.get("date", ""),
+            "text": item.get("text", ""),
+            "context": context,
+            **({"sql": item.get("sql", "")} if item.get("source_type") == "sql" else {}),
+        })
+    return {"draft_sections": drafts, "references": references, "phase": "reviewing"}

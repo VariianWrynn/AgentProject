@@ -5,6 +5,8 @@ import styles from './HITLDecisionCard.module.css'
 interface Props {
   content: string
   sessionId: string
+  runId: string
+  reviewId: number
   draftSections?: Record<string, string>
   issueSummary?: string
   onDecisionSubmitted: (decision: 'approve' | 'reject') => void
@@ -20,6 +22,8 @@ function severityClass(line: string): string {
 export function HITLDecisionCard({
   content,
   sessionId,
+  runId,
+  reviewId,
   draftSections = {},
   issueSummary = '',
   onDecisionSubmitted,
@@ -38,7 +42,7 @@ export function HITLDecisionCard({
     setSubmitting(true)
     setError('')
     try {
-      await api.submitDecision(sessionId, decision)
+      await api.submitDecision(sessionId, runId, reviewId, decision)
       onDecisionSubmitted(decision)
     } catch (err: unknown) {
       const msg =

@@ -70,10 +70,10 @@ OUTPUT_RAW  = PROJECT_ROOT / "tests" / "generate_test_cases_raw_response.txt"
 AGENT_SOURCE_FILES = [
     PROJECT_ROOT / "backend" / "agents" / "chief_architect.py",
     PROJECT_ROOT / "backend" / "agents" / "deep_scout.py",
-    PROJECT_ROOT / "backend" / "agents" / "data_analyst.py",
+    PROJECT_ROOT / "backend" / "tools" / "data_analysis.py",
     PROJECT_ROOT / "backend" / "agents" / "lead_writer.py",
     PROJECT_ROOT / "backend" / "agents" / "critic_master.py",
-    PROJECT_ROOT / "backend" / "agents" / "synthesizer.py",
+    PROJECT_ROOT / "backend" / "tools" / "report_assembly.py",
     PROJECT_ROOT / "agent_state.py",
     PROJECT_ROOT / "resources" / "data" / "schema_metadata.json",
 ]

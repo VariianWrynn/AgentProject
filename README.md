@@ -6,7 +6,7 @@
 
 ## 功能概览
 
-- **多智能体研究流水线** — 6 个专业角色：ChiefArchitect（规划）、DeepScout（检索）、DataAnalyst（数据分析）、LeadWriter（撰写）、CriticMaster（审核）、Synthesizer（汇总）
+- **多智能体研究流水线** — 4 个研究 agent：ChiefArchitect（规划）、DeepScout（检索与工具调用）、LeadWriter（撰写）、CriticMaster（审核）。事实关卡与人工关卡控制流程，报告由工具组装
 - **实时 SSE 流式前端** — React/TypeScript 界面实时显示各智能体执行进度
 - **能源行业知识库** — 基于 Milvus + BGE-m3 的 RAG 检索，覆盖精选能源行业文献
 - **Text2SQL 能源数据查询** — 自然语言直接转 SQL，支持中文业务术语（如"营收"→ `SUM(amount)`）
@@ -54,9 +54,9 @@ DEEPSEEK_API_KEY=sk-...      # 网页搜索
 # 可选：多 Key 配置（并行提速约 3 倍）
 LLM_KEY_1=sk-...             # ChiefArchitect + Router
 LLM_KEY_2=sk-...             # DeepScout（高并发检索）
-LLM_KEY_3=sk-...             # DataAnalyst + CriticMaster
+LLM_KEY_3=sk-...             # 预留
 LLM_KEY_4=sk-...             # LeadWriter（并行章节撰写）
-LLM_KEY_5=sk-...             # Synthesizer
+LLM_KEY_5=sk-...             # CriticMaster
 LLM_KEY_6=sk-...             # 备用 / 溢出
 ```
 
@@ -120,43 +120,29 @@ npm run dev
 
 ## 系统架构
 
-```
-前端 React/TypeScript :5173
-    │ SSE + REST
-    ▼
-API 服务器 FastAPI :8003  api_server.py
-    │
-    ▼
-任务复杂度识别  query_entry.py
-    ├── 简短问答 → ReAct 图  langgraph_agent.py
-    └── 综合研究/明确报告 → Multiagent 图  langgraph_agent.py
-        ChiefArchitect → DeepScout → DataAnalyst
-        → LeadWriter → CriticMaster → Synthesizer
-    │
-    ▼
-MCP 工具服务器 FastAPI :8002  mcp_server.py  [Redis 缓存]
-    │
-    ├─── Milvus :19530       RAG 知识库（BGE-m3 向量嵌入）
-    ├─── SQLite energy.db    Text2SQL 能源财务数据
-    └─── DeepSeek Search    网页检索（HTTPS）
+正常入口为 `Router → General 直接回答` 或 `Router → multiagent 研究`。ReAct 只在研究执行故障时兜底。
+
+```text
+前端 React :5173 → FastAPI :8003 → query_entry.py
+    ├── General 直接回答
+    └── 研究图 backend/research_graph.py
+        Architect → DeepScout → Writer → 事实与引用关卡 → CriticMaster
+                        ↑          ↑          │失败          │
+                        │          └──────────┘              ├── 通过或轮次上限 → 报告组装工具
+                        └── 自动补研或人工拒绝 ───────────────┤
+                                                            └── 低分且 HITL 开启 → Human Gate
+DeepScout → MCPClient → MCP 工具服务 :8002
+    ├── RAG → Milvus
+    ├── 网页搜索 → DeepSeek Search
+    └── SQL 分析与制图 → SQLite + matplotlib
+Redis 在工具服务端缓存 RAG 和 SQL，并保存运行事件及人工决定。
 ```
 
-前端统一调用 `POST /query`（`question`、可选 `session_id` 和 `demo_mode`），并通过
-`GET /query/stream?session_id=...` 获取进度。响应中的 `route` 为 `react` 时读取
-`answer`，为 `multiagent` 时读取 `report`；两种响应都包含 `route_reason` 和领域
-`intent`。明确要求研究报告时直接进入 Multiagent；其余问题由独立分类器判断，
-分类失败或不确定时进入 ReAct。原有 `/chat` 与 `/research/report` 继续可用。
+事实关卡失败返回 Writer，两次重写仍失败则终止研究，不会用 ReAct 绕过。Critic 低分时，HITL 开启则转人工，关闭则自动补研。保留两轮补研上限与人工等待 300 秒自动批准。报告组装工具保留审核后的正文，不调用 LLM。
 
-**智能体角色说明：**
+前端继续使用 `POST /query` 和 `GET /query/stream`。响应带独立 `run_id`。新演示可通过原始 SSE 查看节点执行、已提交的 StateGraph 状态增量、分支与工具事件，并按序回放。
 
-| 智能体 | 职责 |
-|--------|------|
-| ChiefArchitect | 研究规划、假设生成 |
-| DeepScout | 异步并行 RAG + 网页检索 |
-| DataAnalyst | Text2SQL 查询 + matplotlib 图表 |
-| LeadWriter | 按章节并行撰写报告 |
-| CriticMaster | 对抗式审核，置信度不足时触发重研究 |
-| Synthesizer | 最终报告汇总与格式化 |
+详细接口、事件格式和验证命令见 [DeepResearch 执行与演示接口](docs/research-api.md)。
 
 ---
 
