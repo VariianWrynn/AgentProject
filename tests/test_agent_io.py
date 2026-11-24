@@ -931,13 +931,17 @@ class TestText2SQLTool:
             yield
 
     def _set_mock_sql(self, sql: str):
-        """Mock both LLM legs: ambiguity detection returns JSON, SQL generation returns text."""
+        """Return structured ambiguity and SQL responses, plus plain-text summaries."""
         def _create(*args, **kwargs):
             completion = MagicMock()
             if (kwargs.get("response_format") or {}).get("type") == "json_object":
-                user_msg = kwargs.get("messages", [{}])[-1].get("content", "")
-                hits = {t: e for t, e in self.tool._term_dict.items() if t in user_msg}
-                completion.choices[0].message.content = json.dumps(hits, ensure_ascii=False)
+                messages = kwargs.get("messages", [{}])
+                if "SQLite" in messages[0].get("content", ""):
+                    payload = {"sql": sql}
+                else:
+                    user_msg = messages[-1].get("content", "")
+                    payload = {t: e for t, e in self.tool._term_dict.items() if t in user_msg}
+                completion.choices[0].message.content = json.dumps(payload, ensure_ascii=False)
             else:
                 completion.choices[0].message.content = sql
             return completion

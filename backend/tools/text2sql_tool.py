@@ -133,27 +133,18 @@ class LLMClient:
 _FEW_SHOTS = """\
 示例 1:
 问题: 华东地区2023年各企业总营收排名
-SQL:
-SELECT company_name, SUM(revenue_billion) AS total_revenue
-FROM company_finance
-WHERE region = '华东' AND year = 2023
-GROUP BY company_name ORDER BY total_revenue DESC
+JSON:
+{"sql": "SELECT company_name, SUM(revenue_billion) AS total_revenue FROM company_finance WHERE region = '华东' AND year = 2023 GROUP BY company_name ORDER BY total_revenue DESC"}
 
 示例 2:
 问题: 风电装机容量最大的省份
-SQL:
-SELECT province, SUM(installed_mw) AS total_mw
-FROM capacity_stats
-WHERE energy_type = '风电'
-GROUP BY province ORDER BY total_mw DESC
+JSON:
+{"sql": "SELECT province, SUM(installed_mw) AS total_mw FROM capacity_stats WHERE energy_type = '风电' GROUP BY province ORDER BY total_mw DESC"}
 
 示例 3:
 问题: 2023年光伏电价月度走势
-SQL:
-SELECT date, region, AVG(price_yuan_kwh) AS avg_price
-FROM price_index
-WHERE energy_type = '光伏' AND date >= '2023-01-01' AND date < '2024-01-01'
-GROUP BY date, region ORDER BY date ASC
+JSON:
+{"sql": "SELECT date, region, AVG(price_yuan_kwh) AS avg_price FROM price_index WHERE energy_type = '光伏' AND date >= '2023-01-01' AND date < '2024-01-01' GROUP BY date, region ORDER BY date ASC"}
 """
 
 _SQL_SYSTEM = """\
@@ -161,7 +152,8 @@ _SQL_SYSTEM = """\
 规则：
 - 只生成 SELECT 语句，不要有其他 SQL 语句
 - 用户指定前 N 名或最多 N 条时，使用相应的 LIMIT N；未指定时由系统添加默认上限
-- 只输出裸 SQL，不要加 Markdown 代码块或任何解释
+- 只返回 JSON 对象，格式为 {"sql": "SELECT ..."}，sql 字段必须为字符串
+- sql 字段只包含一条 SQL，不要加 Markdown 代码块、解释、分析报告或图表说明
 - 跨表查询时，可用 company_name 字段关联 company_finance 和 capacity_stats
 - 日期字段 date 为文本格式 YYYY-MM-DD，使用 SQLite strftime() 处理
 
@@ -282,11 +274,10 @@ class Text2SQLTool:
             enriched = f"{query}\n[术语展开提示: {hints}]"
 
         user_msg = f"表结构:\n{schema}\n\n问题: {enriched}"
-        raw_sql = self._llm.chat(_SQL_SYSTEM + "\n\n表结构已在用户消息中提供。", user_msg, temperature=0.1)
-
-        # Strip Markdown code fences
-        raw_sql = re.sub(r"```(?:sql)?\s*", "", raw_sql, flags=re.IGNORECASE).strip("`").strip()
-        return raw_sql
+        result = self._llm.chat_json(_SQL_SYSTEM + "\n\n表结构已在用户消息中提供。", user_msg, temperature=0.1)
+        if not isinstance(result, dict) or not isinstance(result.get("sql"), str):
+            return ""
+        return result["sql"].strip()
 
     # ------------------------------------------------------------------
     # Step 2c: SQL validation (non-LLM)
