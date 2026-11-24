@@ -17,10 +17,8 @@ import asyncio
 import hashlib
 import json
 import os
-import queue as _queue
 import re
 import sys
-import threading
 import time
 import uuid
 
@@ -238,14 +236,6 @@ class DecisionRequest(BaseModel):
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-
-_MEMORY_ACTIONS = {
-    "core_memory_append",
-    "core_memory_replace",
-    "archival_memory_insert",
-    "archival_memory_search",
-}
-
 
 def _run_graph(question: str, session_id: str) -> dict:
     """Stream the LangGraph and collect the final merged state."""
