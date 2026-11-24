@@ -1,9 +1,19 @@
 import axios from 'axios'
-import type { ResearchReport, SourceList, HealthStatus, DecisionResponse } from '../types/api'
+import type { QueryResult, ResearchReport, SourceList, HealthStatus, DecisionResponse } from '../types/api'
 
 const BASE = '/api'
 
 export const api = {
+  submitQuery: (question: string, sessionId: string, demoMode = false) =>
+    axios.post<QueryResult>(`${BASE}/query`, {
+      question,
+      session_id: sessionId,
+      demo_mode: demoMode,
+    }),
+
+  streamQuery: (sessionId: string): EventSource =>
+    new EventSource(`${BASE}/query/stream?session_id=${encodeURIComponent(sessionId)}`),
+
   // Research
   submitReport: (question: string, sessionId: string, demoMode = false) =>
     axios.post<ResearchReport>(`${BASE}/research/report`, {
@@ -33,13 +43,15 @@ export const api = {
   getHealth: () => axios.get<HealthStatus>(`${BASE}/health`),
 
   // HITL: submit human approve/reject decision
-  submitDecision: (sessionId: string, decision: 'approve' | 'reject') =>
+  submitDecision: (sessionId: string, runId: string, reviewId: number, decision: 'approve' | 'reject') =>
     axios.post<DecisionResponse>(`${BASE}/research/decision`, {
       session_id: sessionId,
+      run_id: runId,
+      review_id: reviewId,
       decision,
     }),
 
-  // Demo warmup — pre-runs pipeline and caches result
+  // Run a live research request before the demonstration.
   warmup: (question?: string) =>
     axios.post(
       `${BASE}/demo/warmup`,

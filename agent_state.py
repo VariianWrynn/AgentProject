@@ -1,18 +1,15 @@
 """
 AgentState — shared state schema for the LangGraph agent.
 
-Consumed by all nodes in langgraph_agent.py:
-  RouterNode → ChiefArchitect → DeepScout → DataAnalyst
-              → LeadWriter → CriticMaster → Synthesizer
-
-Part 1 fields are preserved unchanged for backward compatibility.
-Part 2 fields are Optional with default None so existing code doesn't break.
+Shared by the research StateGraph and its failure-only ReAct fallback.
+Fields use top-level replacement semantics for execution-event replay.
 """
 
 from typing import Literal, Optional, TypedDict  # noqa: F401 — Optional used below
 
 
 class AgentState(TypedDict):
+    run_id: str
     # ── Part 1 fields (unchanged) ─────────────────────────────────────────────
     question:       str
     intent:         Literal["policy_query", "market_analysis", "data_query", "research", "general"]
@@ -36,9 +33,14 @@ class AgentState(TypedDict):
     raw_sources:         list[dict]     # raw source objects from search/RAG
 
     # Fact constraints (pre-hoc citation guard)
-    fact_guard:          Optional[bool] # per-run FACT_GUARD override (None = use env)
+    fact_guard:          Optional[bool] # research runs always enforce the evidence gate
     evidence_frozen:     dict           # {label: {text, chunk_id, source, url}} frozen by DeepScout
     guard_stats:         dict           # {section_id: {violations_first, violations_final, rewrites}}
+    guard_feedback:      list[dict]
+    guard_rewrites:      int
+    gate_passed:         bool
+    hitl_enabled:        bool
+    review_decision:     Literal["approved", "research", "human", "limit"]
     data_points:         list[dict]     # structured numeric data points
 
     # Output layer
@@ -53,7 +55,7 @@ class AgentState(TypedDict):
 
     # Flow control
     phase:               str            # planning/researching/analyzing/writing/reviewing/awaiting_human/done
-    demo_mode:           bool           # True = limit scope (2 questions, 2 sections, skip re-research)
+    demo_mode:           bool           # limits scope without bypassing gates
 
     # Human-in-the-loop (OPT-003)
     user_decision:   Optional[str]      # "approve" | "reject" | None (not yet decided)

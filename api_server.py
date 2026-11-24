@@ -158,16 +158,23 @@ from typing import Literal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import langgraph_agent as _lga
+import redis
+import backend.research_graph as _lga
+from backend.research_events import RedisJournal, RunEvents, replay_state
+from llm_router import make_llm
+from query_entry import ROUTE_PROMPT, dispatch_query
 
 # ── singletons ────────────────────────────────────────────────────────────────
-print("[API] Building LangGraph …")
-graph  = _lga.build_graph()
-memgpt = _lga.memgpt
-_redis = _lga._redis_conn
+_redis = redis.Redis(host=os.getenv("REDIS_HOST", "localhost"),
+                     port=int(os.getenv("REDIS_PORT", "6379")), decode_responses=True)
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
-REPORT_CACHE_TTL = 3600   # 1 hour
-print("[API] Ready.\n")
+REPORT_CACHE_TTL = 3600
+
+
+def _legacy():
+    import langgraph_agent
+    return langgraph_agent
+
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Agent API Server", version="1.0.0")
@@ -197,6 +204,12 @@ class ChatRequest(BaseModel):
     session_id: str = None   # auto-generate uuid4 when omitted
 
 
+class QueryRequest(BaseModel):
+    question: str
+    session_id: str = None
+    demo_mode: bool = False
+
+
 class ChatResponse(BaseModel):
     session_id: str
     answer: str
@@ -219,6 +232,8 @@ class IngestRequest(BaseModel):
 
 class DecisionRequest(BaseModel):
     session_id: str
+    run_id: str
+    review_id: int
     decision:   Literal["approve", "reject"]
 
 
@@ -246,41 +261,188 @@ def _run_graph(question: str, session_id: str) -> dict:
         "session_id":     session_id,
     }
     state: dict = dict(init)
-    for event in graph.stream(init):
+    for event in _legacy().build_graph().stream(init):
         for _, update in event.items():
             if isinstance(update, dict):
                 state.update(update)
     return state
 
 
-# ── endpoints ─────────────────────────────────────────────────────────────────
+def _classify_query(question: str) -> dict:
+    return make_llm("router").chat_json(ROUTE_PROMPT, question, temperature=0.1)
+
+
+def _run_general(question: str, session_id: str) -> dict:
+    answer = make_llm("router").chat("你是助手。直接回答用户问题。", question)
+    return {"final_answer": answer, "intent": "general", "steps_executed": []}
+
+
+def _journal(run_id: str):
+    return RedisJournal(_redis, run_id, ttl=REPORT_CACHE_TTL)
+
+
+def _new_events(session_id: str):
+    run_id = str(uuid.uuid4())
+    events = RunEvents(_journal(run_id), session_id, run_id)
+    events.emit("run_created")
+    _redis.setex(f"research_run:{session_id}", REPORT_CACHE_TTL, run_id)
+    return events
+
+
+def _active_run(session_id: str) -> str | None:
+    value = _redis.get(f"research_run:{session_id}")
+    return value.decode() if isinstance(value, bytes) else value
+
+
+def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = False) -> dict:
+    if not question.strip():
+        raise HTTPException(status_code=422, detail="question must not be empty")
+    events = _new_events(sid)
+    started = time.time()
+    try:
+        result = dispatch_query(
+            question.strip(), sid, demo_mode,
+            (lambda _: {"route": "multiagent", "reason": "指定研究流程"})
+            if force_research else _classify_query,
+            _run_graph,
+            lambda q, session_id, demo: _execute_report(q, session_id, demo, events=events),
+            events.emit_event, run_general=_run_general,
+        )
+    except _lga.EvidenceRejected as exc:
+        raise HTTPException(status_code=422, detail={"message": str(exc), "run_id": events.run_id}) from exc
+    except Exception as exc:
+        _api_logger.exception("Query failed for session=%s", sid)
+        raise HTTPException(status_code=500, detail={"message": "query execution failed",
+                                                   "run_id": events.run_id}) from exc
+    result.update(run_id=events.run_id, latency_ms=(time.time() - started) * 1000)
+    return result
+
+
+@app.post("/query")
+def query(req: QueryRequest) -> dict:
+    return _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode)
+
+
+def _project_event(event: dict) -> dict | None:
+    kind = event["type"]
+    payload = event.get("payload", {})
+    result = {**payload, "type": kind, "run_id": event["run_id"], "seq": event["seq"]}
+    if kind in {"route", "thinking", "searching", "analyzing", "writing", "reviewing",
+                "awaiting_review", "done", "error"}:
+        return result
+    if kind == "node_started":
+        node = event.get("node")
+        result.update(type={"deep_scout": "searching", "writer": "writing",
+                            "lead_writer": "writing", "critic_master": "reviewing",
+                            "evidence_gate": "reviewing", "human_gate": "reviewing"}.get(node, "thinking"),
+                      content=f"正在执行 {node}")
+        return result
+    if kind == "run_failed":
+        result.update(type="thinking", content="研究执行结束，正在处理结果")
+        return result
+    return None
+
+
+def _stream_response(iterator):
+    return StreamingResponse(iterator, media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/query/stream")
+async def query_stream(session_id: str):
+    async def generate():
+        cursor = 0
+        run_id = None
+        deadline = time.time() + 900
+        while time.time() < deadline:
+            if run_id is None:
+                run_id = _active_run(session_id)
+            if run_id:
+                for event in _journal(run_id).read(after_seq=cursor):
+                    cursor = event["seq"]
+                    projected = _project_event(event)
+                    if projected:
+                        yield f"id: {cursor}\ndata: {json.dumps(projected, ensure_ascii=False)}\n\n"
+                    if event["type"] in ("done", "error"):
+                        return
+            yield ': heartbeat\n\n'
+            await asyncio.sleep(0.5)
+        yield 'data: {"type":"error","content":"stream timeout"}\n\n'
+    return _stream_response(generate())
+
+
+@app.get("/research/graph")
+def research_graph() -> dict:
+    return {"schema_version": 1, "workflow": "research",
+            "graph": _lga.build_research_graph().get_graph().to_json()}
+
+
+@app.get("/research/session/{session_id}/run")
+def session_run(session_id: str) -> dict:
+    run_id = _active_run(session_id)
+    if not run_id:
+        raise HTTPException(status_code=404, detail="No run for session")
+    return {"session_id": session_id, "run_id": run_id}
+
+
+@app.get("/research/runs/{run_id}/events")
+async def run_events(run_id: str, request: Request, after_seq: int = 0):
+    journal = _journal(run_id)
+    if not journal.exists():
+        raise HTTPException(status_code=404, detail="Run not found")
+    try:
+        last_event_id = int(request.headers.get("Last-Event-ID", "0"))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid Last-Event-ID") from exc
+    if after_seq < 0 or last_event_id < 0:
+        raise HTTPException(status_code=422, detail="after_seq must be nonnegative")
+    cursor = max(after_seq, last_event_id)
+
+    async def generate():
+        nonlocal cursor
+        deadline = time.time() + 900
+        while time.time() < deadline:
+            for event in journal.read(after_seq=cursor):
+                cursor = event["seq"]
+                yield f"id: {cursor}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event["type"] in ("done", "error"):
+                    return
+            if any(event["type"] in ("done", "error") for event in journal.read()):
+                return
+            yield ': heartbeat\n\n'
+            await asyncio.sleep(0.5)
+    return _stream_response(generate())
+
+
+@app.get("/research/runs/{run_id}/state")
+def run_state(run_id: str, after_seq: int = 0) -> dict:
+    if after_seq < 0:
+        raise HTTPException(status_code=422, detail="after_seq must be nonnegative")
+    journal = _journal(run_id)
+    if not journal.exists():
+        raise HTTPException(status_code=404, detail="Run not found")
+    events = journal.read()
+    return {"run_id": run_id, "last_seq": events[-1]["seq"] if events else 0,
+            "state": replay_state(events),
+            "states": {workflow: replay_state(events, workflow) for workflow in
+                       ("research", "general", "react")},
+            "events": [event for event in events if event["seq"] > after_seq]}
+
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
-    sid = req.session_id or str(uuid.uuid4())
-    t0  = time.time()
-    state = _run_graph(req.question, sid)
-    elapsed = (time.time() - t0) * 1000
-
-    memory_actions = [
-        s["action"]
-        for s in state.get("steps_executed", [])
-        if s.get("action") in _MEMORY_ACTIONS
-    ]
-
-    return ChatResponse(
-        session_id     = sid,
-        answer         = state.get("final_answer", ""),
-        intent         = state.get("intent", ""),
-        steps_count    = len(state.get("steps_executed", [])),
-        latency_ms     = elapsed,
-        memory_actions = memory_actions,
-    )
+    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), False)
+    report = result.get("report", {})
+    answer = result.get("answer") or "\n\n".join(
+        [report.get("summary", "")] + [section["content"] for section in report.get("sections", [])])
+    return ChatResponse(session_id=result["session_id"], answer=answer,
+                        intent=result["intent"], steps_count=result.get("steps_count", report.get("steps_count", 0)),
+                        latency_ms=result["latency_ms"], memory_actions=[])
 
 
 @app.get("/sessions/{session_id}/memory")
 def get_memory(session_id: str) -> dict:
-    mem = memgpt.get_core_memory(session_id)
+    mem = _legacy().memgpt.get_core_memory(session_id)
     return {
         "session_id":   session_id,
         "persona":      mem["persona"],
@@ -317,11 +479,7 @@ def health() -> dict:
     except Exception as exc:
         status["mcp_server"] = f"error: {exc}"
         # Fall back to direct checks
-        try:
-            _lga._rag.collection.num_entities
-            status["milvus"] = "ok"
-        except Exception as e:
-            status["milvus"] = f"error: {e}"
+        status["milvus"] = "unknown"
         try:
             _redis.ping()
             status["redis"] = "ok"
@@ -336,79 +494,10 @@ def health() -> dict:
 # ── research / knowledge endpoints ───────────────────────────────────────────
 
 @app.get("/research/stream")
-async def research_stream(question: str, session_id: str = None):
-    """SSE streaming endpoint for deep research pipeline.
-
-    If question is cached → replays stored SSE events at 300ms intervals.
-    Otherwise → polls Redis list as pipeline pushes events in real time.
-
-    Each event: data: {"type": "thinking|searching|analyzing|writing|reviewing|done|heartbeat|error", ...}
-    """
-    sid = session_id or str(uuid.uuid4())
-    cache_key  = f"report_cache:{hashlib.md5(question.encode()).hexdigest()}"
-    events_key = f"sse_events:{sid}"
-
-    async def generate():
-        # Check if report is already cached → replay events
-        if _redis.get(cache_key):
-            events = _redis.lrange(events_key, 0, -1)
-            if events:
-                for ev in events:
-                    yield f"data: {ev}\n\n"
-                    await asyncio.sleep(0.3)
-            else:
-                # Cached but no events stored — emit synthetic events
-                for ev_type, ev_content in [
-                    ("thinking",  "正在规划研究大纲..."),
-                    ("searching", "并行搜索子问题..."),
-                    ("analyzing", "查询能源数据库，生成图表..."),
-                    ("writing",   "撰写研究报告各章节..."),
-                    ("reviewing", "审核报告质量..."),
-                    ("done",      "报告生成完成"),
-                ]:
-                    payload = json.dumps({"type": ev_type, "content": ev_content,
-                                          "t_ms": int(time.time() * 1000)}, ensure_ascii=False)
-                    yield f"data: {payload}\n\n"
-                    await asyncio.sleep(0.3)
-            done_payload = json.dumps({"type": "done", "session_id": sid}, ensure_ascii=False)
-            yield f"data: {done_payload}\n\n"
-            return
-
-        # Real-time: poll Redis as pipeline pushes events
-        last_index = 0
-        deadline   = time.time() + 900   # 15-minute timeout (RE_RESEARCHING + rate-limit retries can hit 600s+)
-        heartbeat_counter = 0
-        _api_logger.info("[SSE] Starting real-time poll for events_key=%s", events_key)
-        while time.time() < deadline:
-            items = _redis.lrange(events_key, last_index, -1)
-            for item in items:
-                yield f"data: {item}\n\n"
-                last_index += 1
-                _api_logger.info("[SSE] Yielded event #%d for sid=%s", last_index, sid)
-                try:
-                    ev = json.loads(item)
-                    if ev.get("type") == "done":
-                        done_payload = json.dumps({"type": "done", "session_id": sid}, ensure_ascii=False)
-                        yield f"data: {done_payload}\n\n"
-                        return
-                except Exception:
-                    pass
-            heartbeat_counter += 1
-            if heartbeat_counter % 4 == 0:   # heartbeat every ~2s
-                yield 'data: {"type": "heartbeat"}\n\n'
-            await asyncio.sleep(0.5)
-
-        # Timeout — proper SSE format so browser can parse it
-        _api_logger.warning("[SSE] Stream timeout (900s) for sid=%s, events_seen=%d", sid, last_index)
-        timeout_payload = json.dumps({"type": "error", "content": "stream timeout"}, ensure_ascii=False)
-        yield f"data: {timeout_payload}\n\n"
-
-    headers = {
-        "Cache-Control": "no-cache",
-        "X-Accel-Buffering": "no",    # disable nginx/proxy buffering
-        "Connection": "keep-alive",
-    }
-    return StreamingResponse(generate(), media_type="text/event-stream", headers=headers)
+async def research_stream(question: str, session_id: str | None = None):
+    if not session_id:
+        raise HTTPException(status_code=422, detail="session_id is required; submit /research/report first")
+    return await query_stream(session_id)
 
 
 _SUMMARY_TITLES = {"执行摘要", "executive summary", "摘要", "overview", "executive_summary"}
@@ -451,9 +540,9 @@ def _build_report_result(state: dict, sid: str, elapsed_ms: float) -> dict:
         "title":           state.get("question", "")[:80],
         "intent":          state.get("intent", ""),
         "sections":        sections,
-        "summary":         summary_content[:300] if summary_content else "",
+        "summary":         summary_content,
         "charts_data":     charts_data,
-        "references":      references[:10],
+        "references":      references,
         "quality_score":   quality_score,
         "knowledge_graph": {},
         "latency_ms":      elapsed_ms,
@@ -514,7 +603,9 @@ def _save_report_markdown(result: dict, question: str, session_id: str) -> str:
         for i, ref in enumerate(refs):
             title = ref.get("title", "")
             url   = ref.get("url", "")
-            lines.append(f"{i+1}. [{title}]({url})")
+            label = ref.get("label") or str(i + 1)
+            source = f"[{title}]({url})" if url.startswith(("http://", "https://")) else title or url
+            lines.append(f"[{label}] {source}")
         lines.append("")
 
     with open(filename, "w", encoding="utf-8") as f:
@@ -527,80 +618,49 @@ def _save_report_markdown(result: dict, question: str, session_id: str) -> str:
 
 @app.post("/research/report")
 def research_report(req: ReportRequest) -> dict:
-    """Structured research report using the multi-agent deep research pipeline.
+    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode, force_research=True)
+    if result["route"] == "multiagent":
+        return {**result["report"], "run_id": result["run_id"], "route": result["route"]}
+    return result
 
-    Results are cached in Redis for REPORT_CACHE_TTL seconds. Cache hits return
-    in ~5ms with cached=True in the response.
-    """
-    sid       = req.session_id or str(uuid.uuid4())
-    cache_key = f"report_cache:{hashlib.md5(req.question.encode()).hexdigest()}"
 
-    # Cache check
-    cached_raw = _redis.get(cache_key)
-    if cached_raw:
-        result = json.loads(cached_raw)
-        result["cached"]     = True
-        result["latency_ms"] = 5
-        print(f"[API] /research/report cache hit for question='{req.question[:40]}'")
-        return result
-
-    t0 = time.time()
+def _execute_report(question: str, sid: str, demo_mode: bool, *, events) -> dict:
+    started = time.time()
+    state = _lga.run_deep_research(question, sid, demo_mode=demo_mode, events=events)
+    result = _build_report_result(state, sid, (time.time() - started) * 1000)
+    result["run_id"] = events.run_id
     try:
-        state = _lga.run_deep_research(req.question, sid, demo_mode=req.demo_mode)
-    except Exception as exc:
-        print(f"[API] DeepResearch failed ({exc}), falling back to legacy graph")
-        state = _run_graph(req.question, sid)
-
-    elapsed = (time.time() - t0) * 1000
-    result  = _build_report_result(state, sid, elapsed)
-
-    # Store in cache (skip if result is trivially empty)
-    if result.get("summary"):
-        _redis.setex(cache_key, REPORT_CACHE_TTL, json.dumps(result, ensure_ascii=False,
-                                                               default=str))
-
-    # Save local Markdown copy
-    try:
-        saved_path = _save_report_markdown(result, req.question, sid)
-        result["saved_path"] = saved_path
-    except Exception as _md_exc:
-        _api_logger.warning("[Report] Markdown save failed: %s", _md_exc)
-
+        result["saved_path"] = _save_report_markdown(result, question, sid)
+    except OSError as exc:
+        _api_logger.warning("Report Markdown save failed: %s", exc)
     return result
 
 
 @app.post("/research/decision")
 def research_decision(req: DecisionRequest) -> dict:
-    """Submit a human approve/reject decision for a paused research pipeline.
-
-    Called by the frontend (or directly via API) when the user reviews the
-    CriticMaster's quality report and chooses whether to accept the current
-    draft or trigger a supplementary research loop.
-
-    Writes the decision to Redis key hitl_decision:{session_id}. The
-    human_gate_node in langgraph_agent.py polls this key and unblocks
-    within HITL_POLL_INTERVAL seconds.
-
-    Example:
-        POST /research/decision
-        {"session_id": "abc123", "decision": "approve"}
-    """
-    hitl_key = f"hitl_decision:{req.session_id}"
-    _redis.setex(hitl_key, 3600, req.decision)
-    _api_logger.info("[HITL] decision=%s written for session=%s", req.decision, req.session_id)
-    return {"session_id": req.session_id, "decision": req.decision, "status": "ok"}
+    active = _active_run(req.session_id)
+    if not active:
+        raise HTTPException(status_code=404, detail="No active run")
+    if req.run_id != active:
+        raise HTTPException(status_code=409, detail="Decision belongs to a different run")
+    events = _journal(active).read()
+    human_events = [event for event in events if event["node"] == "human_gate"
+                    and event["type"] in ("awaiting_review", "node_completed", "node_failed")]
+    state = replay_state(events)
+    if (not state.get("awaiting_human") or state.get("iteration") != req.review_id or not human_events
+            or human_events[-1]["type"] != "awaiting_review" or any(
+                event["type"] in ("done", "error", "run_completed", "run_failed") for event in events)):
+        raise HTTPException(status_code=409, detail="Run is not awaiting human review")
+    if not _redis.set(f"hitl_decision:{active}:{req.review_id}", req.decision, ex=REPORT_CACHE_TTL, nx=True):
+        raise HTTPException(status_code=409, detail="A decision has already been submitted")
+    return {"session_id": req.session_id, "run_id": active, "review_id": req.review_id,
+            "decision": req.decision, "status": "ok"}
 
 
 @app.post("/demo/warmup")
 def demo_warmup(question: str = "分析中国储能行业2024年的竞争格局和技术趋势") -> dict:
-    """Pre-run the pipeline and cache results for demo presentations."""
+    """Execute a live research run before a demonstration."""
     sid       = f"warmup_{hashlib.md5(question.encode()).hexdigest()[:8]}"
-    cache_key = f"report_cache:{hashlib.md5(question.encode()).hexdigest()}"
-
-    if _redis.get(cache_key):
-        print(f"[API] /demo/warmup already cached for question='{question[:40]}'")
-        return {"status": "already_cached", "session_id": sid}
-
     req    = ReportRequest(question=question, session_id=sid)
     result = research_report(req)
     return {
@@ -615,7 +675,7 @@ def demo_warmup(question: str = "分析中国储能行业2024年的竞争格局�
 def knowledge_sources() -> dict:
     """List all documents in the RAG knowledge base with chunk counts."""
     try:
-        sources = _lga._rag.list_sources()
+        sources = _legacy()._rag.list_sources()
         details = [{"source": src} for src in sources]
         return {"sources": details, "total": len(sources)}
     except Exception as exc:
@@ -633,7 +693,7 @@ def knowledge_ingest(req: IngestRequest) -> dict:
     try:
         with open(dest_path, "w", encoding="utf-8") as f:
             f.write(req.content)
-        _lga._rag.ingest_file(dest_path)
+        _legacy()._rag.ingest_file(dest_path)
         return {"source_name": req.source_name, "status": "ok"}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -643,10 +703,10 @@ def knowledge_ingest(req: IngestRequest) -> dict:
 def knowledge_delete(source_name: str) -> dict:
     """Delete a document from the RAG knowledge base by source name."""
     try:
-        existing = set(_lga._rag.list_sources())
+        existing = set(_legacy()._rag.list_sources())
         if source_name not in existing:
             raise HTTPException(status_code=404, detail=f"Source '{source_name}' not found")
-        _lga._rag.delete_by_source(source_name)
+        _legacy()._rag.delete_by_source(source_name)
         return {"deleted": True, "source_name": source_name}
     except HTTPException:
         raise

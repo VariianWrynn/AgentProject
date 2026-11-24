@@ -160,7 +160,7 @@ _SQL_SYSTEM = """\
 你是一个 SQLite 专家。根据提供的表结构和问题，生成一条 SELECT 查询语句。
 规则：
 - 只生成 SELECT 语句，不要有其他 SQL 语句
-- 不要添加 LIMIT（系统会自动添加）
+- 用户指定前 N 名或最多 N 条时，使用相应的 LIMIT N；未指定时由系统添加默认上限
 - 只输出裸 SQL，不要加 Markdown 代码块或任何解释
 - 跨表查询时，可用 company_name 字段关联 company_finance 和 capacity_stats
 - 日期字段 date 为文本格式 YYYY-MM-DD，使用 SQLite strftime() 处理

@@ -10,13 +10,12 @@ Output: critic_issues, quality_score (0-1), pending_queries
 """
 
 import logging
-import os
 import time
 
 logger = logging.getLogger("critic_master")
 
 _CRITIC_SYSTEM = """\
-你是一位客观的研究报告质量审核专家（能源行业）。对报告草稿进行专业审核。
+你是一位客观的研究报告质量审核专家。按原问题和提供的证据审核报告草稿。
 
 审核6类问题：
 1. hallucination（幻觉）— 无数据支撑的虚假陈述、编造数字
@@ -187,17 +186,6 @@ def run(state: dict, llm) -> dict:
     Returns:
         partial state update: {critic_issues, quality_score, pending_queries, phase}
     """
-    # FIX 2: demo_mode — skip LLM review entirely, auto-pass
-    if state.get("demo_mode", False):
-        logger.info("[CriticMaster] demo_mode=True, auto-passing review (no LLM call)")
-        print("[CriticMaster] demo_mode: auto-pass (quality_score=0.75, phase=done)")
-        return {
-            "critic_issues":   [],
-            "quality_score":   0.75,
-            "pending_queries": [],
-            "phase":           "done",
-        }
-
     draft_sections = state.get("draft_sections", {})
     outline        = state.get("outline", [])
     facts          = state.get("facts", [])
@@ -210,7 +198,7 @@ def run(state: dict, llm) -> dict:
                                 "section": "all", "description": "报告草稿为空"}],
             "quality_score":   0.3,
             "pending_queries": [],
-            "phase":           "done",
+            "phase":           "reviewing",
         }
 
     t0 = time.time()
@@ -276,22 +264,6 @@ def run(state: dict, llm) -> dict:
         if assessment:
             print(f"[CriticMaster] Assessment: {assessment[:100]}")
 
-        # Determine next phase with iteration-aware convergence
-        iteration = state.get("iteration", 0)
-        if state.get("demo_mode", False):
-            # demo_mode: always skip human gate
-            next_phase = "done"
-        elif iteration >= 2:
-            # After 2 iterations, accept anything — prevent perfectionism loop
-            logger.info("[CriticMaster] iteration=%d, forcing done (convergence guard)", iteration)
-            next_phase = "done"
-        elif quality_score < 0.7 and os.getenv("HITL_ENABLED", "on").lower() != "off":
-            # Quality below threshold — pause for human review (OPT-003).
-            # HITL_ENABLED=off skips the gate for unattended batch eval runs.
-            next_phase = "awaiting_human"
-        else:
-            next_phase = "done"
-
         # Build a concise issue summary for the HITL SSE event
         issue_lines = [
             f"[{i.get('severity','?')}] {i.get('type','?')}: {i.get('description','')}"
@@ -303,17 +275,10 @@ def run(state: dict, llm) -> dict:
             "critic_issues":   issues,
             "quality_score":   quality_score,
             "pending_queries": pending_queries,
-            "phase":           next_phase,
-            "awaiting_human":  next_phase == "awaiting_human",
+            "phase":           "reviewing",
             "issue_summary":   issue_summary,
         }
 
-    except Exception as exc:
-        elapsed = time.time() - t0
-        logger.warning("[CriticMaster] Review failed: %s | %.1fs", exc, elapsed)
-        return {
-            "critic_issues":   [],
-            "quality_score":   0.65,
-            "pending_queries": [],
-            "phase":           "done",
-        }
+    except Exception:
+        logger.exception("Critic assessment failed")
+        raise

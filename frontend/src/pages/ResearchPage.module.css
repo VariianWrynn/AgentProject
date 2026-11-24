@@ -1,84 +1,10 @@
-.page {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 20px 20px 60px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.topBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0 4px;
-}
-
-.navLink {
-  font-size: 14px;
-  color: #2563eb;
-  text-decoration: none;
-  padding: 6px 14px;
-  border: 1.5px solid #bfdbfe;
-  border-radius: 6px;
-  transition: background 0.15s;
-}
-
-.navLink:hover {
-  background: #eff6ff;
-}
-
-.hero {
-  text-align: center;
-  padding: 24px 0 8px;
-}
-
-.heroTitle {
-  margin: 0 0 6px;
-  font-size: 26px;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.5px;
-}
-
-.heroSub {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-}
-
-.card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-
-.errorCard {
-  padding: 16px 20px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  color: #991b1b;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.retryBtn {
-  padding: 5px 14px;
-  background: #dc2626;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-size: 13px;
-  cursor: pointer;
-  margin-left: auto;
-}
-
-.retryBtn:hover {
-  background: #b91c1c;
-}
+ .page { max-width: 980px; padding: 64px 28px 90px; margin: auto; display: flex; flex-direction: column; gap: 24px; }
+.hero { text-align: center; padding: 0 0 12px; }
+.heroTitle { font-size: clamp(27px, 4vw, 36px); margin: 0 0 14px; letter-spacing: -.03em; color: #254332; font-weight: 650; }
+.heroSub { font-size: 14px; color: #7d8b7c; margin: 0; }
+.card { padding: 30px 36px; background: #fffefb; border: 1px solid #e0e6d9; border-radius: 16px; min-width: 0; box-shadow: 0 6px 24px #223b2710; }
+.answer { color: #39493e; line-height: 1.95; overflow-wrap: anywhere; }
+.answer h2 { margin-top: 0; }
+.errorCard { padding: 20px; border: 1px solid #e7c7bb; background: #fff9f4; color: #894731; border-radius: 12px; font-size: 14px; overflow-wrap: anywhere; }
+.retryBtn { margin-left: 16px; padding: 8px 16px; background: #894731; color: white; border: none; border-radius: 6px; cursor: pointer; }
+@media(max-width: 600px) { .page { padding: 32px 14px 50px; gap: 18px; } .card { padding: 22px 18px; } .heroSub { font-size: 12px; } }

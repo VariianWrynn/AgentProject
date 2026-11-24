@@ -6,13 +6,8 @@ Dual-graph architecture:
 Graph 1 (legacy /chat): 5-node ReAct loop
   RouterNode → PlannerNode → ExecutorNode → ReflectorNode → CriticNode
 
-Graph 2 (deep research): 7-node multi-agent pipeline
-  RouterNode → ChiefArchitect → DeepScout → DataAnalyst
-             → LeadWriter → CriticMaster
-             → [re_researching: DeepScout | done: Synthesizer] → END
-
-Graph 2 supports conditional RE_RESEARCHING loop when CriticMaster quality_score < 0.75
-and pending_queries exist.
+The research StateGraph lives in backend.research_graph.
+This module supplies the ReAct graph used only after a research execution failure.
 """
 
 import json
@@ -61,33 +56,31 @@ HITL_TIMEOUT       = 300   # seconds before auto-approving when no user response
 # Prompt variants
 # ---------------------------------------------------------------------------
 
-# Planner: inject text2sql tool between doc_summary and web_search
-_PLANNER_SYSTEM_V2 = _PLANNER_SYSTEM.replace(
-    "  web_search(query)       — searches the internet (last resort fallback)",
-    "  text2sql(query)         — query structured energy database (company financials,\n"
-    "                            capacity stats, price index) PREFERRED for data_query\n"
-    "                            and market_analysis intents\n"
-    "  web_search(query)       — searches the internet (last resort fallback)",
-)
+# Keep the retrieval-first planner for general questions. The optional SQL
+# tool remains available to explicit callers, but is not a default data source.
+_PLANNER_SYSTEM_V2 = _PLANNER_SYSTEM
 
 # Reflector: add confidence field to JSON schema
 _REFLECTOR_SYSTEM_V2 = _REFLECTOR_SYSTEM.replace(
     '"answer": "complete, well-structured answer — REQUIRED when decision is done, else empty string"',
     '"confidence": 0.85,\n  "answer": "complete answer when done, else empty string"',
-)
+).replace(
+    '- If rag_search returned relevant content, prefer "done" over further steps.',
+    '- Choose "done" only when the retrieved content supports every part of the answer.',
+) + "\nFor numerical or comparative answers, check the operands, period, and units in the retrieved source. Cite the source filename beside each factual conclusion. Answer only what the question asks; omit background and explanations that are not directly supported by retrieved evidence. If the evidence is insufficient, say which part cannot be verified instead of inferring it.\n"
 
 # Router system prompt
 _ROUTER_SYSTEM = """\
-你是能源行业研究助手的意图分类器。将用户问题分类为以下5种意图之一：
+你是通用研究助手的意图分类器。将用户问题分类为以下5种意图之一：
 
-- policy_query：政策法规查询（碳中和、新能源补贴、电力市场改革、能源安全等政策）
-- market_analysis：市场分析（光伏/风电/储能市场规模、价格趋势、竞争格局）
-- data_query：结构化数据查询（企业财务数据、电力装机数据、需要SQL查询的数字）
+- policy_query：政策、法规或监管问题
+- market_analysis：市场规模、价格趋势或竞争格局问题
+- data_query：要求从结构化数据中查找具体指标的问题
 - research：深度研究（需要多步搜索和综合分析的复杂问题）
 - general：一般问答（不需要检索的简单对话）
 
 分类规则：
-- 含"政策"、"补贴"、"法规"、"碳"关键词 → policy_query
+- 含"政策"、"补贴"、"法规"关键词 → policy_query
 - 含"市场"、"规模"、"价格"、"竞争"关键词 → market_analysis
 - 含"数据"、"多少"、"查询"、"统计"且涉及具体数字 → data_query
 - 含技术概念（Vector Database、VDB、RAG、向量、Embedding、嵌入、架构、Agent、LLM、模型、算法、pipeline）→ research
@@ -106,6 +99,9 @@ IMPORTANT: 不确定时优先选 research，而非 general。RAG 检索有额外
 _CRITIC_SYSTEM = """\
 You are a final-answer synthesiser. Using ONLY the research steps provided,
 write a clear, well-structured answer to the original question.
+For each factual conclusion cite the retrieved source filename. Check calculations,
+periods, and units against the source; state any unsupported part as uncertain.
+Answer only what the question asks; omit unsupported background and extra analysis.
 Output plain text only — no XML tags, no tool calls, no JSON, no markdown code blocks.
 """
 
@@ -150,6 +146,7 @@ def router_node(state: AgentState) -> dict:
 
 def planner_node(state: AgentState) -> dict:
     # Build knowledge-base hint
+    sources = []
     try:
         sources = _rag.list_sources()
         kb_hint = "currently indexed: " + ", ".join(sources) if sources else "(empty knowledge base)"
@@ -162,6 +159,8 @@ def planner_node(state: AgentState) -> dict:
         f"human: {core_mem['human']}\n\n"
     )
     system = mem_prefix + _PLANNER_SYSTEM_V2.replace("{kb_sources_hint}", kb_hint)
+    if not sources:
+        system += "\nThe knowledge base is empty. Use web_search for factual retrieval; do not plan rag_search or doc_summary.\n"
 
     # When replanning, provide prior step context
     user_msg = state["question"]
@@ -215,8 +214,8 @@ def executor_node(state: AgentState) -> dict:
                 try:
                     items = mcp.call("web_search", query, {}, state["session_id"])
                     result = "\n\n".join(
-                        f"[{i+1}] {it.get('title','')}\n    {it.get('url','')}\n    {it.get('snippet','')[:300]}"
-                        for i, it in enumerate(items)
+                        f"[{i+1}] {it.get('title','')}\n    {it.get('url','')}\n    {it.get('snippet','')[:800]}"
+                        for i, it in enumerate(items[:5])
                     )
                 except MCPCallError as _e:
                     print(f"[WARN] MCP fallback for web_search: {_e}")
@@ -264,7 +263,7 @@ def executor_node(state: AgentState) -> dict:
 # ---------------------------------------------------------------------------
 
 def reflector_node(state: AgentState) -> dict:
-    ctx     = _steps_context(state["steps_executed"])
+    ctx     = _steps_context(state["steps_executed"], max_result_chars=5000)
     user_msg = (
         f"Original question: {state['question']}\n\n"
         f"Steps executed:\n{ctx}"
@@ -344,7 +343,8 @@ def critic_node(state: AgentState) -> dict:
 
     if not answer:
         # Synthesise from accumulated steps
-        ctx = _steps_context(state["steps_executed"]) if state["steps_executed"] else "(no steps executed)"
+        ctx = (_steps_context(state["steps_executed"], max_result_chars=5000)
+               if state["steps_executed"] else "(no steps executed)")
         raw = _llm.chat(
             _CRITIC_SYSTEM,
             f"Question: {state['question']}\n\nResearch steps:\n{ctx}\n\nAnswer:",
@@ -428,337 +428,4 @@ def build_graph():
     return g.compile()
 
 
-# ---------------------------------------------------------------------------
-# Graph 2: Multi-agent deep research nodes
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# SSE event helper (pushes progress events to Redis for /research/stream)
-# ---------------------------------------------------------------------------
-
-def _push_sse_event(session_id: str, event_type: str, content: str,
-                    step: int = 0, tool: str | None = None, **extra) -> None:
-    """Push one SSE progress event to Redis list sse_events:{session_id}.
-
-    Extra keyword arguments are merged into the JSON payload so callers can
-    attach arbitrary data (e.g. draft_sections, issue_summary for HITL).
-    """
-    key = f"sse_events:{session_id}"
-    try:
-        event = {
-            "type":    event_type,
-            "content": content,
-            "step":    step,
-            "tool":    tool,
-            "t_ms":    int(time.time() * 1000),
-            **extra,
-        }
-        payload = json.dumps(event, ensure_ascii=False)
-        _redis_conn.rpush(key, payload)
-        _redis_conn.expire(key, 3600)
-        logger.info("[SSE] PUSHED type=%s to %s (step=%d)", event_type, key, step)
-        print(f"[SSE] PUSHED type={event_type} to {key}", flush=True)
-    except Exception as _exc:
-        # LOUD logging — this was previously silently swallowed, causing 300s SSE delay
-        logger.error("[SSE] PUSH FAILED for %s: %s", key, _exc)
-        print(f"[SSE] *** PUSH FAILED *** key={key} error={_exc}", flush=True)
-
-
-def chief_architect_node(state: AgentState) -> dict:
-    sid = state.get("session_id", "")
-    logger.info("[ChiefArchitect] START session=%s", sid)
-    t0 = time.time()
-    _push_sse_event(sid, "thinking", "正在规划研究大纲...", step=1)
-    from backend.agents.chief_architect import run as ca_run
-    result = ca_run(dict(state), make_llm("chief_architect"))
-    logger.info("[ChiefArchitect] END duration=%.1fs outline=%d questions=%d",
-                time.time() - t0,
-                len(result.get("outline", [])),
-                len(result.get("research_questions", [])))
-    return result
-
-
-def deep_scout_node(state: AgentState) -> dict:
-    sid = state.get("session_id", "")
-    logger.info("[DeepScout] START session=%s", sid)
-    t0 = time.time()
-    _push_sse_event(sid, "searching", "并行搜索子问题...", step=2)
-    from backend.agents.deep_scout import run as ds_run
-    result = ds_run(dict(state), make_llm("deep_scout"))
-    logger.info("[DeepScout] END duration=%.1fs facts=%d sources=%d",
-                time.time() - t0,
-                len(result.get("facts", [])),
-                len(result.get("raw_sources", [])))
-    return result
-
-
-def data_analyst_node(state: AgentState) -> dict:
-    sid = state.get("session_id", "")
-    logger.info("[DataAnalyst] START session=%s", sid)
-    t0 = time.time()
-    _push_sse_event(sid, "analyzing", "查询能源数据库，生成图表...", step=3)
-    from backend.agents.data_analyst import run as da_run
-    result = da_run(dict(state), make_llm("data_analyst"))
-    logger.info("[DataAnalyst] END duration=%.1fs charts=%d",
-                time.time() - t0,
-                len(result.get("charts_data", [])))
-    return result
-
-
-def lead_writer_node(state: AgentState) -> dict:
-    sid = state.get("session_id", "")
-    logger.info("[LeadWriter] START session=%s", sid)
-    t0 = time.time()
-    _push_sse_event(sid, "writing", "撰写研究报告各章节...", step=4)
-    from backend.agents.lead_writer import run as lw_run
-    result = lw_run(dict(state), make_llm("lead_writer"))
-    draft = result.get("draft_sections", {})
-    logger.info("[LeadWriter] END duration=%.1fs sections=%d summary_len=%d",
-                time.time() - t0,
-                len([k for k in draft if k != "summary"]),
-                len(draft.get("summary", "")))
-    return result
-
-
-def critic_master_node(state: AgentState) -> dict:
-    sid = state.get("session_id", "")
-    iteration = state.get("iteration", 0)
-    logger.info("[CriticMaster] START session=%s iteration=%d", sid, iteration)
-    t0 = time.time()
-    _push_sse_event(sid, "reviewing", f"审核报告质量（第{iteration+1}轮）...", step=5)
-    from backend.agents.critic_master import run as cm_run
-    result = cm_run(dict(state), make_llm("critic_master"))
-
-    # Increment iteration if CriticMaster triggers RE_RESEARCHING
-    if result.get("phase") == "re_researching":
-        result["iteration"] = iteration + 1
-        logger.info("[CriticMaster] RE_RESEARCHING → iteration bumped to %d", iteration + 1)
-
-    logger.info("[CriticMaster] END duration=%.1fs score=%.2f phase=%s issues=%d iter=%d",
-                time.time() - t0,
-                result.get("quality_score", 0.0),
-                result.get("phase", "?"),
-                len(result.get("critic_issues", [])),
-                result.get("iteration", iteration))
-    return result
-
-
-def synthesizer_node(state: AgentState) -> dict:
-    sid = state.get("session_id", "")
-    logger.info("[Synthesizer] START session=%s", sid)
-    t0 = time.time()
-    _push_sse_event(sid, "writing", "正在修订并整合报告...", step=6)
-    from backend.agents.synthesizer import run as syn_run
-    result = syn_run(dict(state), make_llm("synthesizer"))
-    _push_sse_event(sid, "done", "报告生成完成", step=6)
-    logger.info("[Synthesizer] END duration=%.1fs answer_len=%d",
-                time.time() - t0,
-                len(result.get("final_answer", "")))
-    return result
-
-
-def human_gate_node(state: AgentState) -> dict:
-    """Pause the pipeline and wait for a human approve/reject decision.
-
-    Pushes an 'awaiting_review' SSE event so the frontend can render a
-    decision UI. Polls Redis key hitl_decision:{session_id} at
-    HITL_POLL_INTERVAL-second intervals until the user responds or
-    HITL_TIMEOUT seconds elapse. On timeout, auto-approves to prevent
-    the pipeline from hanging indefinitely.
-
-    User submits decision via POST /research/decision (see api_server.py).
-    """
-    sid       = state.get("session_id", "")
-    score     = state.get("quality_score", 0.0)
-    issues    = state.get("critic_issues", [])
-    summary   = state.get("issue_summary", "")
-    iteration = state.get("iteration", 0)
-
-    high_count = sum(1 for i in issues if i.get("severity") == "high")
-
-    # Build a titled draft preview — full content, human-readable section titles
-    draft_sections = state.get("draft_sections", {})
-    outline        = state.get("outline", [])
-    title_map: dict[str, str] = {sec.get("id", ""): sec.get("title", "") for sec in outline}
-    title_map["summary"] = "执行摘要"
-    draft_preview = {title_map.get(k, k) or k: v for k, v in draft_sections.items()}
-
-    _push_sse_event(
-        sid, "awaiting_review",
-        f"质量评分 {score:.2f}，发现 {len(issues)} 个问题（{high_count} 高危）。"
-        f"请审阅草稿并选择：approve（通过）或 reject（补充研究）。",
-        step=5,
-        draft_sections=draft_preview,
-        issue_summary=summary,
-    )
-    logger.info("[HumanGate] Awaiting decision session=%s score=%.2f issues=%d timeout=%ds",
-                sid, score, len(issues), HITL_TIMEOUT)
-    print(f"[HumanGate] session={sid} score={score:.2f} issues={len(issues)} "
-          f"timeout={HITL_TIMEOUT}s", flush=True)
-
-    hitl_key = f"hitl_decision:{sid}"
-    deadline = time.time() + HITL_TIMEOUT
-
-    while time.time() < deadline:
-        decision = _redis_conn.get(hitl_key)
-        if decision:
-            _redis_conn.delete(hitl_key)
-            logger.info("[HumanGate] Decision='%s' received for session=%s", decision, sid)
-            print(f"[HumanGate] decision={decision} session={sid}", flush=True)
-            new_phase = "re_researching" if decision == "reject" else "done"
-            return {
-                "user_decision":  decision,
-                "awaiting_human": False,
-                "phase":          new_phase,
-                "iteration":      iteration + 1 if decision == "reject" else iteration,
-            }
-        time.sleep(HITL_POLL_INTERVAL)
-
-    # Timeout — auto-approve so the pipeline can finish
-    logger.warning("[HumanGate] Timeout (%ds) for session=%s — auto-approving", HITL_TIMEOUT, sid)
-    print(f"[HumanGate] TIMEOUT session={sid} — auto-approving", flush=True)
-    _push_sse_event(sid, "reviewing", f"等待超时（{HITL_TIMEOUT}s），自动通过审核", step=5)
-    return {
-        "user_decision":  "approve",
-        "awaiting_human": False,
-        "phase":          "done",
-    }
-
-
-def _route_human_gate(state: AgentState) -> str:
-    """Route from HumanGate based on user decision.
-
-    reject + iterations remaining → deep_scout (re-research)
-    approve / timeout / max iterations  → synthesizer
-    """
-    phase     = state.get("phase", "done")
-    iteration = state.get("iteration", 0)
-    if phase == "re_researching" and iteration < MAX_ITER:
-        logger.info("[HumanGate] Routing to deep_scout (reject, iter=%d)", iteration)
-        return "deep_scout"
-    return "synthesizer"
-
-
-def _route_critic_master(state: AgentState) -> str:
-    """Route after CriticMaster: human gate, re_researching loop, or synthesizer.
-
-    Hard limit: after MAX_ITER RE_RESEARCHING iterations, force Synthesizer
-    regardless of quality_score to prevent infinite loops.
-    """
-    phase     = state.get("phase", "done")
-    iteration = state.get("iteration", 0)
-
-    if phase == "awaiting_human":
-        return "human_gate"
-
-    if phase == "re_researching" and iteration < MAX_ITER:
-        logger.info("[CriticMaster] RE_RESEARCHING loop #%d triggered", iteration)
-        return "deep_scout"
-
-    if phase == "re_researching" and iteration >= MAX_ITER:
-        logger.warning("[CriticMaster] Max iterations reached (%d), forcing Synthesizer", iteration)
-    return "synthesizer"
-
-
-# Graph 2: 7-node deep research pipeline
-def build_research_graph():
-    g = StateGraph(AgentState)
-
-    g.add_node("router",          router_node)
-    g.add_node("chief_architect", chief_architect_node)
-    g.add_node("deep_scout",      deep_scout_node)
-    g.add_node("data_analyst",    data_analyst_node)
-    g.add_node("lead_writer",     lead_writer_node)
-    g.add_node("critic_master",   critic_master_node)
-    g.add_node("human_gate",      human_gate_node)
-    g.add_node("synthesizer",     synthesizer_node)
-
-    g.set_entry_point("router")
-    g.add_edge("router",          "chief_architect")
-    g.add_edge("chief_architect", "deep_scout")
-    g.add_edge("deep_scout",      "data_analyst")
-    g.add_edge("data_analyst",    "lead_writer")
-    g.add_edge("lead_writer",     "critic_master")
-    g.add_conditional_edges(
-        "critic_master", _route_critic_master,
-        {"deep_scout": "deep_scout", "synthesizer": "synthesizer", "human_gate": "human_gate"},
-    )
-    g.add_conditional_edges(
-        "human_gate", _route_human_gate,
-        {"deep_scout": "deep_scout", "synthesizer": "synthesizer"},
-    )
-    g.add_edge("synthesizer", END)
-
-    return g.compile()
-
-
-# ---------------------------------------------------------------------------
-# Convenience: run deep research pipeline with proper initial state
-# ---------------------------------------------------------------------------
-
-def _make_initial_state(question: str, session_id: str, demo_mode: bool = False,
-                        fact_guard: bool | None = None) -> dict:
-    """Build a valid initial AgentState for the research graph."""
-    return {
-        # Fact constraints (pre-hoc citation guard)
-        "fact_guard":      fact_guard,
-        "evidence_frozen": {},
-        "guard_stats":     {},
-        # Part 1 fields
-        "question":       question,
-        "intent":         "research",
-        "plan":           [],
-        "steps_executed": [],
-        "reflection":     "",
-        "confidence":     0.0,
-        "final_answer":   "",
-        "iteration":      0,
-        "session_id":     session_id,
-        # Part 2 fields
-        "outline":             [],
-        "hypotheses":          [],
-        "research_questions":  [],
-        "facts":               [],
-        "raw_sources":         [],
-        "data_points":         [],
-        "draft_sections":      {},
-        "charts_data":         [],
-        "references":          [],
-        "critic_issues":       [],
-        "pending_queries":     [],
-        "quality_score":       0.0,
-        "phase":               "planning",
-        "demo_mode":           demo_mode,
-        # OPT-003: HITL fields
-        "user_decision":       None,
-        "awaiting_human":      False,
-        "issue_summary":       "",
-    }
-
-
-def run_deep_research(question: str, session_id: str | None = None,
-                      demo_mode: bool = False,
-                      fact_guard: bool | None = None) -> dict:
-    """
-    Run the full multi-agent deep research pipeline.
-
-    Returns the final AgentState dict.
-    """
-    if session_id is None:
-        session_id = str(uuid.uuid4())[:8]
-
-    # Clear previous SSE events for this session
-    try:
-        _redis_conn.delete(f"sse_events:{session_id}")
-    except Exception:
-        pass
-
-    research_graph = build_research_graph()
-    initial_state  = _make_initial_state(question, session_id, demo_mode, fact_guard)
-
-    logger.info("[DeepResearch] Starting for question='%s' session=%s demo_mode=%s",
-                question[:60], session_id, demo_mode)
-    print(f"[DeepResearch] question='{question[:60]}' session={session_id} demo_mode={demo_mode}")
-
-    final_state = research_graph.invoke(initial_state)
-    return dict(final_state)
+from backend.research_graph import build_research_graph, run_deep_research

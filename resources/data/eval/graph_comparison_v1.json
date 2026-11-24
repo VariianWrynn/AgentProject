@@ -1,0 +1,1164 @@
+[
+  {
+    "id": "fact-001",
+    "track": "qa",
+    "category": "factual",
+    "question": "宁德时代2023年归母净利润是多少？",
+    "gold_answer": "441.21亿元，调整后同比增长43.58%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-001",
+        "entity": "宁德时代",
+        "metric": "归母净利润",
+        "period": "2023",
+        "value": "441.21",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_catl_2023",
+        "evidence_quote": "归母净利润441.21亿元，调整后同比增长43.58%"
+      }
+    ]
+  },
+  {
+    "id": "fact-004",
+    "track": "qa",
+    "category": "factual",
+    "question": "阳光电源2024年归属于上市公司股东的净利润是多少？",
+    "gold_answer": "110.36亿元，同比增长16.92%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-004",
+        "entity": "阳光电源",
+        "metric": "归母净利润",
+        "period": "2024",
+        "value": "110.36",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_sungrow_2024",
+        "evidence_quote": "归属于上市公司股东的净利润110.36亿元，同比增长16.92%"
+      }
+    ]
+  },
+  {
+    "id": "fact-008",
+    "track": "qa",
+    "category": "factual",
+    "question": "长江电力2023年境内六座梯级电站完成发电量是多少？",
+    "gold_answer": "2762.63亿千瓦时，同比增长5.34%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-008",
+        "entity": "长江电力",
+        "metric": "六座梯级电站发电量",
+        "period": "2023",
+        "value": "2762.63",
+        "unit": "亿千瓦时",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_changjiang_power_2023",
+        "evidence_quote": "公司境内所属六座梯级电站完成发电量2762.63亿千瓦时，同比增加140.15亿千瓦时，增长5.34%"
+      }
+    ]
+  },
+  {
+    "id": "fact-009",
+    "track": "qa",
+    "category": "factual",
+    "question": "2024年全国全社会用电量是多少？",
+    "gold_answer": "98521亿千瓦时，同比增长6.8%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-009",
+        "entity": "全国",
+        "metric": "全社会用电量",
+        "period": "2024",
+        "value": "98521",
+        "unit": "亿千瓦时",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_power_consumption_2024",
+        "evidence_quote": "2024 年全社会用电量 98521 亿千瓦时，同比增长 6.8%"
+      }
+    ]
+  },
+  {
+    "id": "fact-010",
+    "track": "qa",
+    "category": "factual",
+    "question": "截至2024年底全国已建成投运新型储能项目累计装机规模是多少？",
+    "gold_answer": "7376万千瓦，较2023年底增长超过130%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-010",
+        "entity": "全国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "7376",
+        "unit": "万千瓦",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "73.76",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "market_nea_storage_2024",
+        "evidence_quote": "全国已建成投运新型储能项目累计装机规模达7376万千瓦，较2023年底增长超过130%"
+      }
+    ]
+  },
+  {
+    "id": "fact-011",
+    "track": "qa",
+    "category": "factual",
+    "question": "2024年我国动力电池累计装车量是多少？",
+    "gold_answer": "548.4GWh，累计同比增长41.5%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-011",
+        "entity": "全国",
+        "metric": "动力电池累计装车量",
+        "period": "2024",
+        "value": "548.4",
+        "unit": "GWh",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "0.5484",
+            "unit": "TWh"
+          }
+        ],
+        "evidence_doc": "market_ev_battery_2024",
+        "evidence_quote": "2024年我国动力电池累计装车量548.4GWh（吉瓦时），累计同比增长41.5%"
+      }
+    ]
+  },
+  {
+    "id": "fact-013",
+    "track": "qa",
+    "category": "factual",
+    "question": "《2030年前碳达峰行动方案》提出到2030年风电、太阳能发电总装机容量目标是多少？",
+    "gold_answer": "达到12亿千瓦以上",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-013",
+        "entity": "中国",
+        "metric": "风电太阳能总装机目标",
+        "period": "2030",
+        "value": "12",
+        "unit": "亿千瓦",
+        "direction": "达到",
+        "allowed_conversions": [
+          {
+            "value": "1200",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2030年，风电、太阳能发电总装机容量达到12亿千瓦以上"
+      }
+    ]
+  },
+  {
+    "id": "fact-014",
+    "track": "qa",
+    "category": "factual",
+    "question": "《2030年前碳达峰行动方案》提出到2025年非化石能源消费比重目标是多少？",
+    "gold_answer": "达到20%左右",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-014",
+        "entity": "中国",
+        "metric": "非化石能源消费比重目标",
+        "period": "2025",
+        "value": "20",
+        "unit": "%",
+        "direction": "达到",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2025年，非化石能源消费比重达到20%左右"
+      }
+    ]
+  },
+  {
+    "id": "neg-001",
+    "track": "qa",
+    "category": "negation",
+    "question": "金风科技2023年净利润是增长还是下降了？具体多少？",
+    "gold_answer": "下降：净利润13.31亿元，同比下降44.16%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "neg-001",
+        "entity": "金风科技",
+        "metric": "净利润",
+        "period": "2023",
+        "value": "13.31",
+        "unit": "亿元",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_goldwind_2023",
+        "evidence_quote": "实现净利润13.31亿元，同比下降44.16%"
+      },
+      {
+        "id": "c2",
+        "source_case": "neg-001",
+        "entity": "金风科技",
+        "metric": "净利润同比变化",
+        "period": "2023",
+        "value": "44.16",
+        "unit": "%",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_goldwind_2023",
+        "evidence_quote": "实现净利润13.31亿元，同比下降44.16%"
+      }
+    ]
+  },
+  {
+    "id": "neg-003",
+    "track": "qa",
+    "category": "negation",
+    "question": "宁德时代2024年营业总收入同比增长了吗？",
+    "gold_answer": "没有增长，同比下降9.70%（3620.13亿元）",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "neg-003",
+        "entity": "宁德时代",
+        "metric": "营业总收入同比",
+        "period": "2024",
+        "value": "9.70",
+        "unit": "%",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_catl_2024",
+        "evidence_quote": "同比较去年同期下降9.70%"
+      }
+    ]
+  },
+  {
+    "id": "neg-005",
+    "track": "qa",
+    "category": "negation",
+    "question": "2024年12月多晶硅n型复投料成交均价环比上涨了吗？均价和变动幅度是多少？",
+    "gold_answer": "没有，成交均价4.03万元/吨，环比下降0.49%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "neg-005",
+        "entity": "多晶硅n型复投料",
+        "metric": "成交均价",
+        "period": "2024年12月",
+        "value": "4.03",
+        "unit": "万元/吨",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "market_polysilicon_price_2024",
+        "evidence_quote": "成交均价为4.03万元/吨，环比下降0.49%"
+      },
+      {
+        "id": "c2",
+        "source_case": "neg-005",
+        "entity": "多晶硅n型复投料",
+        "metric": "成交均价环比变化",
+        "period": "2024年12月",
+        "value": "0.49",
+        "unit": "%",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "market_polysilicon_price_2024",
+        "evidence_quote": "成交均价为4.03万元/吨，环比下降0.49%"
+      }
+    ]
+  },
+  {
+    "id": "neg-006",
+    "track": "qa",
+    "category": "negation",
+    "question": "碳达峰行动方案对新建跨区外送通道可再生能源电量比例有什么要求？",
+    "gold_answer": "原则上不低于50%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "neg-006",
+        "entity": "跨区外送通道",
+        "metric": "可再生能源电量比例",
+        "period": "2030年前碳达峰行动方案",
+        "value": "50",
+        "unit": "%",
+        "direction": "不低于",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "新建通道可再生能源电量比例原则上不低于50%"
+      }
+    ]
+  },
+  {
+    "id": "un-001",
+    "track": "qa",
+    "category": "unanswerable",
+    "question": "比亚迪2023年营业收入是多少？",
+    "gold_answer": "语料未覆盖，应拒答或声明无据",
+    "answerable": false,
+    "claims": []
+  },
+  {
+    "id": "un-002",
+    "track": "qa",
+    "category": "unanswerable",
+    "question": "宁德时代2025年上半年净利润是多少？",
+    "gold_answer": "语料未覆盖，应拒答或声明无据",
+    "answerable": false,
+    "claims": []
+  },
+  {
+    "id": "un-005",
+    "track": "qa",
+    "category": "unanswerable",
+    "question": "澳大利亚2024年新型储能新增装机规模是多少？",
+    "gold_answer": "语料未覆盖，应拒答或声明无据",
+    "answerable": false,
+    "claims": []
+  },
+  {
+    "id": "un-008",
+    "track": "qa",
+    "category": "unanswerable",
+    "question": "全国碳市场2025年全年成交额是多少？",
+    "gold_answer": "语料未覆盖，应拒答或声明无据",
+    "answerable": false,
+    "claims": []
+  },
+  {
+    "id": "mh-001",
+    "track": "qa",
+    "category": "multihop",
+    "question": "比较宁德时代和亿纬锂能2023年的归母净利润与营业收入，分别是多少？",
+    "gold_answer": "441.21亿元，调整后同比增长43.58%；营业收入487.84亿元（+34.38%），归母净利润40.50亿元（+15.42%）",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-001",
+        "entity": "宁德时代",
+        "metric": "归母净利润",
+        "period": "2023",
+        "value": "441.21",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_catl_2023",
+        "evidence_quote": "归母净利润441.21亿元，调整后同比增长43.58%"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-007",
+        "entity": "亿纬锂能",
+        "metric": "营业收入",
+        "period": "2023",
+        "value": "487.84",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_eve_2023",
+        "evidence_quote": "公司实现营业收入487.84亿元，同比增长34.38%，实现归属于上市公司股东的净利润40.50亿元，同比增长15.42%"
+      }
+    ]
+  },
+  {
+    "id": "mh-002",
+    "track": "qa",
+    "category": "multihop",
+    "question": "2024年全国全社会用电量和新型储能累计装机分别是多少？",
+    "gold_answer": "98521亿千瓦时，同比增长6.8%；7376万千瓦，较2023年底增长超过130%",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-009",
+        "entity": "全国",
+        "metric": "全社会用电量",
+        "period": "2024",
+        "value": "98521",
+        "unit": "亿千瓦时",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_power_consumption_2024",
+        "evidence_quote": "2024 年全社会用电量 98521 亿千瓦时，同比增长 6.8%"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-010",
+        "entity": "全国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "7376",
+        "unit": "万千瓦",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "73.76",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "market_nea_storage_2024",
+        "evidence_quote": "全国已建成投运新型储能项目累计装机规模达7376万千瓦，较2023年底增长超过130%"
+      }
+    ]
+  },
+  {
+    "id": "mh-003",
+    "track": "qa",
+    "category": "multihop",
+    "question": "碳达峰行动方案的2030年风光装机目标是多少，能源法何时施行？",
+    "gold_answer": "达到12亿千瓦以上；2025年1月1日",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-013",
+        "entity": "中国",
+        "metric": "风电太阳能总装机目标",
+        "period": "2030",
+        "value": "12",
+        "unit": "亿千瓦",
+        "direction": "达到",
+        "allowed_conversions": [
+          {
+            "value": "1200",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2030年，风电、太阳能发电总装机容量达到12亿千瓦以上"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-015",
+        "entity": "中华人民共和国能源法",
+        "metric": "施行日期",
+        "period": "2025",
+        "value": "2025",
+        "unit": "年1月1日",
+        "direction": "生效",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_energy_law_2024",
+        "evidence_quote": "本法自2025年1月1日起施行"
+      }
+    ]
+  },
+  {
+    "id": "mh-004",
+    "track": "qa",
+    "category": "multihop",
+    "question": "2024年11月国内多晶硅产量与2023年全球光伏新增装机分别是多少？",
+    "gold_answer": "13.3万吨，较上月微幅下调；全球444GW（+76%），中国216.88GW（+148%）",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-018",
+        "entity": "国内",
+        "metric": "多晶硅产量",
+        "period": "2024年11月",
+        "value": "13.3",
+        "unit": "万吨",
+        "direction": "下降",
+        "allowed_conversions": [
+          {
+            "value": "133000",
+            "unit": "吨"
+          }
+        ],
+        "evidence_doc": "market_polysilicon_price_2024",
+        "evidence_quote": "2024年11月国内多晶硅产量为13.3万吨"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-019",
+        "entity": "全球",
+        "metric": "光伏新增装机",
+        "period": "2023",
+        "value": "444",
+        "unit": "GW",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "4.44",
+            "unit": "亿千瓦"
+          }
+        ],
+        "evidence_doc": "finance_tongwei_2023",
+        "evidence_quote": "2023年全球光伏新增装机达到444GW，同比增长76%，中国新增装机达到216.88GW，同比增长148%"
+      }
+    ]
+  },
+  {
+    "id": "report-001",
+    "track": "report",
+    "category": "政策",
+    "question": "梳理碳达峰行动方案与能源法中有据可查的能源目标和实施节点。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-013",
+        "entity": "中国",
+        "metric": "风电太阳能总装机目标",
+        "period": "2030",
+        "value": "12",
+        "unit": "亿千瓦",
+        "direction": "达到",
+        "allowed_conversions": [
+          {
+            "value": "1200",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2030年，风电、太阳能发电总装机容量达到12亿千瓦以上"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-014",
+        "entity": "中国",
+        "metric": "非化石能源消费比重目标",
+        "period": "2025",
+        "value": "20",
+        "unit": "%",
+        "direction": "达到",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2025年，非化石能源消费比重达到20%左右"
+      },
+      {
+        "id": "c3",
+        "source_case": "fact-015",
+        "entity": "中华人民共和国能源法",
+        "metric": "施行日期",
+        "period": "2025",
+        "value": "2025",
+        "unit": "年1月1日",
+        "direction": "生效",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_energy_law_2024",
+        "evidence_quote": "本法自2025年1月1日起施行"
+      },
+      {
+        "id": "c4",
+        "source_case": "neg-006",
+        "entity": "跨区外送通道",
+        "metric": "可再生能源电量比例",
+        "period": "2030年前碳达峰行动方案",
+        "value": "50",
+        "unit": "%",
+        "direction": "不低于",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "新建通道可再生能源电量比例原则上不低于50%"
+      },
+      {
+        "id": "c5",
+        "source_case": "fact-010",
+        "entity": "全国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "7376",
+        "unit": "万千瓦",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "73.76",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "market_nea_storage_2024",
+        "evidence_quote": "全国已建成投运新型储能项目累计装机规模达7376万千瓦，较2023年底增长超过130%"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-002",
+    "track": "report",
+    "category": "政策",
+    "question": "分析中国储能发展规模及政策目标，区分不同统计口径。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-010",
+        "entity": "全国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "7376",
+        "unit": "万千瓦",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "73.76",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "market_nea_storage_2024",
+        "evidence_quote": "全国已建成投运新型储能项目累计装机规模达7376万千瓦，较2023年底增长超过130%"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-017",
+        "entity": "中国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "78.3",
+        "unit": "GW",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_cnesa_storage_2024",
+        "evidence_quote": "新型储能装机规模首次超过抽水蓄能，达到78.3GW/184.2GWh"
+      },
+      {
+        "id": "c3",
+        "source_case": "fact-013",
+        "entity": "中国",
+        "metric": "风电太阳能总装机目标",
+        "period": "2030",
+        "value": "12",
+        "unit": "亿千瓦",
+        "direction": "达到",
+        "allowed_conversions": [
+          {
+            "value": "1200",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2030年，风电、太阳能发电总装机容量达到12亿千瓦以上"
+      },
+      {
+        "id": "c4",
+        "source_case": "fact-014",
+        "entity": "中国",
+        "metric": "非化石能源消费比重目标",
+        "period": "2025",
+        "value": "20",
+        "unit": "%",
+        "direction": "达到",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2025年，非化石能源消费比重达到20%左右"
+      },
+      {
+        "id": "c5",
+        "source_case": "fact-015",
+        "entity": "中华人民共和国能源法",
+        "metric": "施行日期",
+        "period": "2025",
+        "value": "2025",
+        "unit": "年1月1日",
+        "direction": "生效",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_energy_law_2024",
+        "evidence_quote": "本法自2025年1月1日起施行"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-003",
+    "track": "report",
+    "category": "政策",
+    "question": "概述碳达峰背景下的风光、电力消费和碳市场数据。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-013",
+        "entity": "中国",
+        "metric": "风电太阳能总装机目标",
+        "period": "2030",
+        "value": "12",
+        "unit": "亿千瓦",
+        "direction": "达到",
+        "allowed_conversions": [
+          {
+            "value": "1200",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2030年，风电、太阳能发电总装机容量达到12亿千瓦以上"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-014",
+        "entity": "中国",
+        "metric": "非化石能源消费比重目标",
+        "period": "2025",
+        "value": "20",
+        "unit": "%",
+        "direction": "达到",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "到2025年，非化石能源消费比重达到20%左右"
+      },
+      {
+        "id": "c3",
+        "source_case": "neg-006",
+        "entity": "跨区外送通道",
+        "metric": "可再生能源电量比例",
+        "period": "2030年前碳达峰行动方案",
+        "value": "50",
+        "unit": "%",
+        "direction": "不低于",
+        "allowed_conversions": [],
+        "evidence_doc": "policy_carbon_peak_2021",
+        "evidence_quote": "新建通道可再生能源电量比例原则上不低于50%"
+      },
+      {
+        "id": "c4",
+        "source_case": "fact-009",
+        "entity": "全国",
+        "metric": "全社会用电量",
+        "period": "2024",
+        "value": "98521",
+        "unit": "亿千瓦时",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_power_consumption_2024",
+        "evidence_quote": "2024 年全社会用电量 98521 亿千瓦时，同比增长 6.8%"
+      },
+      {
+        "id": "c5",
+        "source_case": "fact-016",
+        "entity": "全国碳市场",
+        "metric": "配额年成交额",
+        "period": "2024",
+        "value": "181.14",
+        "unit": "亿元",
+        "direction": "创高",
+        "allowed_conversions": [],
+        "evidence_doc": "market_carbon_market_2024",
+        "evidence_quote": "全国碳排放权交易市场碳排放配额年成交量1.89亿吨，年成交额181.14亿元"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-004",
+    "track": "report",
+    "category": "财务",
+    "question": "对比宁德时代与亿纬锂能的2023年业绩，并说明宁德时代2024年变化。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-001",
+        "entity": "宁德时代",
+        "metric": "归母净利润",
+        "period": "2023",
+        "value": "441.21",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_catl_2023",
+        "evidence_quote": "归母净利润441.21亿元，调整后同比增长43.58%"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-002",
+        "entity": "宁德时代",
+        "metric": "营业总收入",
+        "period": "2024",
+        "value": "3620.13",
+        "unit": "亿元",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_catl_2024",
+        "evidence_quote": "公司营业总收入为3620.13亿元，较去年同报告期营业总收入减少389.04亿元，同比较去年同期下降9.70%"
+      },
+      {
+        "id": "c3",
+        "source_case": "neg-003",
+        "entity": "宁德时代",
+        "metric": "营业总收入同比",
+        "period": "2024",
+        "value": "9.70",
+        "unit": "%",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_catl_2024",
+        "evidence_quote": "同比较去年同期下降9.70%"
+      },
+      {
+        "id": "c4",
+        "source_case": "fact-007",
+        "entity": "亿纬锂能",
+        "metric": "营业收入",
+        "period": "2023",
+        "value": "487.84",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_eve_2023",
+        "evidence_quote": "公司实现营业收入487.84亿元，同比增长34.38%，实现归属于上市公司股东的净利润40.50亿元，同比增长15.42%"
+      },
+      {
+        "id": "c5",
+        "source_case": "fact-003",
+        "entity": "阳光电源",
+        "metric": "收入",
+        "period": "2023",
+        "value": "722.5",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_sungrow_2023",
+        "evidence_quote": "【2023年】收入722.5亿元(同比+79.5%)"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-005",
+    "track": "report",
+    "category": "财务",
+    "question": "比较阳光电源、隆基绿能和大全能源的已知财务表现。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-003",
+        "entity": "阳光电源",
+        "metric": "收入",
+        "period": "2023",
+        "value": "722.5",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_sungrow_2023",
+        "evidence_quote": "【2023年】收入722.5亿元(同比+79.5%)"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-004",
+        "entity": "阳光电源",
+        "metric": "归母净利润",
+        "period": "2024",
+        "value": "110.36",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_sungrow_2024",
+        "evidence_quote": "归属于上市公司股东的净利润110.36亿元，同比增长16.92%"
+      },
+      {
+        "id": "c3",
+        "source_case": "fact-005",
+        "entity": "隆基绿能",
+        "metric": "营业收入",
+        "period": "2023",
+        "value": "1294.98",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_longi_2023",
+        "evidence_quote": "公司实现营业收入1,294.98亿元，同比增长0.39%"
+      },
+      {
+        "id": "c4",
+        "source_case": "neg-009",
+        "entity": "隆基绿能",
+        "metric": "营业成本",
+        "period": "2023",
+        "value": "1058.52",
+        "unit": "亿元",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_longi_2023",
+        "evidence_quote": "营业成本1,058.52亿元,同比下降3.03%"
+      },
+      {
+        "id": "c5",
+        "source_case": "neg-002",
+        "entity": "大全能源",
+        "metric": "营业总收入",
+        "period": "2023",
+        "value": "163.29",
+        "unit": "亿元",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_daqo_2023",
+        "evidence_quote": "2023年营业总收入163.29亿元，同比下降47.22%"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-006",
+    "track": "report",
+    "category": "财务",
+    "question": "梳理金风科技与中国神华已披露的营收、利润及经营数据。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-006",
+        "entity": "金风科技",
+        "metric": "营业收入",
+        "period": "2023",
+        "value": "504.57",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_goldwind_2023",
+        "evidence_quote": "2023年实现营业收入504.57亿元，同比增长8.66%"
+      },
+      {
+        "id": "c2",
+        "source_case": "neg-001",
+        "entity": "金风科技",
+        "metric": "净利润",
+        "period": "2023",
+        "value": "13.31",
+        "unit": "亿元",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_goldwind_2023",
+        "evidence_quote": "实现净利润13.31亿元，同比下降44.16%"
+      },
+      {
+        "id": "c3",
+        "source_case": "neg-007",
+        "entity": "金风科技",
+        "metric": "经营活动现金流量净额",
+        "period": "2023",
+        "value": "18.54",
+        "unit": "亿元",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_goldwind_2023",
+        "evidence_quote": "经营活动产生的现金流量净额为18.54亿元，同比下降68.48%"
+      },
+      {
+        "id": "c4",
+        "source_case": "fact-020",
+        "entity": "中国神华",
+        "metric": "营业收入",
+        "period": "2022",
+        "value": "3445.33",
+        "unit": "亿元",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_shenhua_2022",
+        "evidence_quote": "2022年实现营业收入3445.33亿元，同比增长2.6%；归属于公司股东的净利润696.26亿元，同比增长39.0%"
+      },
+      {
+        "id": "c5",
+        "source_case": "neg-008",
+        "entity": "中国神华",
+        "metric": "煤炭销量",
+        "period": "2022",
+        "value": "4.178",
+        "unit": "亿吨",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "finance_shenhua_2022",
+        "evidence_quote": "实现煤炭销量4.178亿吨，同比下降13.4%"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-007",
+    "track": "report",
+    "category": "市场",
+    "question": "分析2024年中国储能和动力电池市场的已知规模数据。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-010",
+        "entity": "全国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "7376",
+        "unit": "万千瓦",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "73.76",
+            "unit": "GW"
+          }
+        ],
+        "evidence_doc": "market_nea_storage_2024",
+        "evidence_quote": "全国已建成投运新型储能项目累计装机规模达7376万千瓦，较2023年底增长超过130%"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-017",
+        "entity": "中国",
+        "metric": "新型储能累计装机",
+        "period": "2024",
+        "value": "78.3",
+        "unit": "GW",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_cnesa_storage_2024",
+        "evidence_quote": "新型储能装机规模首次超过抽水蓄能，达到78.3GW/184.2GWh"
+      },
+      {
+        "id": "c3",
+        "source_case": "fact-011",
+        "entity": "全国",
+        "metric": "动力电池累计装车量",
+        "period": "2024",
+        "value": "548.4",
+        "unit": "GWh",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "0.5484",
+            "unit": "TWh"
+          }
+        ],
+        "evidence_doc": "market_ev_battery_2024",
+        "evidence_quote": "2024年我国动力电池累计装车量548.4GWh（吉瓦时），累计同比增长41.5%"
+      },
+      {
+        "id": "c4",
+        "source_case": "fact-009",
+        "entity": "全国",
+        "metric": "全社会用电量",
+        "period": "2024",
+        "value": "98521",
+        "unit": "亿千瓦时",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_power_consumption_2024",
+        "evidence_quote": "2024 年全社会用电量 98521 亿千瓦时，同比增长 6.8%"
+      },
+      {
+        "id": "c5",
+        "source_case": "fact-016",
+        "entity": "全国碳市场",
+        "metric": "配额年成交额",
+        "period": "2024",
+        "value": "181.14",
+        "unit": "亿元",
+        "direction": "创高",
+        "allowed_conversions": [],
+        "evidence_doc": "market_carbon_market_2024",
+        "evidence_quote": "全国碳排放权交易市场碳排放配额年成交量1.89亿吨，年成交额181.14亿元"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  },
+  {
+    "id": "report-008",
+    "track": "report",
+    "category": "市场",
+    "question": "梳理光伏和多晶硅市场的已知产量、装机与价格变化。",
+    "answerable": true,
+    "claims": [
+      {
+        "id": "c1",
+        "source_case": "fact-018",
+        "entity": "国内",
+        "metric": "多晶硅产量",
+        "period": "2024年11月",
+        "value": "13.3",
+        "unit": "万吨",
+        "direction": "下降",
+        "allowed_conversions": [
+          {
+            "value": "133000",
+            "unit": "吨"
+          }
+        ],
+        "evidence_doc": "market_polysilicon_price_2024",
+        "evidence_quote": "2024年11月国内多晶硅产量为13.3万吨"
+      },
+      {
+        "id": "c2",
+        "source_case": "fact-019",
+        "entity": "全球",
+        "metric": "光伏新增装机",
+        "period": "2023",
+        "value": "444",
+        "unit": "GW",
+        "direction": "增长",
+        "allowed_conversions": [
+          {
+            "value": "4.44",
+            "unit": "亿千瓦"
+          }
+        ],
+        "evidence_doc": "finance_tongwei_2023",
+        "evidence_quote": "2023年全球光伏新增装机达到444GW，同比增长76%，中国新增装机达到216.88GW，同比增长148%"
+      },
+      {
+        "id": "c3",
+        "source_case": "neg-005",
+        "entity": "多晶硅n型复投料",
+        "metric": "成交均价",
+        "period": "2024年12月",
+        "value": "4.03",
+        "unit": "万元/吨",
+        "direction": "下降",
+        "allowed_conversions": [],
+        "evidence_doc": "market_polysilicon_price_2024",
+        "evidence_quote": "成交均价为4.03万元/吨，环比下降0.49%"
+      },
+      {
+        "id": "c4",
+        "source_case": "neg-010",
+        "entity": "通威股份",
+        "metric": "第三季度亏损",
+        "period": "2024",
+        "value": "8",
+        "unit": "亿元",
+        "direction": "亏损",
+        "allowed_conversions": [],
+        "evidence_doc": "market_polysilicon_price_2024",
+        "evidence_quote": "相比第二季度超过20亿元的亏损，其第三季度亏损大幅减少至8亿元"
+      },
+      {
+        "id": "c5",
+        "source_case": "fact-012",
+        "entity": "全国",
+        "metric": "风电新增吊装容量",
+        "period": "2023",
+        "value": "7937",
+        "unit": "万千瓦",
+        "direction": "增长",
+        "allowed_conversions": [],
+        "evidence_doc": "market_wind_installation_2023",
+        "evidence_quote": "全国（除港、澳、台地区外）新增装机14187台，容量7937万千瓦，同比增长59.3%"
+      }
+    ],
+    "forbidden_inference": "不得把相关性写成因果关系，或把不同年份、统计口径的数据直接相减。"
+  }
+]

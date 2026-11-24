@@ -14,13 +14,20 @@ export interface ChartDataPoint {
 
 export interface ChartData {
   title: string
-  type: 'bar' | 'line'
+  type: 'bar' | 'line' | 'pie'
   data: ChartDataPoint[]
   image_b64: string   // base64 PNG — field name is image_b64, NOT image_data
   query: string
+  scope?: string
+  x_label?: string
+  y_label?: string
 }
 
 export interface Reference {
+  text: string
+  context?: string
+  sql?: string
+  label: string
   title: string
   url: string
   date: string
@@ -28,6 +35,7 @@ export interface Reference {
 
 export interface ResearchReport {
   session_id: string
+  run_id: string
   title?: string
   intent: string
   sections: Section[]
@@ -40,6 +48,18 @@ export interface ResearchReport {
   steps_count: number
   cached?: boolean
 }
+
+interface QueryBase {
+  session_id: string
+  run_id: string
+  route_reason: string
+  intent: string
+  latency_ms: number
+}
+
+export type QueryResult =
+  | (QueryBase & { route: 'general' | 'react'; answer: string; steps_count: number; fallback_reason?: string })
+  | (QueryBase & { route: 'multiagent'; report: ResearchReport })
 
 // SSE event types: new agent events + legacy graph events
 export type SSEEventType =
@@ -56,6 +76,7 @@ export type SSEEventType =
   | 'answer'
   | 'error'
   | 'awaiting_review'
+  | 'route'
 
 export interface SSEEvent {
   type: SSEEventType
@@ -67,9 +88,13 @@ export interface SSEEvent {
   action?: string
   query?: string
   session_id?: string
+  run_id?: string
+  seq?: number
+  route?: 'general' | 'react' | 'multiagent'
   // HITL fields — present only on awaiting_review events
   draft_sections?: Record<string, string>
   issue_summary?: string
+  review_id?: number
 }
 
 // GET /knowledge/sources returns {sources: [{source: str}], total: int}
@@ -100,6 +125,8 @@ export interface WarmupResult {
 
 export interface DecisionResponse {
   session_id: string
+  run_id: string
+  review_id: number
   decision: string
   status: string
 }

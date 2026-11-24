@@ -4,7 +4,7 @@ DeepScout Agent
 Parallel deep search across all research sub-questions.
 
 Each sub-question triggers:
-  - Bocha web search (via MCP /tools/web_search)
+  - DeepSeek web search (via MCP /tools/web_search)
   - RAG knowledge-base retrieval (via MCP /tools/rag_search)
 
 Results are deduplicated, merged, and scored for credibility.
@@ -14,15 +14,14 @@ Structured facts are extracted and stored in state["facts"].
 import asyncio
 import hashlib
 import logging
+import re
 import time
-from typing import Any
-
-import requests
+from mcp_client import MCPClient, MCPCallError
+from backend.tools.citation_guard import build_evidence
 
 logger = logging.getLogger("deep_scout")
 
 
-from backend.tools.citation_guard import guard_enabled as _guard_enabled  # noqa: E402
 
 
 def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
@@ -33,7 +32,17 @@ def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
     citation in the final report is auditable back to a concrete chunk/page.
     """
     evidence: dict[str, dict] = {}
-    for i, item in enumerate(unique[:max_items]):
+    primary = []
+    extra = []
+    seen_sources = set()
+    for item in unique:
+        source = item.get("url") or item.get("title") or item.get("snippet")
+        if source in seen_sources:
+            extra.append(item)
+        else:
+            seen_sources.add(source)
+            primary.append(item)
+    for i, item in enumerate((primary + extra)[:max_items]):
         if item.get("source_type") == "rag" and item.get("chunk_id") is not None:
             cid = item["chunk_id"]
         else:
@@ -47,105 +56,69 @@ def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
         }
     return evidence
 
-MCP_URL = "http://localhost:8002"
-_REQUEST_TIMEOUT = 20   # seconds per individual search call
+async def _search_web(tools: MCPClient | None, query: str) -> list[dict]:
+    tools = tools or MCPClient()
+    items = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: tools.call("web_search", query, session_id="deep_scout"))
+    return [{"title": item.get("title", ""), "snippet": item.get("snippet", ""),
+             "url": item.get("url", ""), "date": item.get("date", ""),
+             "score": item.get("score", 0.0), "source_type": "web", "query": query}
+            for item in items]
 
 
-async def _search_bocha(session: Any, query: str) -> list[dict]:
-    """Async Bocha web search via MCP endpoint."""
-    loop = asyncio.get_event_loop()
-    try:
-        resp = await loop.run_in_executor(
-            None,
-            lambda: requests.post(
-                f"{MCP_URL}/tools/web_search",
-                json={"query": query, "params": {}, "session_id": "deep_scout"},
-                timeout=_REQUEST_TIMEOUT,
-            ),
-        )
-        data = resp.json()
-        items = data.get("result") or []
-        return [
-            {
-                "title":   it.get("title", ""),
-                "snippet": it.get("snippet", ""),
-                "url":     it.get("url", ""),
-                "date":    it.get("date", ""),
-                "source_type": "web",
-                "query":   query,
-            }
-            for it in items
-        ]
-    except Exception as exc:
-        logger.warning("[DeepScout] Bocha search failed for '%s': %s", query, exc)
-        return []
+async def _search_rag(tools: MCPClient | None, query: str) -> list[dict]:
+    tools = tools or MCPClient()
+    items = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: tools.call("rag_search", query, params={"top_k": 3},
+                                session_id="deep_scout"))
+    return [{"title": item.get("source", ""), "snippet": item.get("content", ""),
+             "url": item.get("source", ""), "score": item.get("score", 0.0),
+             "chunk_id": item.get("chunk_id"), "source_type": "rag", "query": query}
+            for item in items if item.get("score", 0) >= 0.3]
 
 
-async def _search_rag(session: Any, query: str) -> list[dict]:
-    """Async RAG knowledge-base search via MCP endpoint."""
-    loop = asyncio.get_event_loop()
-    try:
-        resp = await loop.run_in_executor(
-            None,
-            lambda: requests.post(
-                f"{MCP_URL}/tools/rag_search",
-                json={"query": query, "params": {"top_k": 3}, "session_id": "deep_scout"},
-                timeout=_REQUEST_TIMEOUT,
-            ),
-        )
-        data = resp.json()
-        items = data.get("result") or []
-        return [
-            {
-                "title":   it.get("source", ""),
-                "snippet": it.get("content", "")[:400],
-                "url":     it.get("source", ""),
-                "score":   it.get("score", 0.0),
-                "chunk_id": it.get("chunk_id"),
-                "source_type": "rag",
-                "query":   query,
-            }
-            for it in items
-            if it.get("score", 0) >= 0.3
-        ]
-    except Exception as exc:
-        logger.warning("[DeepScout] RAG search failed for '%s': %s", query, exc)
-        return []
+async def _search_all(questions: list[str], tools: MCPClient | None = None) -> list[dict]:
+    """Allow partial retrieval, but propagate operational failure without evidence."""
+    import os
 
-
-async def _search_single(query: str) -> list[dict]:
-    """Run Bocha + RAG for one query concurrently."""
-    web_task = _search_bocha(None, query)
-    rag_task = _search_rag(None, query)
-    web_results, rag_results = await asyncio.gather(web_task, rag_task)
-    return web_results + rag_results
-
-
-async def _search_all(questions: list[str]) -> list[dict]:
-    """Run all sub-questions in parallel (serial when PARALLEL=off, for benchmarks)."""
-    import os as _os
-    merged: list[dict] = []
-    if _os.getenv("PARALLEL", "on").lower() == "off":
-        for q in questions:
-            web = await _search_bocha(None, q)
-            rag = await _search_rag(None, q)
-            merged.extend(web + rag)
-        return merged
-    tasks = [_search_single(q) for q in questions]
-    all_results = await asyncio.gather(*tasks)
-    for results in all_results:
-        merged.extend(results)
+    tools = tools or MCPClient()
+    calls = [search(tools, query) for query in questions for search in (_search_web, _search_rag)]
+    if os.getenv("PARALLEL", "on").lower() == "off":
+        results = []
+        for call in calls:
+            try:
+                results.append(await call)
+            except MCPCallError as exc:
+                results.append(exc)
+    else:
+        results = await asyncio.gather(*calls, return_exceptions=True)
+    merged = []
+    failures = []
+    for result in results:
+        if isinstance(result, MCPCallError):
+            failures.append(result)
+            logger.warning("Retrieval tool failed: %s", result.tool)
+        elif isinstance(result, BaseException):
+            raise result
+        else:
+            merged.extend(result)
+    if failures and not merged:
+        raise MCPCallError("research_search", "Retrieval failed without usable evidence") from failures[0]
     return merged
 
 
 def _deduplicate(results: list[dict]) -> list[dict]:
-    """Remove duplicate results by URL/content fingerprint."""
+    """Keep separate RAG chunks while removing repeated hits and web pages."""
     seen = set()
     unique = []
     for r in results:
-        key = r.get("url") or hashlib.md5(
-            (r.get("snippet") or "").encode("utf-8")
-        ).hexdigest()
+        url = r.get("url") or r.get("title")
+        if r.get("source_type") == "rag" and r.get("chunk_id") is not None:
+            key = ("rag", url, r["chunk_id"])
+        else:
+            key = ("source", url or hashlib.md5(
+                (r.get("snippet") or "").encode("utf-8")
+            ).hexdigest())
         if key not in seen and key:
             seen.add(key)
             unique.append(r)
@@ -168,7 +141,7 @@ def _extract_facts(results: list[dict], llm) -> list[dict]:
 要求：
 - 每个事实必须有具体数字、时间或来源
 - 排除主观判断或推测性内容
-- 用中文表达，简洁准确（30字内）
+- 保留原资料的语言、实体和专业术语，简洁准确
 
 返回JSON格式：
 {"facts": [{"content": "事实描述", "source": "来源URL或文档名", "credibility": 0.8}]}
@@ -195,7 +168,30 @@ def _extract_facts(results: list[dict], llm) -> list[dict]:
         return []
 
 
-def run(state: dict, llm) -> dict:
+def _search_queries(state: dict) -> list[str]:
+    """Keep the user's core question in retrieval alongside planned queries."""
+    question = state["question"].split("\n\n", 1)[0].strip()
+    planned = state.get("research_questions") or []
+    pending = state.get("pending_queries") or []
+    return list(dict.fromkeys([question] + planned + pending))
+
+
+_LOCAL_DATA_REQUESTS = (
+    r"(?:用|使用|从)本地(?:教学)?数据库(?:中)?(?:查询|列出|读取|提取|统计|汇总|计算|比较)",
+    r"(?:查询|读取|检索|统计|汇总)本地(?:教学)?数据库",
+)
+
+
+def needs_data_analysis(state: dict) -> bool:
+    """Select data tools independently of the report's research intent."""
+    if state.get("intent") == "data_query":
+        return True
+    clauses = re.split(r"[。！？!?；;，,\n]", state["question"])
+    return any(re.match(r"\s*(?:请)?\s*" + request, clause)
+               for clause in clauses for request in _LOCAL_DATA_REQUESTS)
+
+
+def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
     """
     Run DeepScout parallel search.
 
@@ -206,11 +202,8 @@ def run(state: dict, llm) -> dict:
     Returns:
         partial state update
     """
-    questions = state.get("research_questions") or [state["question"]]
-    pending   = state.get("pending_queries") or []
-
-    # Merge original questions + pending re-research queries
-    all_questions = list(dict.fromkeys(questions + pending))
+    tools = tools or MCPClient()
+    all_questions = _search_queries(state)
 
     # demo_mode: limit to 1 question for faster completion (ChiefArchitect already sends 1)
     demo_mode = state.get("demo_mode", False)
@@ -225,7 +218,7 @@ def run(state: dict, llm) -> dict:
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        raw = loop.run_until_complete(_search_all(all_questions))
+        raw = loop.run_until_complete(_search_all(all_questions, tools))
     finally:
         loop.close()
 
@@ -259,12 +252,14 @@ def run(state: dict, llm) -> dict:
     update = {
         "raw_sources": unique,
         "facts":       facts,
-        "phase":       "analyzing",
+        "phase":       "writing",
         "pending_queries": [],   # clear after processing
     }
-    if _guard_enabled(state):
-        evidence = freeze_evidence(unique)
-        update["evidence_frozen"] = evidence
-        logger.info("[DeepScout] FACT_GUARD on — froze %d evidence items", len(evidence))
-        print(f"[DeepScout] FACT_GUARD on: froze {len(evidence)} evidence items")
+    analysis = {"data_points": [], "charts_data": []}
+    if needs_data_analysis(state):
+        analysis = tools.call("data_analysis", state["question"], session_id="deep_scout")
+    update.update(analysis)
+    evidence = build_evidence({"evidence_frozen": freeze_evidence(unique),
+                               "data_points": analysis["data_points"]})
+    update["evidence_frozen"] = evidence
     return update
