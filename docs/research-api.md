@@ -23,7 +23,7 @@ flowchart LR
 
 研究的初始轮次为 0，最多再补研两轮。自动补研与人工拒绝共用这个预算。事实关卡有独立的两次重写预算，每轮补研重新计算。重写耗尽仍未通过时，返回 HTTP 422，不进入 Critic，不启动 ReAct。空证据仍执行校验，可以输出说明证据不足的定性内容。
 
-只有模型、工具或基础设施的执行故障会触发一次 ReAct 兜底。编程错误和校验拒绝不触发兜底。`/chat` 使用同一个入口；`/research/report` 强制研究，也遵守相同故障策略。报告缓存不再绕过实际执行。`demo_mode` 缩小任务规模，不跳过关卡和审核。
+模型、工具或基础设施的执行故障返回失败并保留 run_id，不再启动后端 ReAct。`/chat` 使用同一个入口；`/research/report` 强制研究，也遵守相同故障策略。报告缓存不再绕过实际执行。`demo_mode` 缩小任务规模，不跳过关卡和审核。单进程 API 同时只接受一个查询；忙碌请求返回 HTTP 429 和 Retry-After，且不发布新的运行。
 
 `Synthesizer` 是保留在图中的报告组装节点名，处理函数为 `backend.tools.report_assembly.assemble_report`。它不创建 LLM，不修改正文和摘要，保留引用标签。DataAnalyst agent 已移除，SQL 和制图由 `MCPClient` 调用 `/tools/data_analysis`，底层 SQL 与 `/tools/text2sql` 共用服务端缓存。
 
@@ -36,7 +36,7 @@ Content-Type: application/json
 {"question":"比较两种储能技术的适用场景","session_id":"demo-session","demo_mode":false}
 ```
 
-响应始终包含 `run_id`、`session_id`、`route`、`route_reason` 和 `latency_ms`。`multiagent` 返回 `report`，`general` 和故障兜底的 `react` 返回 `answer`。`react` 还返回 `fallback_reason`。请求同步等待结果，事件流可以同时订阅。复用 `session_id` 会创建新的 `run_id`，不会覆盖旧运行。
+成功响应包含 `run_id`、`session_id`、`route`、`route_reason` 和 `latency_ms`。`multiagent` 返回 `report`，`general` 返回 `answer`。请求同步等待结果，事件流可以同时订阅。复用 `session_id` 会创建新的 `run_id`，不会覆盖旧运行。失败响应的 detail 保留 run_id，准入拒绝发生在创建运行之前。
 
 ## 获取图与事件
 
@@ -77,11 +77,11 @@ SSE 的 `id` 等于事件 `seq`。重连支持 `Last-Event-ID`，与 `after_seq`
 | `branch_selected` | `target` 与 `reason`，可用于高亮返工路径。 |
 | `tool_started`、`tool_completed`、`tool_failed` | 工具名称及失败类别。工具结果经 Scout 提交为状态增量。 |
 | `awaiting_review` | 草稿、问题摘要、质量分数与 `review_id`。 |
-| `node_failed`、`run_failed` | 失败类型。`run_failed` 后仍可能进入 ReAct。 |
+| `node_failed`、`run_failed` | 失败类型。研究失败后不会转入其他执行图。 |
 | `run_completed` | 当前 workflow 完成。 |
 | `done`、`error` | 整个请求唯一的终止事件。 |
 
-`workflow` 为 `research`、`general` 或 `react`。回放先读取 `run_started.payload.state`，再按序替换 `state_updated.payload.delta` 的顶层字段。`null` 是实际替换值。不同 workflow 分开回放，不能把故障前的研究状态和 ReAct 状态合并。服务端提供 `backend.research_events.replay_state`。这用于观察和演示，不代表故障恢复或继续执行的检查点。
+新运行的 `workflow` 为 `research` 或 `general`。回放先读取 `run_started.payload.state`，再按序替换 `state_updated.payload.delta` 的顶层字段。`null` 是实际替换值。不同 workflow 分开回放。服务端提供 `backend.research_events.replay_state`。这用于观察和演示，不代表故障恢复或继续执行的检查点。
 
 原始事件包含研究资料和报告正文。当前接口沿用项目已有的本地演示访问方式。
 

@@ -1,6 +1,202 @@
+name: ${COMPOSE_PROJECT_NAME:-agentproject8gb}
+
+x-llm: &llm
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:?Set OPENAI_BASE_URL}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_MODEL: ${LLM_MODEL:?Set LLM_MODEL}
+  LLM_KEY_1: ${LLM_KEY_1:-}
+  LLM_KEY_2: ${LLM_KEY_2:-}
+  LLM_KEY_3: ${LLM_KEY_3:-}
+  LLM_KEY_4: ${LLM_KEY_4:-}
+  LLM_KEY_5: ${LLM_KEY_5:-}
+  LLM_KEY_6: ${LLM_KEY_6:-}
+  MODEL_ROUTER: ${MODEL_ROUTER:-}
+  MODEL_PLANNER: ${MODEL_PLANNER:-}
+  MODEL_SCOUT: ${MODEL_SCOUT:-}
+  MODEL_WRITER: ${MODEL_WRITER:-}
+  MODEL_CRITIC: ${MODEL_CRITIC:-}
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  DEPLOY_ADMIN_TOKEN: ${DEPLOY_ADMIN_TOKEN:?Set DEPLOY_ADMIN_TOKEN}
+  REDIS_HOST: redis
+  REDIS_PORT: '6379'
+  OMP_NUM_THREADS: '1'
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  TOKENIZERS_PARALLELISM: 'false'
+  HF_HUB_DISABLE_TELEMETRY: '1'
+
+x-embedding: &embedding
+  <<: *llm
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-zh-v1.5}
+  EMBEDDING_REVISION: ${EMBEDDING_REVISION:?Set immutable EMBEDDING_REVISION}
+  EMBEDDING_DEVICE: cpu
+  EMBEDDING_BATCH_SIZE: '4'
+  EMBEDDING_THREADS: '1'
+  RAG_COLLECTION: ${RAG_COLLECTION:-energy_bge_small_zh_v15}
+  HF_HOME: /models/cache
+  DEPLOY_DATA_DIR: /data
+  MILVUS_HOST: milvus
+  MILVUS_PORT: '19530'
+
 services:
-  agentproject:
-    image: agentproject
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.16
+    command: [etcd, --advertise-client-urls=http://etcd:2379, --listen-client-urls=http://0.0.0.0:2379, --data-dir=/etcd]
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: '1000'
+      ETCD_QUOTA_BACKEND_BYTES: '268435456'
+      ETCD_SNAPSHOT_COUNT: '10000'
+    volumes: [etcd_data:/etcd]
+    cpus: 0.25
+    mem_limit: 256m
+    memswap_limit: 256m
+    healthcheck:
+      test: [CMD, etcdctl, endpoint, health]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2024-09-22T00-33-43Z
+    command: [minio, server, /minio_data]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes: [minio_data:/minio_data]
+    cpus: 0.30
+    mem_limit: 384m
+    memswap_limit: 384m
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:9000/minio/health/live]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  milvus:
+    image: milvusdb/milvus:v2.4.17
+    command: [milvus, run, standalone]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      KNOWHERE_THREAD_POOL_NUM: '2'
+      OMP_NUM_THREADS: '1'
+    volumes: [milvus_data:/var/lib/milvus]
+    cpus: 1.50
+    mem_limit: 3072m
+    memswap_limit: 3072m
+    depends_on:
+      etcd: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:9091/healthz]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7.4.2-alpine}
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 80mb, --maxmemory-policy, noeviction]
+    volumes: [redis_data:/data]
+    cpus: 0.20
+    mem_limit: 128m
+    memswap_limit: 128m
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mcp-server:
+    image: ${COMPOSE_PROJECT_NAME:-agentproject8gb}-mcp:local
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: Dockerfile.mcp
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+    environment:
+      <<: *embedding
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    volumes: [app_data:/data, model_cache:/models]
+    cpus: 1.0
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    depends_on:
+      milvus: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+
+  api-server:
+    image: ${COMPOSE_PROJECT_NAME:-agentproject8gb}-api:local
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+    environment:
+      <<: *llm
+      MCP_URL: http://mcp-server:8002
+      REPORT_OUTPUT_DIR: /data/reports
+      HITL_ENABLED: ${HITL_ENABLED:-on}
+      PARALLEL: 'off'
+    volumes: [app_data:/data]
+    cpus: 0.65
+    mem_limit: 384m
+    memswap_limit: 384m
+    depends_on:
+      mcp-server: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+
+  nginx:
+    image: ${COMPOSE_PROJECT_NAME:-agentproject8gb}-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${WEB_BUILD_TARGET:-web}
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22.14.0-alpine}
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.28.0-alpine}
+    ports: ['${DEPLOY_BIND:-127.0.0.1}:${DEPLOY_PORT:-8080}:8080']
+    cpus: 0.10
+    mem_limit: 64m
+    memswap_limit: 64m
+    depends_on:
+      api-server: {condition: service_healthy}
+    restart: unless-stopped
+
+  provision:
+    image: ${COMPOSE_PROJECT_NAME:-agentproject8gb}-mcp:local
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+    profiles: [provision]
+    environment:
+      <<: *embedding
+      HF_HUB_OFFLINE: '0'
+      TRANSFORMERS_OFFLINE: '0'
+    volumes: [app_data:/data, model_cache:/models]
+    command: [python, scripts/provision_deployment.py, --database, --seed, /seed/energy.db, --data-dir, /data, --model]
+    cpus: 1.0
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    restart: 'no'
+
+volumes:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  redis_data:
+  app_data:
+  model_cache:

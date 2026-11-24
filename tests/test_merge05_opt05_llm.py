@@ -29,7 +29,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from react_engine import LLMClient
+from backend.llm_client import LLMClient
 
 # ---------------------------------------------------------------------------
 # Replicate _simulate_research_report() (the pattern OPT-05 introduced)
@@ -216,13 +216,12 @@ class TestFinalCumulativeRegression(unittest.TestCase):
         # No issues → unchanged
         self.assertAlmostEqual(_consistency_guard([], 0.95), 0.95)
 
-    def test_19_opt04_router_rules_present(self):
-        import langgraph_agent as lga
-        for kw in ["向量", "RAG", "VDB", "Top-K", "threshold", "优先选 research", "仅闲聊"]:
-            self.assertIn(kw, lga._ROUTER_SYSTEM, f"Router rule missing keyword: {kw}")
+    def test_19_entry_research_route(self):
+        from query_entry import classify_route
+        self.assertEqual(classify_route("query", lambda _: {"route": "multiagent"}).route, "multiagent")
 
     def test_20_opt03_hitl_constants_present(self):
-        import langgraph_agent as lga
+        import backend.research_graph as lga
         self.assertEqual(lga.HITL_POLL_INTERVAL, 2)
         self.assertEqual(lga.HITL_TIMEOUT, 300)
         self.assertTrue(callable(lga.human_gate_node))

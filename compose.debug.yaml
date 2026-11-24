@@ -1,9 +1,6 @@
 services:
-  agentproject:
-    image: agentproject
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    command: ["sh", "-c", "pip install debugpy -t /tmp && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 rag_pipeline.py "]
-    ports:
-      - 5678:5678
+  api-server:
+    command: [python, -m, uvicorn, api_server:app, --host, 0.0.0.0, --port, '8003', --reload]
+    volumes:
+      - ./api_server.py:/app/api_server.py:ro
+      - ./backend:/app/backend:ro

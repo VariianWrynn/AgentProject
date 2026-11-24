@@ -21,6 +21,8 @@ import re
 import sys
 import time
 import uuid
+import threading
+import secrets
 
 # ── CLI args (parsed before heavy imports) ────────────────────────────────────
 _parser = argparse.ArgumentParser(
@@ -125,10 +127,10 @@ def _free_port(port: int) -> None:
 if _args.kill:
     _free_port(_args.port)
 
-# Load .env before any module that reads env vars at import time (llm_router, react_engine)
+# Load .env before any module that reads env vars at import time (llm_router)
 try:
     from dotenv import load_dotenv as _load_dotenv
-    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
+    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=False)
 except ImportError:
     pass  # python-dotenv not installed; rely on shell environment
 
@@ -150,8 +152,8 @@ warnings.filterwarnings(
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel, Field
 from typing import Literal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -169,9 +171,7 @@ MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
 REPORT_CACHE_TTL = 3600
 
 
-def _legacy():
-    import langgraph_agent
-    return langgraph_agent
+_query_slot = threading.BoundedSemaphore(1)
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
@@ -198,13 +198,13 @@ async def log_requests(request: Request, call_next):
 # ── models ────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    question: str
-    session_id: str = None   # auto-generate uuid4 when omitted
+    question: str = Field(min_length=1, max_length=16000)
+    session_id: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
 
 
 class QueryRequest(BaseModel):
-    question: str
-    session_id: str = None
+    question: str = Field(min_length=1, max_length=16000)
+    session_id: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     demo_mode: bool = False
 
 
@@ -218,14 +218,14 @@ class ChatResponse(BaseModel):
 
 
 class ReportRequest(BaseModel):
-    question: str
-    session_id: str = None
+    question: str = Field(min_length=1, max_length=16000)
+    session_id: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     demo_mode: bool = False
 
 
 class IngestRequest(BaseModel):
-    source_name: str
-    content: str
+    source_name: str = Field(min_length=1, max_length=200, pattern=r"^[\w. -]+$")
+    content: str = Field(min_length=1, max_length=1000000)
 
 
 class DecisionRequest(BaseModel):
@@ -236,27 +236,6 @@ class DecisionRequest(BaseModel):
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-
-def _run_graph(question: str, session_id: str) -> dict:
-    """Stream the LangGraph and collect the final merged state."""
-    init = {
-        "question":       question,
-        "intent":         "",
-        "plan":           [],
-        "steps_executed": [],
-        "reflection":     "",
-        "confidence":     0.0,
-        "final_answer":   "",
-        "iteration":      0,
-        "session_id":     session_id,
-    }
-    state: dict = dict(init)
-    for event in _legacy().build_graph().stream(init):
-        for _, update in event.items():
-            if isinstance(update, dict):
-                state.update(update)
-    return state
-
 
 def _classify_query(question: str) -> dict:
     return make_llm("router").chat_json(ROUTE_PROMPT, question, temperature=0.1)
@@ -285,6 +264,17 @@ def _active_run(session_id: str) -> str | None:
 
 
 def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = False) -> dict:
+    if len(question) > 16000 or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", sid):
+        raise HTTPException(status_code=422, detail="Invalid query input")
+    if not _query_slot.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="A query is already running; retry later", headers={"Retry-After": "5"})
+    try:
+        return _dispatch_admitted(question, sid, demo_mode, force_research)
+    finally:
+        _query_slot.release()
+
+
+def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research: bool = False) -> dict:
     if not question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
     events = _new_events(sid)
@@ -294,7 +284,6 @@ def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = F
             question.strip(), sid, demo_mode,
             (lambda _: {"route": "multiagent", "reason": "指定研究流程"})
             if force_research else _classify_query,
-            _run_graph,
             lambda q, session_id, demo: _execute_report(q, session_id, demo, events=events),
             events.emit_event, run_general=_run_general,
         )
@@ -397,7 +386,7 @@ async def run_events(run_id: str, request: Request, after_seq: int = 0):
                 yield f"id: {cursor}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
                 if event["type"] in ("done", "error"):
                     return
-            if any(event["type"] in ("done", "error") for event in journal.read()):
+            if journal.terminal():
                 return
             yield ': heartbeat\n\n'
             await asyncio.sleep(0.5)
@@ -415,7 +404,7 @@ def run_state(run_id: str, after_seq: int = 0) -> dict:
     return {"run_id": run_id, "last_seq": events[-1]["seq"] if events else 0,
             "state": replay_state(events),
             "states": {workflow: replay_state(events, workflow) for workflow in
-                       ("research", "general", "react")},
+                       ("research", "general")},
             "events": [event for event in events if event["seq"] > after_seq]}
 
 
@@ -432,7 +421,9 @@ def chat(req: ChatRequest) -> ChatResponse:
 
 @app.get("/sessions/{session_id}/memory")
 def get_memory(session_id: str) -> dict:
-    mem = _legacy().memgpt.get_core_memory(session_id)
+    raw = _redis.get(f"core_memory:{session_id}")
+    mem = json.loads(raw) if raw else {}
+    mem = {"persona": mem.get("persona", "你是一个专业的数据分析Agent，擅长RAG检索和结构化数据查询。"), "human": mem.get("human", "")}
     return {
         "session_id":   session_id,
         "persona":      mem["persona"],
@@ -442,7 +433,8 @@ def get_memory(session_id: str) -> dict:
 
 
 @app.delete("/sessions/{session_id}/memory")
-def delete_memory(session_id: str) -> dict:
+def delete_memory(session_id: str, request: Request) -> dict:
+    _require_admin(request)
     deleted = bool(_redis.delete(f"core_memory:{session_id}"))
     return {"deleted": deleted, "session_id": session_id}
 
@@ -455,7 +447,7 @@ _HEALTH_TTL = 5.0   # seconds; avoids hitting MCP on every frontend poll
 def health() -> dict:
     global _health_cache, _health_cache_ts
     if time.time() - _health_cache_ts < _HEALTH_TTL:
-        return _health_cache
+        return JSONResponse(_health_cache, status_code=200 if all(_health_cache.get(key) == "ok" for key in ("api", "mcp_server", "milvus", "redis", "sqlite", "embedding")) else 503)
 
     status: dict[str, str] = {"api": "ok"}
 
@@ -466,6 +458,8 @@ def health() -> dict:
         status["mcp_server"] = "ok" if r.status_code == 200 else "error"
         status["milvus"] = mcp_data.get("milvus", "unknown")
         status["redis"]  = mcp_data.get("redis",  "unknown")
+        status["sqlite"] = mcp_data.get("sqlite", "unknown")
+        status["embedding"] = mcp_data.get("embedding", "unknown")
     except Exception as exc:
         status["mcp_server"] = f"error: {exc}"
         # Fall back to direct checks
@@ -478,7 +472,7 @@ def health() -> dict:
 
     _health_cache = status
     _health_cache_ts = time.time()
-    return status
+    return JSONResponse(status, status_code=200 if all(status.get(key) == "ok" for key in ("api", "mcp_server", "milvus", "redis", "sqlite", "embedding")) else 503)
 
 
 # ── research / knowledge endpoints ───────────────────────────────────────────
@@ -556,9 +550,10 @@ def _save_report_markdown(result: dict, question: str, session_id: str) -> str:
     """Save report as local Markdown file for debugging and archival."""
     from datetime import datetime as _dt
 
-    os.makedirs("reports", exist_ok=True)
+    report_dir = os.getenv("REPORT_OUTPUT_DIR", "reports")
+    os.makedirs(report_dir, exist_ok=True)
     timestamp = _dt.now().strftime("%Y%m%d_%H%M%S")
-    filename  = f"reports/report_{timestamp}_{session_id[:8]}.md"
+    filename = os.path.join(report_dir, f"report_{timestamp}_{session_id[:8]}.md")
 
     lines: list[str] = []
     lines.append(f"# {result.get('title', question)}\n")
@@ -648,7 +643,8 @@ def research_decision(req: DecisionRequest) -> dict:
 
 
 @app.post("/demo/warmup")
-def demo_warmup(question: str = "分析中国储能行业2024年的竞争格局和技术趋势") -> dict:
+def demo_warmup(request: Request, question: str = "分析中国储能行业2024年的竞争格局和技术趋势") -> dict:
+    _require_admin(request)
     """Execute a live research run before a demonstration."""
     sid       = f"warmup_{hashlib.md5(question.encode()).hexdigest()[:8]}"
     req    = ReportRequest(question=question, session_id=sid)
@@ -661,47 +657,40 @@ def demo_warmup(question: str = "分析中国储能行业2024年的竞争格局�
     }
 
 
+def _require_admin(request: Request) -> None:
+    token = os.getenv("DEPLOY_ADMIN_TOKEN", "")
+    if token and not secrets.compare_digest(request.headers.get("Authorization", ""), f"Bearer {token}"):
+        raise HTTPException(status_code=401, detail="Admin authorization required")
+
+
+def _knowledge_proxy(method: str, path: str, payload=None) -> dict:
+    try:
+        token = os.getenv("DEPLOY_ADMIN_TOKEN", "")
+        response = requests.request(method, f"{MCP_URL}{path}", json=payload,
+                                    headers={"Authorization": f"Bearer {token}"} if token else {}, timeout=60)
+        if not response.ok:
+            raise HTTPException(status_code=response.status_code, detail=response.json().get("detail", "Knowledge request failed"))
+        return response.json()
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail="Knowledge service unavailable") from exc
+
+
 @app.get("/knowledge/sources")
 def knowledge_sources() -> dict:
-    """List all documents in the RAG knowledge base with chunk counts."""
-    try:
-        sources = _legacy()._rag.list_sources()
-        details = [{"source": src} for src in sources]
-        return {"sources": details, "total": len(sources)}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    return _knowledge_proxy("GET", "/knowledge/sources")
 
 
 @app.post("/knowledge/ingest")
-def knowledge_ingest(req: IngestRequest) -> dict:
-    """Ingest raw text content as a new document into the RAG knowledge base."""
-    import tempfile
-    docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources", "data", "energy_docs")
-    os.makedirs(docs_dir, exist_ok=True)
-    # Write to a deterministic path so Milvus source label matches req.source_name
-    dest_path = os.path.join(docs_dir, f"{req.source_name}.txt")
-    try:
-        with open(dest_path, "w", encoding="utf-8") as f:
-            f.write(req.content)
-        _legacy()._rag.ingest_file(dest_path)
-        return {"source_name": req.source_name, "status": "ok"}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+def knowledge_ingest(req: IngestRequest, request: Request) -> dict:
+    _require_admin(request)
+    return _knowledge_proxy("POST", "/knowledge/ingest", req.model_dump())
 
 
 @app.delete("/knowledge/{source_name}")
-def knowledge_delete(source_name: str) -> dict:
-    """Delete a document from the RAG knowledge base by source name."""
-    try:
-        existing = set(_legacy()._rag.list_sources())
-        if source_name not in existing:
-            raise HTTPException(status_code=404, detail=f"Source '{source_name}' not found")
-        _legacy()._rag.delete_by_source(source_name)
-        return {"deleted": True, "source_name": source_name}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+def knowledge_delete(source_name: str, request: Request) -> dict:
+    from urllib.parse import quote
+    _require_admin(request)
+    return _knowledge_proxy("DELETE", f"/knowledge/{quote(source_name, safe='')}")
 
 
 # ── entry point ───────────────────────────────────────────────────────────────

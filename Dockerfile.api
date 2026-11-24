@@ -1,15 +1,15 @@
-FROM python:3.11-slim
-
+ARG PYTHON_IMAGE=python:3.11-slim
+FROM ${PYTHON_IMAGE}
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8001
-
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl -f http://localhost:8001/health || exit 1
-
-CMD ["python", "api_server.py"]
+COPY requirements/api.lock /tmp/api.lock
+RUN pip install --no-cache-dir --require-hashes -r /tmp/api.lock && useradd --create-home --uid 10001 app
+COPY --chown=app:app *.py ./
+COPY --chown=app:app backend ./backend
+COPY --chown=app:app resources/data/schema_metadata.json ./resources/data/schema_metadata.json
+RUN mkdir -p /app/front_end_log /app/logs /app/reports /data \
+    && chown app:app /app/front_end_log /app/logs /app/reports /data
+USER app
+EXPOSE 8003
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=4 CMD python -c "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8003/health', timeout=4)); assert all(d.get(k)=='ok' for k in ['api', 'mcp_server', 'milvus', 'redis']), d"
+CMD ["python", "api_server.py", "--port", "8003"]

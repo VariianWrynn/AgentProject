@@ -41,6 +41,10 @@ class MemoryJournal:
         with self._lock:
             return _copy(self._events[after_seq:])
 
+    def terminal(self) -> bool:
+        with self._lock:
+            return bool(self._events and self._events[-1]["type"] in ("done", "error"))
+
     def exists(self) -> bool:
         with self._lock:
             return bool(self._events)
@@ -68,6 +72,10 @@ return encoded
         if after_seq < 0:
             raise ValueError("after_seq must be nonnegative")
         return [json.loads(item) for item in self.redis.lrange(self.key, after_seq, -1)]
+
+    def terminal(self) -> bool:
+        tail = self.redis.lrange(self.key, -1, -1)
+        return bool(tail and json.loads(tail[0])["type"] in ("done", "error"))
 
     def exists(self) -> bool:
         return bool(self.redis.exists(self.key))

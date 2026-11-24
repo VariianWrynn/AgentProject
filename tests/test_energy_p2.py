@@ -181,7 +181,7 @@ def test_critic_master_loop():
 
     try:
         from backend.agents.critic_master import run as cm_run
-        from react_engine import LLMClient
+        from backend.llm_client import LLMClient
 
         llm = LLMClient()
 

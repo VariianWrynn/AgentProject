@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.WARNING)
 
 print("加载 LangGraph agent 模块（BGE-m3 + Milvus + Redis）…")
-import langgraph_agent as _lga
+from backend.research_graph import build_research_graph
 
 # Load test specs from shared JSON (single source of truth)
 _SPEC_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_cases.json")
@@ -24,9 +24,15 @@ with open(_SPEC_FILE, encoding="utf-8") as _f:
     _ALL_TESTS = json.load(_f)
 _S3 = {t["id"]: t for t in _ALL_TESTS if t.get("section") == 3}
 
-_rag   = _lga._rag
-memgpt = _lga.memgpt
-graph  = _lga.build_graph()
+from rag_pipeline import RAGPipeline
+from backend.memory.memgpt_memory import MemGPTMemory
+_rag = None
+memgpt = None
+if __name__ == "__main__":
+    _rag = RAGPipeline()
+    memgpt = MemGPTMemory(rag=_rag)
+
+graph = build_research_graph()
 print("就绪。\n")
 
 # ═══════════════════════════════════════════════════════════════════════════════

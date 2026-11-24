@@ -23,6 +23,15 @@ OFFLINE_TESTS=(
   tests/test_lead_writer_guard.py          # 事实约束写作回路（脚本化假 LLM）
   tests/test_text2sql_schema_retrieval.py  # 跨表 schema 选择
   tests/test_text2sql_output.py
+  tests/test_deployment_embedding.py
+  tests/test_deployment_knowledge.py
+  tests/test_deployment_packaging.py
+  tests/test_deployment_provision.py
+  tests/test_lightweight_runtime.py
+  tests/test_query_entry.py
+  tests/test_query_api.py
+  tests/test_research_events.py
+  tests/test_research_tool_api.py
 )
 
 echo "离线门禁：${#OFFLINE_TESTS[@]} 个文件，不依赖 Milvus / Redis / MCP / LLM"

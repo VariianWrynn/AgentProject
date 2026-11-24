@@ -27,7 +27,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from rag_pipeline import load_pdf, _rects_overlap, _table_to_markdown
-from react_engine import LLMClient
+from backend.llm_client import LLMClient
 
 _PDF = os.path.join(_ROOT, "resources", "test_files", "vectorDB_test_document.pdf")
 _PDF_QA = os.path.join(_ROOT, "resources", "test_files", "vectorDB_test_questions.pdf")

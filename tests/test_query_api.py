@@ -43,7 +43,6 @@ def api(monkeypatch, tmp_path):
     monkeypatch.setattr(module, "_journal", lambda run_id: journals.setdefault(run_id, MemoryJournal()))
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module, "_classify_query", lambda _: {"route": "multiagent"})
-    monkeypatch.setattr(module, "_run_graph", lambda *_: pytest.fail("unexpected ReAct"))
     with TestClient(module.app) as client:
         yield module, client, redis, journals
 
@@ -101,7 +100,7 @@ def test_real_graph_query_events_replay_and_reconnect(api, scripted_graph):
     assert replay["state"]["draft_sections"]["analysis"] == "Reviewed body."
     assert replay["state"]["gate_passed"] is True
     assert replay["states"]["research"] == replay["state"]
-    assert replay["states"]["react"] == replay["states"]["general"] == {}
+    assert replay["states"]["general"] == {}
     assert replay["events"] == events[5:]
     resumed = event_data(client.get(f"/research/runs/{run_id}/events?after_seq=2",
                                     headers={"Last-Event-ID": "5"}))
@@ -136,7 +135,7 @@ def test_general_and_chat_are_direct_and_replay_separately(api, monkeypatch):
     result = client.post("/query", json={"question": "hello"}).json()
     assert result["route"] == "general" and result["answer"] == "hello"
     state = client.get(f"/research/runs/{result['run_id']}/state").json()
-    assert state["state"] == state["states"]["react"] == {}
+    assert state["state"] == {}
     assert state["states"]["general"]["final_answer"] == "hello"
     chat = client.post("/chat", json={"question": "hello"})
     assert chat.status_code == 200 and chat.json()["answer"] == "hello"
@@ -154,23 +153,17 @@ def test_report_forces_live_research_and_chat_uses_dispatch(api, scripted_graph,
     assert "Reviewed body." in chat["answer"]
 
 
-def test_operational_graph_failure_uses_single_fallback_and_separate_state(api, scripted_graph, monkeypatch):
-    module, client, *_ = api
+def test_operational_graph_failure_returns_run_error(api, scripted_graph):
+    _, client, *_ = api
     def fail(_):
         raise OSError("MCP unavailable")
     scripted_graph["deep_scout"] = fail
-    calls = []
-    def react(*args):
-        calls.append(args)
-        return {"intent": "research", "final_answer": "fallback"}
-    monkeypatch.setattr(module, "_run_graph", react)
-    result = client.post("/query", json={"question": "compare", "session_id": "failed"}).json()
-    assert result["route"] == "react" and result["answer"] == "fallback"
-    assert calls == [("compare", "failed")]
-    replay = client.get(f"/research/runs/{result['run_id']}/state").json()
-    assert replay["state"]["final_answer"] == ""
-    assert replay["states"]["react"]["final_answer"] == "fallback"
-    assert any(e["type"] == "run_failed" for e in replay["events"])
+    response = client.post("/query", json={"question": "compare", "session_id": "failed"})
+    assert response.status_code == 500
+    run_id = response.json()["detail"]["run_id"]
+    events = event_data(client.get(f"/research/runs/{run_id}/events"))
+    assert events[-1]["type"] == "error"
+    assert not any(event["workflow"] == "react" for event in events)
 
 
 @pytest.mark.parametrize("failure,status", [(ValueError("bug"), 500),
@@ -244,3 +237,69 @@ def test_markdown_export_preserves_evidence_labels(api, monkeypatch, tmp_path):
     assert result["sections"][0]["content"] in text
     assert "[E1] [Annual](https://example.com/report)" in text
     assert "[D1] SQL" in text
+
+
+def test_busy_query_does_not_publish_and_slot_releases_after_failure(api, monkeypatch):
+    module, client, redis, journals = api
+    assert module._query_slot.acquire(blocking=False)
+    try:
+        response = client.post("/query", json={"question": "hello", "session_id": "busy"})
+        assert response.status_code == 429
+        assert response.headers["Retry-After"] == "5"
+        assert not journals and not redis.values
+    finally:
+        module._query_slot.release()
+    monkeypatch.setattr(module, "_classify_query", lambda _: {"route": "general"})
+    def fail(*_):
+        raise OSError("provider down")
+    monkeypatch.setattr(module, "_run_general", fail)
+    assert client.post("/query", json={"question": "hello"}).status_code == 500
+    monkeypatch.setattr(module, "_run_general", lambda *_: {"final_answer": "recovered"})
+    assert client.post("/query", json={"question": "hello"}).status_code == 200
+
+
+def test_admin_token_protects_mutations_and_input_is_bounded(api, monkeypatch):
+    _, client, *_ = api
+    monkeypatch.setenv("DEPLOY_ADMIN_TOKEN", "test-admin")
+    assert client.post("/knowledge/ingest", json={"source_name": "x", "content": "y"}).status_code == 401
+    assert client.delete("/knowledge/x").status_code == 401
+    assert client.delete("/sessions/x/memory").status_code == 401
+    assert client.post("/query", json={"question": "x" * 16001}).status_code == 422
+    assert client.post("/query", json={"question": "x", "session_id": "../bad"}).status_code == 422
+
+
+def test_memory_read_preserves_stored_json_and_default(api):
+    _, client, redis, _ = api
+    redis.setex("core_memory:saved", 3600, json.dumps({"persona": "p", "human": "human"}))
+    assert client.get("/sessions/saved/memory").json() == {"session_id": "saved", "persona": "p", "human": "human", "human_length": 5}
+    assert client.get("/sessions/new/memory").json()["human"] == ""
+
+
+def test_health_preserves_required_mcp_readiness(api, monkeypatch):
+    module, client, *_ = api
+    class Response:
+        status_code = 200
+        def json(self):
+            return {"milvus": "ok", "redis": "ok", "sqlite": "ok", "embedding": "error"}
+    monkeypatch.setattr(module.requests, "get", lambda *a, **k: Response())
+    monkeypatch.setattr(module, "_health_cache_ts", 0)
+    response = client.get("/health")
+    assert response.status_code == 503
+    assert response.json()["embedding"] == "error"
+    assert response.json()["sqlite"] == "ok"
+    assert client.get("/health").status_code == 503
+
+
+def test_report_export_uses_persistent_directory(api, monkeypatch, tmp_path):
+    from pathlib import Path
+
+    module, *_ = api
+    destination = tmp_path / "persistent" / "reports"
+    monkeypatch.setenv("REPORT_OUTPUT_DIR", str(destination))
+    saved = Path(module._save_report_markdown(
+        {"summary": "Reviewed summary.", "sections": [], "references": []},
+        "Research question", "session-persistent",
+    ))
+    assert saved.parent == destination
+    assert "Reviewed summary." in saved.read_text(encoding="utf-8")
+    assert not (tmp_path / "reports").exists()

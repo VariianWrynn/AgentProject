@@ -24,7 +24,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from react_engine import LLMClient
+from backend.llm_client import LLMClient
 from backend.agents.critic_master import run as critic_run, _consistency_guard
 
 # ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ Industrial-grade RAG Knowledge Base Pipeline
 """
 
 import os
+import json
 import re
 import hashlib
 import logging
@@ -43,9 +44,9 @@ logger = logging.getLogger("rag_pipeline")
 # ---------------------------------------------------------------------------
 MILVUS_HOST = os.getenv("MILVUS_HOST", "localhost")
 MILVUS_PORT = os.getenv("MILVUS_PORT", "19530")
-COLLECTION_NAME = "knowledge_base"
+COLLECTION_NAME = os.getenv("RAG_COLLECTION", "knowledge_base")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
-EMBEDDING_DIM = 1024  # BGE-m3 output dimension
+EMBEDDING_DIM = 1024  # legacy export; collection dimensions are derived from the model
 CHUNK_SIZE = 512       # tokens
 CHUNK_OVERLAP = 50     # tokens
 TOP_K = 5
@@ -343,10 +344,24 @@ class RAGPipeline:
 
         # --- Load embedding model ---
         logger.info("Loading embedding model: %s …", embedding_model)
-        self.model = SentenceTransformer(embedding_model)
+        import torch
+        torch.set_num_threads(int(os.getenv("EMBEDDING_THREADS", "1")))
+        revision = os.getenv("EMBEDDING_REVISION")
+        self.model = SentenceTransformer(
+            embedding_model, device=os.getenv("EMBEDDING_DEVICE", "cpu"),
+            revision=revision, local_files_only=os.getenv("HF_HUB_OFFLINE", "0") == "1",
+        )
+        self.embedding_dim = int(self.model.get_sentence_embedding_dimension())
+        self.identity = json.dumps({"model": embedding_model, "revision": revision,
+                                    "dimension": self.embedding_dim}, sort_keys=True)
+        self.query_instruction = ("为这个句子生成表示以用于检索相关文章："
+                                  if "bge-small-zh" in embedding_model else "")
+        special = self.model.tokenizer.num_special_tokens_to_add(pair=False)
+        instruction_tokens = len(self.model.tokenizer.tokenize(self.query_instruction))
+        self.token_limit = min(CHUNK_SIZE, self.model.max_seq_length) - special - instruction_tokens
         # Get tokenizer for accurate chunking
         self.chunker = TokenChunker(
-            chunk_size=CHUNK_SIZE,
+            chunk_size=self.token_limit,
             chunk_overlap=CHUNK_OVERLAP,
             tokenizer=self.model.tokenizer,
         )
@@ -361,6 +376,15 @@ class RAGPipeline:
         if utility.has_collection(self.collection_name):
             logger.info("Collection '%s' already exists.", self.collection_name)
             col = Collection(self.collection_name)
+            if col.schema.description != self.identity:
+                raise RuntimeError(
+                    "Collection embedding identity is unknown or incompatible. Keep it intact; "
+                    "choose a new RAG_COLLECTION and run scripts/migrate_embedding.py with a corpus "
+                    "or --from-collection. Expected " + self.identity
+                )
+            field = next(f for f in col.schema.fields if f.name == "embedding")
+            if int(field.params["dim"]) != self.embedding_dim:
+                raise RuntimeError("Collection vector dimension does not match embedding model")
             col.load()
             return col
 
@@ -368,12 +392,12 @@ class RAGPipeline:
         fields = [
             FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=64),
             FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=65535),
-            FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=EMBEDDING_DIM),
+            FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.embedding_dim),
             FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=512),
             FieldSchema(name="chunk_id", dtype=DataType.INT64),
             FieldSchema(name="created_at", dtype=DataType.VARCHAR, max_length=32),
         ]
-        schema = CollectionSchema(fields=fields, description="RAG Knowledge Base")
+        schema = CollectionSchema(fields=fields, description=self.identity)
         col = Collection(name=self.collection_name, schema=schema)
 
         col.create_index(field_name="embedding", index_params=build_index_params())
@@ -385,24 +409,24 @@ class RAGPipeline:
     # Embedding
     # ------------------------------------------------------------------
     def embed(self, texts: list[str]) -> list[list[float]]:
-        """Encode texts using BGE-m3."""
+        """Encode texts with the configured CPU model."""
         vectors = self.model.encode(
             texts,
             normalize_embeddings=True,
             show_progress_bar=len(texts) > 32,
-            batch_size=32,
+            batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "4")),
         )
         return vectors.tolist()
 
     # ------------------------------------------------------------------
     # Ingest (single file)
     # ------------------------------------------------------------------
-    def ingest_file(self, file_path: str) -> int:
+    def ingest_file(self, file_path: str, source_name: str | None = None) -> int:
         """Process one file end-to-end and insert into Milvus.
 
         Returns the number of chunks inserted.
         """
-        source = Path(file_path).name
+        source = source_name or Path(file_path).name
         logger.info("Ingesting '%s' …", source)
 
         # Load & clean
@@ -500,7 +524,9 @@ class RAGPipeline:
         Returns a list of dicts with keys:
             content, source, chunk_id, score
         """
-        q_embedding = self.embed([question])[0]
+        tokens = self.model.tokenizer.tokenize(question)[:self.token_limit]
+        question = self.model.tokenizer.convert_tokens_to_string(tokens)
+        q_embedding = self.embed([self.query_instruction + question])[0]
 
         search_params = build_search_params()
         results = self.collection.search(
@@ -513,6 +539,8 @@ class RAGPipeline:
 
         hits: list[dict] = []
         for hit in results[0]:
+            if hit.distance < float(os.getenv("RAG_SCORE_THRESHOLD", "-1")):
+                continue
             hits.append(
                 {
                     "content": hit.entity.get("content"),
@@ -539,7 +567,7 @@ class RAGPipeline:
     # ------------------------------------------------------------------
     def delete_by_source(self, source_name: str) -> None:
         """Delete all chunks belonging to a given source file."""
-        expr = f'source == "{source_name}"'
+        expr = "source == " + json.dumps(source_name)
         self.collection.delete(expr)
         self.collection.flush()
         logger.info("Deleted all chunks with source='%s'.", source_name)

@@ -27,7 +27,6 @@ def test_general_uses_direct_callback_and_separate_workflow():
     events = []
     result = dispatch_query(
         "hello", "sid", False, lambda _: {"route": "general"},
-        lambda *_: pytest.fail("General must not use ReAct"),
         lambda *_: pytest.fail("General must not research"), events.append,
         run_general=lambda *_: {"final_answer": "hello", "intent": "general"},
     )
@@ -45,25 +44,20 @@ def test_research_success_passes_demo_mode_without_react():
         calls.append(args)
         return {"intent": "research", "summary": "report"}
     result = dispatch_query("compare", "sid", True, lambda _: {"route": "multiagent"},
-                            lambda *_: pytest.fail("ReAct called"), research, events.append)
+                            research, events.append)
     assert calls == [("compare", "sid", True)]
     assert result["report"]["summary"] == "report"
     assert result["route"] == "multiagent"
 
 
-def test_operational_failure_falls_back_exactly_once():
-    calls, events = [], []
+def test_operational_failure_is_reported_without_fallback():
+    events = []
     def research(*_):
         raise ResearchExecutionError("MCP unavailable")
-    def react(*args):
-        calls.append(args)
-        return {"intent": "research", "final_answer": "fallback", "steps_executed": []}
-    result = dispatch_query("compare", "sid", False, lambda _: {}, react, research, events.append)
-    assert calls == [("compare", "sid")]
-    assert result["route"] == "react"
-    assert result["fallback_reason"] == "MCP unavailable"
-    assert result["answer"] == "fallback"
-    assert [e["workflow"] for e in events if e["type"] == "state_updated"] == ["react"]
+    with pytest.raises(ResearchExecutionError):
+        dispatch_query("compare", "sid", False, lambda _: {}, research, events.append)
+    assert events[-1]["type"] == "error"
+    assert not any(event.get("workflow") == "react" for event in events)
 
 
 @pytest.mark.parametrize("failure", [EvidenceRejected("unchecked"), ValueError("bug"),
@@ -74,7 +68,7 @@ def test_policy_rejection_and_programmer_errors_never_fallback(failure):
         raise failure
     with pytest.raises(type(failure)):
         dispatch_query("compare", "sid", False, lambda _: {},
-                       lambda *_: pytest.fail("unexpected fallback"), research, events.append)
+                       research, events.append)
     assert events[-1]["type"] == "error"
 
 
@@ -83,6 +77,5 @@ def test_general_failure_never_uses_react():
         raise ResearchExecutionError("provider unavailable")
     with pytest.raises(ResearchExecutionError):
         dispatch_query("hello", "sid", False, lambda _: {"route": "general"},
-                       lambda *_: pytest.fail("unexpected fallback"),
                        lambda *_: pytest.fail("unexpected research"), lambda _: None,
                        run_general=general)

@@ -1,0 +1,201 @@
+{
+  "date": "2026-11-24",
+  "scope": "CPU-only isolated local production stack; strict whole-host 8GB acceptance pending",
+  "base_commit": "f0d9c635a264074e3a7b1d0ffc778ae0759392c9",
+  "limits": {
+    "services": [
+      "api-server",
+      "etcd",
+      "mcp-server",
+      "milvus",
+      "minio",
+      "nginx",
+      "redis"
+    ],
+    "memory_limit_bytes": 6106906624,
+    "cpu_limit": 4.0,
+    "budget_bytes": 6500000000,
+    "remaining_from_8gb_bytes": 1893093376,
+    "published_bind": "127.0.0.1",
+    "published_port": "19080"
+  },
+  "actual_docker_host": {
+    "memory_bytes": 16559271936,
+    "cpu_count": 24
+  },
+  "whole_host_8gb_verified": false,
+  "embedding": {
+    "repository": "BAAI/bge-small-zh-v1.5",
+    "revision": "7999e1d3359715c523056ef9478215996d62a620",
+    "weight_sha256": "354763b9b1357bc9c44f62c6be2276321081ed2567773608c0d0785b61d5a026",
+    "bytes": 95827648,
+    "source": "HF mirror; immutable Git LFS pointer verified"
+  },
+  "torch": "2.6.0+cpu",
+  "cuda_available": false,
+  "cuda_packages": [],
+  "knowledge": {
+    "public_source_files": 37,
+    "inserted_chunks": 211,
+    "repeated_migration_inserts": 0
+  },
+  "database_rows": {
+    "company_finance": 120,
+    "capacity_stats": 189,
+    "price_index": 1080
+  },
+  "browser_run": {
+    "run_id": "cd7f0e18-e95a-4b31-974b-24b32be04718",
+    "events": 58,
+    "content_checks_passed": 14,
+    "chart_verified": true,
+    "reference_keyboard_preview_verified": true,
+    "reference_click_focus": "reference-E2",
+    "console_errors": []
+  },
+  "sequential_real_runs": [
+    {
+      "case": 1,
+      "runtime_exit": 0,
+      "run_id": "86828abd-faac-47b0-bf25-db1eed423da5",
+      "peak_sampled_bytes": 898772992,
+      "route": "multiagent",
+      "content_exit": 0
+    },
+    {
+      "case": 2,
+      "runtime_exit": 0,
+      "run_id": "1e963284-2eaa-4906-874a-141095a85ce1",
+      "peak_sampled_bytes": 898908160,
+      "route": "multiagent",
+      "content_exit": 0
+    },
+    {
+      "case": 3,
+      "runtime_exit": 0,
+      "run_id": "66a0be75-1c9a-4512-b445-b216bb03b940",
+      "peak_sampled_bytes": 918106112,
+      "route": "multiagent",
+      "content_exit": 0
+    },
+    {
+      "case": 4,
+      "runtime_exit": 0,
+      "run_id": "a9377eab-a8f6-468a-8517-ed7720d13660",
+      "peak_sampled_bytes": 914907136,
+      "route": "multiagent",
+      "content_exit": 0
+    },
+    {
+      "case": 5,
+      "runtime_exit": 0,
+      "run_id": "ed313afa-32ef-4e90-ab8c-94883f6bc2dc",
+      "peak_sampled_bytes": 925179904,
+      "route": "multiagent",
+      "content_exit": 0
+    }
+  ],
+  "final_cache_fix_run": {
+    "run_id": "3aa49974-20cf-44f5-8202-3d78a7b9f173",
+    "event_count": 51,
+    "checks": {
+      "same_run": true,
+      "contiguous": true,
+      "research_replay_exact": true,
+      "real_mode": true,
+      "complete": true,
+      "no_fallback": true,
+      "all_main_nodes": true,
+      "tools_executed": true,
+      "evidence_passed": true,
+      "guard_accepts_prose": true,
+      "exact_sql_chart": true,
+      "prose_values": true,
+      "unit_and_year": true,
+      "assembly_preserves_prose": true
+    },
+    "sampled_group_peak_bytes": 1061519360
+  },
+  "oom_or_unplanned_restarts_during_sampled_queries": false,
+  "admission": {
+    "status": 429,
+    "retry_after": "5",
+    "body": {
+      "detail": "A query is already running; retry later"
+    },
+    "unpublished_session_status": 404
+  },
+  "tests": {
+    "selected_passed": 288,
+    "integration_deselected": 88,
+    "warnings": 33,
+    "collected": 517,
+    "frontend": [
+      "verify-observatory",
+      "verify-observatory-transport",
+      "verify-reader",
+      "production-build"
+    ]
+  },
+  "images": {
+    "api-server": "sha256:4462446461bd5afddd71d82fa3f52d5a616c21e7edf7903d557faa901c69b7ee",
+    "etcd": "sha256:d967d98a12dc220a1a290794711dba7eba04b8ce465e12b02383d1bfbb33e159",
+    "mcp-server": "sha256:588d09320de88134a8bbfe553a4cca4c2114f422e1a80f57086ba44e97848ac3",
+    "milvus": "sha256:27de2175c84dc1180a1c4c338e677eb1156d4501091f01682b4380ea690eae5b",
+    "minio": "sha256:7d80fd232a2f7108aa6f133fcfe5fade3f1626d92d31ae1318076e7aa61928a2",
+    "nginx": "sha256:0a1506e7e010502d23a4d1e598a7704fb55375024bde8bbb3b01266746282bc8",
+    "redis": "sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065"
+  },
+  "build_path": "API/MCP Python3.11 CPU hash locks; web-prebuilt frontend with official cached nginx 1.29.0 base; cached official Redis digest",
+  "limitations": [
+    "Host has more than 8GB RAM and 4 CPUs; container quotas do not establish whole-host acceptance.",
+    "Default Node22.14/nginx1.28 Docker multi-stage path was not built because Docker Hub was unreachable.",
+    "Five sequential runs execute the live graph but may reuse tool cache; they are not five cold retrievals.",
+    "Memory is sampled simultaneous cgroup usage including cache; brief unsampled peaks and system overhead are outside this figure.",
+    "Corpus is small. No BGE-m3 quality equivalence or English quality claim. Initial broad source-name probes matched 2/5; coal golden document lacked claimed content. Fact-aligned carbon/PV probes subsequently retrieved expected sources first.",
+    "HITL timeout/round branches have automated tests; this session did not wait through a live 300-second human timeout.",
+    "Specialized Comment Sicko/deslop and requested cross-family reviewers unavailable; native read-only review used."
+  ],
+  "restart": {
+    "runtime_verification_passed": true,
+    "management_and_events": {
+      "sources_before": 37,
+      "retained_browser_event_count": 58,
+      "unauthorized_mutation_status": 401,
+      "temporary_source_created": true,
+      "sources_restored": 37,
+      "health_after_restart": {
+        "milvus": "ok",
+        "embedding": "ok",
+        "embedding_identity": {
+          "dimension": 512,
+          "model": "BAAI/bge-small-zh-v1.5",
+          "revision": "7999e1d3359715c523056ef9478215996d62a620"
+        },
+        "embedding_dimension": 512,
+        "redis": "ok",
+        "sqlite": "ok",
+        "deepseek_search": "configured",
+        "cache_stats": {
+          "rag_search_keys": 0,
+          "text2sql_keys": 0
+        },
+        "timestamp": "2026-11-24T12:59:32.172891+00:00"
+      }
+    },
+    "actual_data": {
+      "queryable_vectors": 211,
+      "database_rows": {
+        "company_finance": 120,
+        "capacity_stats": 189,
+        "price_index": 1080
+      },
+      "persisted_reports": 7,
+      "identity": {
+        "dimension": 512,
+        "model": "BAAI/bge-small-zh-v1.5",
+        "revision": "7999e1d3359715c523056ef9478215996d62a620"
+      }
+    }
+  }
+}

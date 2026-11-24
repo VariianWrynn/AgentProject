@@ -30,8 +30,6 @@ def test_data_analysis_and_sql_share_the_server_cache(monkeypatch):
 
     sql = SQL()
     monkeypatch.setitem(sys.modules, "rag_pipeline", types.SimpleNamespace(RAGPipeline=lambda: object()))
-    monkeypatch.setitem(sys.modules, "react_engine", types.SimpleNamespace(
-        Tools=lambda _: object(), REDIS_HOST="unused", REDIS_PORT=6379))
     monkeypatch.setitem(sys.modules, "backend.tools.text2sql_tool", types.SimpleNamespace(Text2SQLTool=lambda: sql))
     monkeypatch.setattr(redis, "Redis", Cache)
     stdout, stderr = sys.stdout, sys.stderr
@@ -49,5 +47,52 @@ def test_data_analysis_and_sql_share_the_server_cache(monkeypatch):
             assert cached["cached"] is True
             assert cached["result"]["result"] == [{"revenue": 123.4}]
             assert sql.calls == ["revenue"]
+    finally:
+        sys.modules.pop("mcp_server", None)
+
+
+def test_rag_cache_separates_model_collection_and_result_count(monkeypatch):
+    import redis
+
+    values = {}
+    cache = types.SimpleNamespace(get=values.get, setex=lambda key, ttl, value: values.__setitem__(key, value))
+
+    class RAG:
+        collection_name = "new_collection"
+        identity = "model_revision_a"
+
+        def __init__(self):
+            self.calls = 0
+
+        def query(self, question, top_k):
+            self.calls += 1
+            return [{"content": str(i), "source": "a.txt", "score": .9} for i in range(top_k)]
+
+    rag = RAG()
+    monkeypatch.setitem(sys.modules, "rag_pipeline", types.SimpleNamespace(RAGPipeline=lambda: rag))
+    monkeypatch.setitem(sys.modules, "backend.tools.text2sql_tool", types.SimpleNamespace(Text2SQLTool=lambda: object()))
+    monkeypatch.setattr(redis, "Redis", lambda *args, **kwargs: cache)
+    stdout, stderr = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+    try:
+        module = importlib.import_module("mcp_server")
+    finally:
+        sys.stdout, sys.stderr = stdout, stderr
+    try:
+        with TestClient(module.app) as client:
+            def search(k):
+                return client.post("/tools/rag_search", json={"query": "energy", "params": {"top_k": k}}).json()
+
+            assert len(search(2)["result"]) == 2
+            assert search(2)["cached"] is True
+            assert rag.calls == 1
+            assert len(search(3)["result"]) == 3
+            rag.identity = "model_revision_b"
+            assert search(3)["cached"] is False
+            rag.collection_name = "another_collection"
+            assert search(3)["cached"] is False
+            assert rag.calls == 4
+            assert "top_k" in search(21)["error"]
+            assert rag.calls == 4
     finally:
         sys.modules.pop("mcp_server", None)

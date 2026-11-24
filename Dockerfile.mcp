@@ -1,15 +1,20 @@
-FROM python:3.11-slim
-
+ARG PYTHON_IMAGE=python:3.11-slim
+FROM ${PYTHON_IMAGE}
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1 MPLCONFIGDIR=/tmp/matplotlib
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8000
-
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl -f http://localhost:8000/tools/health || exit 1
-
-CMD ["python", "mcp_server.py"]
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=3 update \
+    && apt-get install -y --no-install-recommends fonts-wqy-microhei \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements/mcp.lock /tmp/mcp.lock
+RUN pip install --no-cache-dir --require-hashes -r /tmp/mcp.lock && useradd --create-home --uid 10001 app
+COPY --chown=app:app *.py ./
+COPY --chown=app:app backend ./backend
+COPY --chown=app:app scripts/provision_deployment.py scripts/migrate_embedding.py ./scripts/
+COPY --chown=app:app resources/data/schema_metadata.json ./resources/data/schema_metadata.json
+COPY resources/data/energy.db /seed/energy.db
+RUN mkdir -p /app/front_end_log /data /models/cache && chown -R app:app /app/front_end_log /data /models
+USER app
+EXPOSE 8002
+HEALTHCHECK --interval=15s --timeout=10s --start-period=180s --retries=8 CMD python -c "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8002/tools/health', timeout=9)); assert all(d.get(k)=='ok' for k in ['milvus', 'redis', 'sqlite']), d"
+CMD ["python", "mcp_server.py", "--port", "8002"]

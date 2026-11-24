@@ -174,44 +174,15 @@ def test4_memory_crud(session_id: str) -> bool:
         return False
 
 
-def test5_mcp_fallback() -> bool:
-    """Mock MCP server unavailable → executor falls back to direct call, no crash."""
-    print("\n--- Test 5: MCP fallback (mock ConnectionError) ---")
-    try:
-        # Import here so mcp singleton is already initialised
-        import langgraph_agent as _lga
-        from mcp_client import MCPCallError
-
-        # Patch requests.Session.post to simulate MCP server down
-        with patch("requests.Session.post", side_effect=ConnectionError("MCP server down")):
-            state = {}
-            init = {
-                "question":       "HNSW索引的适用场景是什么",
-                "intent":         "",
-                "plan":           [],
-                "steps_executed": [],
-                "reflection":     "",
-                "confidence":     0.0,
-                "final_answer":   "",
-                "iteration":      0,
-                "session_id":     "test5_fallback",
-            }
-            graph = _lga.build_graph()
-            for event in graph.stream(init):
-                for _, update in event.items():
-                    if isinstance(update, dict):
-                        state.update(update)
-
-        answer = state.get("final_answer", "")
-        ok     = bool(answer) and not answer.startswith("[ERROR")
-        _verdict("fallback: no crash",          ok)
-        _verdict("fallback: answer non-empty",  bool(answer))
-        print(f"  answer[:120]: {answer[:120]}")
-        return ok
-    except Exception as exc:
-        print(f"  ERROR: {exc}")
-        _verdict("MCP fallback", False, str(exc)[:80])
-        return False
+def test5_mcp_fallback():
+    """MCP failures are surfaced for retry instead of local retrieval fallback."""
+    from mcp_client import MCPClient, MCPCallError
+    with patch("requests.Session.post", side_effect=ConnectionError("MCP down")):
+        try:
+            MCPClient().call("rag_search", "query")
+        except MCPCallError:
+            return True
+    return False
 
 
 # ── main ──────────────────────────────────────────────────────────────────────

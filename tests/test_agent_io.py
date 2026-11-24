@@ -776,7 +776,18 @@ class TestRAGPipeline:
     """Section C: RAGPipeline Python class contracts."""
 
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self, monkeypatch):
+        import numpy as np
+        import rag_pipeline
+
+        model = MagicMock()
+        model.get_sentence_embedding_dimension.return_value = 512
+        model.max_seq_length = 512
+        model.tokenizer.num_special_tokens_to_add.return_value = 2
+        model.tokenizer.tokenize.side_effect = lambda text: text.split()
+        model.tokenizer.convert_tokens_to_string.side_effect = lambda tokens: " ".join(tokens)
+        model.encode.side_effect = lambda texts, **kwargs: np.tile([1.] + [0.] * 511, (len(texts), 1))
+        monkeypatch.setattr(rag_pipeline, "SentenceTransformer", lambda *args, **kwargs: model)
         patches = [
             patch("pymilvus.connections.connect"),
             patch("pymilvus.utility.has_collection", return_value=False),
@@ -789,7 +800,19 @@ class TestRAGPipeline:
         started = [p.start() for p in patches]
         mock_col_cls = mock_col_patch.start()
         self.mock_col = MagicMock()
+        self.mock_col.num_entities = 0
+        rows = []
+
+        def insert(columns):
+            rows.extend(dict(zip(("id", "content", "embedding", "source", "chunk_id", "created_at"), row))
+                        for row in zip(*columns))
+            self.mock_col.num_entities = len(rows)
+
+        self.mock_col.insert.side_effect = insert
+        self.mock_col.query.side_effect = lambda **kwargs: rows.copy()
+        self.mock_col.search.return_value = [[]]
         mock_col_cls.return_value = self.mock_col
+        monkeypatch.setattr(rag_pipeline, "Collection", mock_col_cls)
 
         try:
             from rag_pipeline import RAGPipeline
@@ -890,10 +913,10 @@ class TestRAGPipeline:
         assert len(self.rag.embed(texts)) == n_texts
 
     @unit
-    def test_embed_vector_dimension_is_1024(self):
-        """C5: each vector produced by embed has exactly 1024 dimensions."""
+    def test_embed_vector_dimension_matches_configured_model(self):
+        """C5: vectors use the configured model dimension."""
         result = self.rag.embed(["test sentence"])
-        assert len(result[0]) == 1024
+        assert len(result[0]) == self.rag.embedding_dim == 512
 
     @unit
     def test_embed_vectors_l2_normalized(self):
@@ -916,11 +939,15 @@ class TestText2SQLTool:
     )
 
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self, monkeypatch):
         try:
             from backend.tools import text2sql_tool as t2s_mod
         except ImportError:
             pytest.skip("Text2SQLTool not importable")
+
+        monkeypatch.setattr(t2s_mod, "_API_KEY", "unit-test-placeholder")
+        monkeypatch.setattr(t2s_mod, "_BASE_URL", "https://example.invalid/v1")
+        monkeypatch.setattr(t2s_mod, "_MODEL", "unit-test-model")
 
         with patch.object(t2s_mod, "OpenAI") as mock_openai_cls:
             self.mock_llm = MagicMock()
@@ -1263,179 +1290,16 @@ class TestMemorySystem:
 # ===========================================================================
 
 class TestLangGraphRouting:
-    """Section G: routing function determinism and correctness."""
-
-    @pytest.fixture(autouse=True)
-    def import_routing(self):
-        try:
-            from langgraph_agent import (
-                _route_router,
-                _route_reflector,
-                _route_critic_master,
-                _route_human_gate,
-            )
-            self._route_router = _route_router
-            self._route_reflector = _route_reflector
-            self._route_critic_master = _route_critic_master
-            self._route_human_gate = _route_human_gate
-        except ImportError:
-            pytest.skip("LangGraph routing functions not importable")
-
-    def _router_state(self, intent="general", confidence=0.5, iteration=0):
-        return {"intent": intent, "plan": [], "steps_executed": [],
-                "confidence": confidence, "iteration": iteration}
-
-    def _refl_state(self, confidence=0.5, iteration=0):
-        return {"confidence": confidence, "iteration": iteration}
-
-    def _critic_state(self, phase="done", iteration=0):
-        return {"phase": phase, "iteration": iteration}
-
-    # ---- G1. _route_router ---------------------------------------------------
+    """Current research branches, independent of infrastructure."""
 
     @unit
-    def test_router_general_goes_to_critic(self):
-        """G1: intent=='general' → 'critic' (skips planning stage)."""
-        assert self._route_router(self._router_state("general")) == "critic"
+    @pytest.mark.parametrize("decision,expected", [("approved", "synthesizer"), ("limit", "synthesizer"), ("human", "human_gate"), ("research", "deep_scout")])
+    def test_critic_decision_route(self, decision, expected):
+        from backend.research_graph import _route_critic_master
+        assert _route_critic_master({"review_decision": decision}) == expected
 
     @unit
-    def test_router_data_query_goes_to_planner(self):
-        """G1: intent=='data_query' → 'planner'."""
-        assert self._route_router(self._router_state("data_query")) == "planner"
-
-    @unit
-    def test_router_research_goes_to_planner(self):
-        """G1: intent=='research' → 'planner'."""
-        assert self._route_router(self._router_state("research")) == "planner"
-
-    @unit
-    @pytest.mark.parametrize("intent", ["policy_query", "market_analysis"])
-    def test_router_non_general_intents_go_to_planner(self, intent):
-        """G1: all non-general intents → 'planner'."""
-        assert self._route_router(self._router_state(intent)) == "planner"
-
-    @unit
-    @pytest.mark.parametrize("intent,expected", [
-        ("general", "critic"),
-        ("data_query", "planner"),
-        ("research", "planner"),
-        ("policy_query", "planner"),
-        ("market_analysis", "planner"),
-    ])
-    def test_router_is_deterministic(self, intent, expected):
-        """G1: same intent state always produces the same route (determinism)."""
-        state = self._router_state(intent)
-        results = {self._route_router(state) for _ in range(3)}
-        assert results == {expected}
-
-    # ---- G2. _route_reflector ------------------------------------------------
-
-    @unit
-    def test_reflector_confidence_07_goes_to_critic(self):
-        """G2: confidence == 0.7 (threshold) → 'critic'."""
-        assert self._route_reflector(self._refl_state(0.7, 1)) == "critic"
-
-    @unit
-    def test_reflector_high_confidence_goes_to_critic(self):
-        """G2: confidence > 0.7 → 'critic'."""
-        assert self._route_reflector(self._refl_state(0.9, 0)) == "critic"
-
-    @unit
-    def test_reflector_max_iterations_goes_to_critic_regardless_of_confidence(self):
-        """G2: iteration == 3 (MAX_ITER) → 'critic' regardless of confidence."""
-        assert self._route_reflector(self._refl_state(0.3, 3)) == "critic"
-
-    @unit
-    def test_reflector_above_max_iterations_goes_to_critic(self):
-        """G2: iteration > 3 → 'critic' (hard cap enforced)."""
-        assert self._route_reflector(self._refl_state(0.1, 4)) == "critic"
-
-    @unit
-    def test_reflector_low_confidence_low_iteration_goes_to_planner(self):
-        """G2: confidence < 0.7 AND iteration < 3 → 'planner'."""
-        assert self._route_reflector(self._refl_state(0.5, 1)) == "planner"
-
-    @unit
-    @pytest.mark.parametrize("confidence,iteration,expected", [
-        (0.69, 0, "planner"),
-        (0.69, 2, "planner"),
-        (0.70, 0, "critic"),
-        (0.70, 3, "critic"),
-        (0.10, 3, "critic"),
-        (1.00, 0, "critic"),
-        (0.00, 2, "planner"),
-    ])
-    def test_reflector_boundary_values(self, confidence, iteration, expected):
-        """G2: boundary-value combinations produce the correct route."""
-        assert self._route_reflector(self._refl_state(confidence, iteration)) == expected
-
-    # ---- G3. _route_critic_master --------------------------------------------
-
-    @unit
-    def test_critic_master_awaiting_human_goes_to_human_gate(self):
-        """G3: phase=='awaiting_human' → 'human_gate'."""
-        assert self._route_critic_master(self._critic_state("awaiting_human", 0)) == "human_gate"
-
-    @unit
-    def test_critic_master_re_researching_low_iter_goes_to_deep_scout(self):
-        """G3: phase=='re_researching' AND iteration < 3 → 'deep_scout'."""
-        assert self._route_critic_master(self._critic_state("re_researching", 1)) == "deep_scout"
-
-    @unit
-    def test_critic_master_re_researching_max_iter_goes_to_synthesizer(self):
-        """G3: phase=='re_researching' AND iteration ≥ 3 → 'synthesizer' (hard cap)."""
-        assert self._route_critic_master(self._critic_state("re_researching", 3)) == "synthesizer"
-
-    @unit
-    def test_critic_master_done_goes_to_synthesizer(self):
-        """G3: phase=='done' → 'synthesizer'."""
-        assert self._route_critic_master(self._critic_state("done", 0)) == "synthesizer"
-
-    @unit
-    @pytest.mark.parametrize("iteration", [0, 1, 2])
-    def test_critic_master_re_researching_under_max_always_deep_scout(self, iteration):
-        """G3: re_researching + iteration in [0,2] always → 'deep_scout'."""
-        assert self._route_critic_master(self._critic_state("re_researching", iteration)) == "deep_scout"
-
-    # ---- G4. _route_human_gate -----------------------------------------------
-
-    @unit
-    def test_human_gate_re_researching_low_iter_goes_to_deep_scout(self):
-        """G4: phase=='re_researching' AND iteration < 3 → 'deep_scout'."""
-        assert self._route_human_gate(self._critic_state("re_researching", 2)) == "deep_scout"
-
-    @unit
-    def test_human_gate_re_researching_max_iter_goes_to_synthesizer(self):
-        """G4: phase=='re_researching' AND iteration ≥ 3 → 'synthesizer'."""
-        assert self._route_human_gate(self._critic_state("re_researching", 3)) == "synthesizer"
-
-    @unit
-    def test_human_gate_done_goes_to_synthesizer(self):
-        """G4: phase=='done' → 'synthesizer'."""
-        assert self._route_human_gate(self._critic_state("done", 0)) == "synthesizer"
-
-    @unit
-    @pytest.mark.parametrize("phase,iteration,expected", [
-        ("re_researching", 0, "deep_scout"),
-        ("re_researching", 1, "deep_scout"),
-        ("re_researching", 2, "deep_scout"),
-        ("re_researching", 3, "synthesizer"),
-        ("re_researching", 4, "synthesizer"),
-        ("done", 0,          "synthesizer"),
-        ("done", 5,          "synthesizer"),
-    ])
-    def test_human_gate_all_documented_states(self, phase, iteration, expected):
-        """G4: all spec-documented state combinations route correctly."""
-        assert self._route_human_gate(self._critic_state(phase, iteration)) == expected
-
-    @unit
-    @pytest.mark.parametrize("phase,iteration,expected", [
-        ("re_researching", 0, "deep_scout"),
-        ("re_researching", 3, "synthesizer"),
-        ("done", 0,           "synthesizer"),
-    ])
-    def test_human_gate_is_deterministic(self, phase, iteration, expected):
-        """G4: same state always produces the same route (determinism guarantee)."""
-        state = self._critic_state(phase, iteration)
-        results = {self._route_human_gate(state) for _ in range(3)}
-        assert results == {expected}
+    @pytest.mark.parametrize("decision,iteration,expected", [("reject", 0, "deep_scout"), ("reject", 2, "synthesizer"), ("approve", 0, "synthesizer"), ("timeout", 0, "synthesizer")])
+    def test_human_decision_route(self, decision, iteration, expected):
+        from backend.research_graph import _route_human_gate
+        assert _route_human_gate({"user_decision": decision, "iteration": iteration}) == expected

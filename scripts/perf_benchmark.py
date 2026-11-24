@@ -74,8 +74,8 @@ def _flush_mcp_cache() -> int:
 
 def run_single(config: str, query_idx: int) -> None:
     """Executed in a subprocess with env already set by the orchestrator."""
-    from langgraph_agent import run_deep_research
-    from react_engine import get_usage_totals, reset_usage_totals
+    from backend.research_graph import run_deep_research
+    from backend.llm_client import get_usage_totals, reset_usage_totals
 
     query = QUERIES[query_idx]
     reset_usage_totals()

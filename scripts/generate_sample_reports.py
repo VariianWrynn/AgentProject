@@ -26,7 +26,7 @@ SAMPLES = [
 
 
 def main() -> None:
-    from langgraph_agent import run_deep_research
+    from backend.research_graph import run_deep_research
 
     os.makedirs(OUT_DIR, exist_ok=True)
     for slug, query in SAMPLES:

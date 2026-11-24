@@ -88,7 +88,7 @@ def get_client(agent_role: str) -> Tuple[OpenAI, str]:
             f"No model configured for role '{agent_role}': "
             f"set {model_env} (or LLM_MODEL) in your .env file"
         )
-    return OpenAI(api_key=api_key, base_url=BASE_URL), model
+    return OpenAI(api_key=api_key, base_url=BASE_URL, timeout=float(os.getenv("LLM_TIMEOUT_SECONDS", "60")), max_retries=int(os.getenv("LLM_MAX_RETRIES", "1"))), model
 
 
 def make_llm(agent_role: str):
@@ -98,7 +98,7 @@ def make_llm(agent_role: str):
     Lazy import of LLMClient to avoid circular imports.
     Raises EnvironmentError if required env vars are missing from the .env file.
     """
-    from react_engine import LLMClient, OPENAI_BASE_URL  # noqa: PLC0415
+    from backend.llm_client import LLMClient, OPENAI_BASE_URL  # noqa: PLC0415
     key_env   = ROLE_TO_KEY_ENV.get(agent_role, "OPENAI_API_KEY")
     model_env = ROLE_TO_MODEL_ENV.get(agent_role, "LLM_MODEL")
 

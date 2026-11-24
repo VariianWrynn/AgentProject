@@ -118,7 +118,7 @@ Open **http://localhost:5173**
 
 ## Architecture overview
 
-The normal router selects a direct General answer or research. ReAct is reserved for operational research failures.
+The normal router selects a direct General answer or research. The backend ReAct path has been removed. Research execution failures return an error with the run ID so the user can retry.
 
 ```text
 API → Router → General answer
@@ -130,9 +130,11 @@ API → Router → General answer
 DeepScout → MCPClient → RAG, web search, SQL analysis and chart tools
 ```
 
-The research graph lives in `backend/research_graph.py`. DataAnalyst is no longer an agent. SQL and charts are MCP tools. Failed evidence checks return to Writer and stop the run after two unsuccessful rewrites. Evidence rejection never starts ReAct. Quality review permits two additional research rounds and retains human auto-approval after 300 seconds. The assembly tool never edits approved prose or calls a model.
+The research graph lives in `backend/research_graph.py`. DataAnalyst is no longer an agent. SQL and charts are MCP tools. Failed evidence checks return to Writer and stop the run after two unsuccessful rewrites. Quality review permits two additional research rounds and retains human auto-approval after 300 seconds. The assembly tool never edits approved prose or calls a model.
 
 Each query has a unique `run_id`. Versioned SSE events expose node execution, committed StateGraph updates, branch decisions, and tool activity. The existing progress frontend remains supported. See [execution and demonstration API](docs/research-api.md) for replay, reconnect cursors, human decisions, and verification commands.
+
+The CPU-only production stack separates the lightweight API from the single embedding owner in MCP. See the [deployment runbook](docs/deployment-runbook.md) for provisioning, migration, resource caps and verification limits.
 
 ---
 
@@ -223,7 +225,7 @@ python tests/test_mcp_api.py     # MCP tool endpoints
 |------|---------|
 | `api_server.py` | User-facing FastAPI server (port 8003) |
 | `mcp_server.py` | Tool service with Redis cache (port 8002) |
-| `langgraph_agent.py` | LangGraph orchestration (dual-graph pipeline) |
+| `backend/research_graph.py` | Research graph, evidence and human gates |
 | `llm_router.py` | Routes agent roles to API keys |
 | `rag_pipeline.py` | BGE-m3 embeddings → Milvus |
 | `backend/agents/` | 6 specialist agent modules |

@@ -120,7 +120,7 @@ npm run dev
 
 ## 系统架构
 
-正常入口为 `Router → General 直接回答` 或 `Router → multiagent 研究`。ReAct 只在研究执行故障时兜底。
+正常入口为 `Router → General 直接回答` 或 `Router → multiagent 研究`。后端 ReAct 已移除，研究执行故障明确返回失败及 run_id，允许用户重试。
 
 ```text
 前端 React :5173 → FastAPI :8003 → query_entry.py
@@ -138,11 +138,13 @@ DeepScout → MCPClient → MCP 工具服务 :8002
 Redis 在工具服务端缓存 RAG 和 SQL，并保存运行事件及人工决定。
 ```
 
-事实关卡失败返回 Writer，两次重写仍失败则终止研究，不会用 ReAct 绕过。Critic 低分时，HITL 开启则转人工，关闭则自动补研。保留两轮补研上限与人工等待 300 秒自动批准。报告组装工具保留审核后的正文，不调用 LLM。
+事实关卡失败返回 Writer，两次重写仍失败则终止研究。Critic 低分时，HITL 开启则转人工，关闭则自动补研。保留两轮补研上限与人工等待 300 秒自动批准。报告组装工具保留审核后的正文，不调用 LLM。
 
 前端继续使用 `POST /query` 和 `GET /query/stream`。响应带独立 `run_id`。新演示可通过原始 SSE 查看节点执行、已提交的 StateGraph 状态增量、分支与工具事件，并按序回放。
 
 详细接口、事件格式和验证命令见 [DeepResearch 执行与演示接口](docs/research-api.md)。
+
+4 CPU / 8GB 的 CPU-only 生产部署使用独立 API、单份 MCP 向量模型和 nginx 入口，先执行模型及数据预置，再启动服务。部署命令、迁移和验收范围见 [部署运行手册](docs/deployment-runbook.md)。
 
 ---
 
@@ -234,7 +236,7 @@ python tests/test_mcp_api.py     # MCP 工具接口
 | `api_server.py` | 用户接口 FastAPI 服务器（端口 8003） |
 | `query_entry.py` | 独立复杂度识别与双图调度 |
 | `mcp_server.py` | 带 Redis 缓存的工具服务（端口 8002） |
-| `langgraph_agent.py` | LangGraph 编排（双图流水线） |
+| `backend/research_graph.py` | 研究图、事实关卡与人工审核 |
 | `llm_router.py` | 按智能体角色路由 API Key |
 | `rag_pipeline.py` | BGE-m3 向量嵌入 → Milvus |
 | `backend/agents/` | 6 个专业智能体模块 |

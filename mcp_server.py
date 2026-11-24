@@ -122,8 +122,8 @@ if _args.kill:
     _free_port(_args.port)
 
 import redis
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -131,12 +131,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Load .env so DeepSeek and other secrets are available when running directly
 try:
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=False)
 except ImportError:
     pass
 
 from rag_pipeline import RAGPipeline
-from react_engine import Tools, REDIS_HOST, REDIS_PORT
+from backend.tools.document_tools import doc_summary as summarize_document
+from scripts.provision_deployment import check_database
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 from backend.tools.text2sql_tool import Text2SQLTool
 from backend.tools.data_analysis import run as analyze_data
 from backend.tools.deepseek_search import search as deepseek_search
@@ -151,8 +154,6 @@ _CACHE_PREFIX = "mcp_cache"
 # ── singletons ────────────────────────────────────────────────────────────────
 print("[MCP] Loading RAGPipeline …")
 _rag      = RAGPipeline()
-print("[MCP] Loading Tools …")
-_tools    = Tools(_rag)
 print("[MCP] Loading Text2SQLTool …")
 _text2sql = Text2SQLTool()
 print("[MCP] Connecting to Redis …")
@@ -230,21 +231,26 @@ def _log(tool: str, query: str, latency_ms: float,
 def rag_search(req: ToolRequest) -> ToolResponse:
     t0 = time.time()
     try:
-        cached_result = _cache_get("rag_search", req.query)
+        top_k = int(req.params.get("top_k", 5))
+        if not 1 <= top_k <= 20:
+            raise ValueError("top_k must be between 1 and 20")
+        cache_query = json.dumps({"query": req.query, "top_k": top_k,
+                                  "collection": _rag.collection_name,
+                                  "embedding": _rag.identity}, sort_keys=True)
+        cached_result = _cache_get("rag_search", cache_query)
         if cached_result is not None:
             latency = (time.time() - t0) * 1000
             _log("rag_search", req.query, latency, cached=True)
             return ToolResponse(tool="rag_search", result=cached_result,
                                 latency_ms=latency, cached=True)
 
-        top_k  = int(req.params.get("top_k", 5))
         hits   = _rag.query(req.query, top_k=top_k)
         result = [
             {"content": h["content"], "source": h["source"], "score": h["score"],
              "chunk_id": h.get("chunk_id")}
             for h in hits
         ]
-        _cache_set("rag_search", req.query, result)
+        _cache_set("rag_search", cache_query, result)
         latency = (time.time() - t0) * 1000
         _log("rag_search", req.query, latency, cached=False)
         return ToolResponse(tool="rag_search", result=result, latency_ms=latency)
@@ -312,7 +318,7 @@ def doc_summary(req: ToolRequest) -> ToolResponse:
     # NOT cached — doc source name is the query; documents change infrequently
     t0 = time.time()
     try:
-        summary = _tools.doc_summary(req.query)
+        summary = summarize_document(_rag, req.query)
         result  = {"summary": summary, "chunks_read": 0}
         latency = (time.time() - t0) * 1000
         _log("doc_summary", req.query, latency, cached=False)
@@ -334,6 +340,17 @@ def health() -> dict:
     except Exception as exc:
         status["milvus"] = f"error: {exc}"
 
+    try:
+        if _rag.collection.schema.description != _rag.identity:
+            raise RuntimeError("Collection embedding identity changed")
+        if _rag.model.get_sentence_embedding_dimension() != _rag.embedding_dim:
+            raise RuntimeError("Loaded model dimension changed")
+        status["embedding"] = "ok"
+        status["embedding_identity"] = json.loads(_rag.identity)
+        status["embedding_dimension"] = _rag.embedding_dim
+    except Exception as exc:
+        status["embedding"] = f"error: {exc}"
+
     # Redis
     try:
         _redis.ping()
@@ -343,10 +360,8 @@ def health() -> dict:
 
     # SQLite
     try:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources", "data", "energy.db")
-        conn = sqlite3.connect(db_path)
-        conn.execute("SELECT 1")
-        conn.close()
+        from pathlib import Path
+        check_database(Path(os.getenv("DEPLOY_DATA_DIR", "resources/data")) / "energy.db")
         status["sqlite"] = "ok"
     except Exception as exc:
         status["sqlite"] = f"error: {exc}"
@@ -364,6 +379,9 @@ def health() -> dict:
 
     status["timestamp"] = datetime.now(timezone.utc).isoformat()
     print(f"[MCP] GET /tools/health → {status}")
+    if any(status.get(key) != "ok" for key in ("milvus", "redis", "sqlite", "embedding")):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=503, content=status)
     return status
 
 
@@ -380,6 +398,49 @@ def clear_cache() -> dict:
     except Exception as exc:
         print(f"[MCP] DELETE /tools/cache → error: {exc}")
         return {"deleted_keys": 0, "error": str(exc)}
+
+
+class IngestRequest(BaseModel):
+    source_name: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=1_000_000)
+
+
+def _source_name(value: str) -> str:
+    import re
+    if not re.fullmatch(r"[\w .-]+", value) or value in {".", ".."} or value.endswith((".", " ")):
+        raise HTTPException(422, "Source must be a plain filename without paths or control characters")
+    return value
+
+
+@app.get("/knowledge/sources")
+def knowledge_sources() -> dict:
+    sources = _rag.list_sources()
+    return {"sources": [{"source": source} for source in sources], "total": len(sources)}
+
+
+@app.post("/knowledge/ingest")
+def knowledge_ingest(req: IngestRequest) -> dict:
+    import tempfile
+    from pathlib import Path
+    source = _source_name(req.source_name)
+    if len(req.content.encode("utf-8")) > 1_000_000:
+        raise HTTPException(413, "Document exceeds 1000000 bytes")
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / (source + ".txt")
+        path.write_text(req.content, encoding="utf-8")
+        _rag.ingest_file(str(path))
+    clear_cache()
+    return {"source_name": source, "status": "ok"}
+
+
+@app.delete("/knowledge/{source_name}")
+def knowledge_delete(source_name: str) -> dict:
+    source = _source_name(source_name)
+    if source not in _rag.list_sources():
+        raise HTTPException(404, f"Source '{source}' not found")
+    _rag.delete_by_source(source)
+    clear_cache()
+    return {"deleted": True, "source_name": source}
 
 
 # ── entry point ───────────────────────────────────────────────────────────────

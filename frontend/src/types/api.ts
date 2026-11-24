@@ -58,7 +58,7 @@ interface QueryBase {
 }
 
 export type QueryResult =
-  | (QueryBase & { route: 'general' | 'react'; answer: string; steps_count: number; fallback_reason?: string })
+  | (QueryBase & { route: 'general'; answer: string; steps_count: number })
   | (QueryBase & { route: 'multiagent'; report: ResearchReport })
 
 // SSE event types: new agent events + legacy graph events
@@ -90,7 +90,7 @@ export interface SSEEvent {
   session_id?: string
   run_id?: string
   seq?: number
-  route?: 'general' | 'react' | 'multiagent'
+  route?: 'general' | 'multiagent'
   // HITL fields — present only on awaiting_review events
   draft_sections?: Record<string, string>
   issue_summary?: string

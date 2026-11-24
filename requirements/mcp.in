@@ -1,0 +1,11 @@
+-r api.in
+pymilvus==2.4.15
+sentence-transformers==3.4.1
+transformers==4.48.3
+torch==2.6.0+cpu
+numpy==1.26.4
+pymupdf==1.25.5
+matplotlib==3.10.3
+jieba==0.42.1
+marshmallow==3.26.1
+setuptools==75.8.2

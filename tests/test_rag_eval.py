@@ -21,12 +21,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.WARNING)
 
 print("Loading modules (BGE-m3 + Milvus + Redis)…")
-import langgraph_agent as _lga
+from backend.research_graph import build_research_graph
 from backend.tools.rag_evaluator import RAGEvaluator
 
-_rag   = _lga._rag
-graph  = _lga.build_graph()
-memgpt = _lga.memgpt
+from rag_pipeline import RAGPipeline
+from backend.memory.memgpt_memory import MemGPTMemory
+_rag = None
+memgpt = None
+if __name__ == "__main__":
+    _rag = RAGPipeline()
+    memgpt = MemGPTMemory(rag=_rag)
+graph = build_research_graph()
+
 eval_  = RAGEvaluator()
 print("Ready.\n")
 

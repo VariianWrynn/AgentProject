@@ -174,8 +174,8 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
     os.environ["HITL_ENABLED"] = "off"
     corpus = FrozenCorpus(corpus_path)
     _fake_dependencies(corpus)
-    import langgraph_agent as agent
-    from react_engine import get_usage_totals, reset_usage_totals
+    import backend.research_graph as agent
+    from backend.llm_client import get_usage_totals, reset_usage_totals
     from mcp_client import MCPClient
 
     live_web = retrieval == "live-web"
@@ -188,9 +188,6 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
     if live_web:
         corpus.list_sources = lambda: []
 
-    # react_engine loads .env with override=True during import, so set the
-    # comparison model only after all production imports have completed.
-    agent._llm.model = model
     for name in ("MODEL_ROUTER", "MODEL_PLANNER", "MODEL_SCOUT", "MODEL_ANALYST",
                  "MODEL_WRITER", "MODEL_CRITIC"):
         os.environ[name] = model
@@ -210,11 +207,6 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
         raise RuntimeError(f"evaluation forbids tool {name}")
 
     MCPClient.call = lambda self, *args, **kwargs: local_tool(*args, **kwargs)
-    agent._tools.rag_search = lambda query: "[NO_MATCH]" if live_web else "\n".join(
-        hit["content"] for hit in corpus.query(query))
-    agent._tools.web_search = lambda query: "\n\n".join(
-        f"{hit['title']}\n{hit['url']}\n{hit['snippet']}" for hit in web_search(query)
-    ) if live_web else "[EVAL_WEB_DISABLED]"
     reset_usage_totals()
     sid = f"graph_eval_{uuid.uuid4().hex}"
     start = time.monotonic()
@@ -223,18 +215,10 @@ def _run_worker(case: dict, graph: str, model: str, corpus_path: Path,
         if graph == "routed":
             from query_entry import ROUTE_PROMPT, classify_route
             decision = classify_route(case["question"], lambda question:
-                                      agent.make_llm("router").chat_json(
+                                      agent._llm("router").chat_json(
                                           ROUTE_PROMPT, question, temperature=0.1))
             execution_route = decision.route
-        if execution_route == "react":
-            state = agent.build_graph().invoke({
-                "question": case["question"], "intent": "", "plan": [],
-                "steps_executed": [], "reflection": "", "confidence": 0.0,
-                "final_answer": "", "iteration": 0, "session_id": sid})
-            evidence = [{"source": step.get("query"), "action": step.get("action"),
-                         "result": str(step.get("result", ""))[:8000]}
-                        for step in state.get("steps_executed", [])]
-        elif execution_route == "general":
+        if execution_route == "general":
             from backend.research_graph import general_node
             state = general_node({"question": case["question"]})
             evidence = []
@@ -379,6 +363,12 @@ def _records_for_report(args, corpus_hash: str) -> list[dict]:
 
 
 def render_markdown(cases: list[dict], records: list[dict]) -> str:
+    if records and not any(row.get("graph") == "react" for row in records):
+        lines = ["# Research evaluation", "", "Current research execution; no legacy comparison baseline.", "",
+                 "| Case | Route | Status | Answer chars | Cost USD |", "|---|---|---|---:|---:|"]
+        for row in records:
+            lines.append(f"| {row['case_id']} | {row.get('execution_route', row['graph'])} | {row['status']} | {len(row.get('answer', ''))} | {row.get('cost_usd')} |")
+        return "\n".join(lines) + "\n"
     candidate = "routed" if any(r.get("graph") == "routed" for r in records) else "multiagent"
     graphs = ("react", candidate)
     candidate_label = "Routed" if candidate == "routed" else "Multiagent"
@@ -536,7 +526,7 @@ def run(args, cases: list[dict], corpus: FrozenCorpus) -> None:
     write_lock = threading.Lock()
 
     def process_case(case: dict) -> None:
-        for graph in ("react", args.candidate_mode):
+        for graph in (args.candidate_mode,):
             if (case["id"], graph) in done:
                 continue
             record = None
@@ -613,7 +603,7 @@ def report(args, cases: list[dict], corpus: FrozenCorpus) -> None:
         current = paired_summary(subset, records)
         print(f"{category}: paired={current['paired_count']} qa_accuracy={current['qa_accuracy']} "
               f"report_metrics={current['report_metrics']}")
-    for graph in ("react", candidate):
+    for graph in (candidate,):
         paired_ids = {c["id"] for c in cases if c["id"] not in summary["missing_pairs"]}
         scored = [r for r in records if r["graph"] == graph and r["status"] == "scored"
                   and r["case_id"] in paired_ids]
@@ -698,7 +688,7 @@ def main():
     parser.add_argument("--model")
     parser.add_argument("--judge-model")
     parser.add_argument("--case-id")
-    parser.add_argument("--graph", choices=("react", "multiagent", "routed"))
+    parser.add_argument("--graph", choices=("multiagent", "routed"))
     parser.add_argument("--candidate-mode", choices=("multiagent", "routed"),
                         default="multiagent")
     parser.add_argument("--retrieval", choices=("frozen", "live-web"), default="frozen")

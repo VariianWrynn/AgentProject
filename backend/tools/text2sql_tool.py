@@ -29,7 +29,7 @@ from openai import OpenAI
 # Load .env so this module works when instantiated outside api_server / mcp_server
 try:
     from dotenv import load_dotenv as _load_dotenv
-    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"), override=True)
+    _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"), override=False)
 except ImportError:
     pass
 
@@ -48,7 +48,7 @@ _FINANCE_RE  = re.compile(r"营收|收入|利润|负债|财务|revenue|profit|de
 _CAPACITY_RE = re.compile(r"装机|容量|发电|机组|installed|capacity")
 
 # ---------------------------------------------------------------------------
-# LLM Client (inline — avoids importing react_engine.py and its heavy deps)
+# SQL model configuration
 # ---------------------------------------------------------------------------
 _API_KEY  = os.getenv("OPENAI_API_KEY", "")
 _BASE_URL = os.getenv("OPENAI_BASE_URL")
@@ -181,12 +181,12 @@ _SUMMARY_SYSTEM = """\
 class Text2SQLTool:
     def __init__(
         self,
-        db_path: str = "resources/data/energy.db",
+        db_path: str | None = None,
         metadata_path: str = "resources/data/schema_metadata.json",
         llm_client=None,
         badcase_path: str = "resources/data/badcases.jsonl",
     ) -> None:
-        self.db_path = db_path
+        self.db_path = db_path or str(Path(os.getenv("DEPLOY_DATA_DIR", "resources/data")) / "energy.db")
         self.badcase_path = badcase_path
 
         # Load schema metadata

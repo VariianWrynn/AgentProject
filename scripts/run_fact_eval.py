@@ -58,7 +58,7 @@ def load_eval_set(path: str) -> list[dict]:
 # ── intent mode ───────────────────────────────────────────────────────────────
 
 def run_intent() -> dict:
-    from langgraph_agent import router_node
+    from backend.research_graph import router_node
 
     items = load_eval_set(os.path.join(EVAL_DIR, "intent_eval_set.json"))
     correct, confusion, records = 0, {}, []
@@ -143,7 +143,7 @@ def _done_ids(path: str) -> set:
 
 
 def run_fact(guard: str, workers: int, limit: int | None, subset: str | None) -> None:
-    from langgraph_agent import run_deep_research
+    from backend.research_graph import run_deep_research
 
     os.makedirs(RUNS_DIR, exist_ok=True)
     items = load_eval_set(os.path.join(EVAL_DIR, "energy_eval_set.json"))

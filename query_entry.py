@@ -1,4 +1,4 @@
-"""Normal General/research routing with ReAct reserved for execution failures."""
+"""General/research routing with explicit execution failures."""
 
 from dataclasses import dataclass
 import math
@@ -6,7 +6,7 @@ from typing import Callable
 
 ROUTE_PROMPT = """你是任务路由器。无需外部研究的普通对话、常识解释选择 general。
 需要检索、证据、数据分析、比较或报告的任务选择 multiagent。
-拿不准时选择 multiagent。ReAct 仅用于运行故障兜底，不是可选路线。
+拿不准时选择 multiagent。执行故障返回失败，用户可重试。
 只输出 JSON：{"route":"general|multiagent","reason":"简短原因","confidence":0.0}
 """
 
@@ -34,7 +34,6 @@ def classify_route(question: str, classify_json: Callable[[str], dict]) -> Route
 
 def dispatch_query(question: str, session_id: str, demo_mode: bool,
                    classify_json: Callable[[str], dict],
-                   run_react: Callable[[str, str], dict],
                    run_multiagent: Callable[[str, str, bool], dict],
                    emit: Callable[[dict], None], *,
                    run_general: Callable[[str, str], dict] | None = None) -> dict:
@@ -58,17 +57,9 @@ def dispatch_query(question: str, session_id: str, demo_mode: bool,
                 raise RuntimeError("General handler is required")
             state = answer(run_general, "general")
         else:
-            from backend.research_graph import ResearchExecutionError
-            try:
-                report = run_multiagent(question, session_id, demo_mode)
-            except ResearchExecutionError as exc:
-                result.update(route="react", fallback_reason=str(exc))
-                emit({"type": "route", "route": "react", "content": "研究执行故障，启用 ReAct 兜底",
-                      "fallback_reason": str(exc)})
-                state = answer(run_react, "react")
-            else:
-                result.update(intent=report.get("intent", ""), report=report)
-                state = None
+            report = run_multiagent(question, session_id, demo_mode)
+            result.update(intent=report.get("intent", ""), report=report)
+            state = None
         if state is not None:
             result.update(intent=state.get("intent", ""), answer=state.get("final_answer", ""),
                           steps_count=len(state.get("steps_executed", [])))

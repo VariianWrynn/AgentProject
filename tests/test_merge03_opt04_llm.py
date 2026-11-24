@@ -29,8 +29,8 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from react_engine import LLMClient
-from langgraph_agent import _ROUTER_SYSTEM   # safe — no Milvus/Redis at import
+from backend.llm_client import LLMClient
+from query_entry import ROUTE_PROMPT as _ROUTER_SYSTEM
 
 _VALID_INTENTS = {"policy_query", "market_analysis", "data_query", "research", "general"}
 
