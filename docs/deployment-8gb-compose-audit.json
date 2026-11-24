@@ -1,0 +1,36 @@
+{
+  "api-server": {
+    "env_names": [
+      "MCP_URL",
+      "OPENAI_API_KEY",
+      "OPENAI_BASE_URL",
+      "REDIS_HOST"
+    ],
+    "has_model": false,
+    "has_search_key": false,
+    "volumes": [],
+    "has_resource_limits": false
+  },
+  "mcp-server": {
+    "env_names": [
+      "MILVUS_HOST",
+      "OPENAI_API_KEY",
+      "OPENAI_BASE_URL",
+      "REDIS_HOST"
+    ],
+    "has_model": false,
+    "has_search_key": false,
+    "volumes": [],
+    "has_resource_limits": false
+  },
+  "default_services": [
+    "agentproject"
+  ],
+  "default_exit": 0,
+  "audit": {
+    "sha": "f0d9c635a264074e3a7b1d0ffc778ae0759392c9",
+    "configuration": "example placeholders only",
+    "capacity": "NOT_VERIFIED",
+    "method": "read-only docker compose config; no build, start or model call"
+  }
+}
