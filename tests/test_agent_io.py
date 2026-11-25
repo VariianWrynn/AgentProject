@@ -728,10 +728,10 @@ class TestMCPToolServer:
         assert mcp_client.get("/tools/health").status_code == 200
 
     @integration
-    def test_mcp_health_has_five_top_level_keys(self, mcp_client):
-        """B4: response has milvus, redis, sqlite, bocha, cache_stats, timestamp."""
+    def test_mcp_health_has_service_and_cache_fields(self, mcp_client):
+        """B4: response includes service status, cache statistics, and a timestamp."""
         body = mcp_client.get("/tools/health").json()
-        for key in ("milvus", "redis", "sqlite", "bocha", "cache_stats", "timestamp"):
+        for key in ("milvus", "redis", "sqlite", "deepseek_search", "cache_stats", "timestamp"):
             assert key in body
 
     @integration

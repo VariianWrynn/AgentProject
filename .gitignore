@@ -26,7 +26,7 @@ test_output/
 
 # API keys and secrets — NEVER commit
 LLM_API.txt
-bocha_API_key.txt.txt
+*_API_key.txt.txt
 *.key.txt
 server_pids.txt
 

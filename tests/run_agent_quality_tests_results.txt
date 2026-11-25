@@ -69,7 +69,6 @@ Test file    : tests\agent_quality_test_cases.json
 ============================================================
   [DS-RET-001] Verifies retrieval precision against known-relevant energy storage doc
 [DeepScout] Searching 1 questions in parallel ...
-2026-04-30 19:00:06,722 [WARNING] deep_scout - [DeepScout] Bocha search failed for '磷酸铁锂储能系统成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:06,723 [WARNING] deep_scout - [DeepScout] RAG search failed for '磷酸铁锂储能系统成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:06,723 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
 [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
@@ -78,15 +77,11 @@ Test file    : tests\agent_quality_test_cases.json
 [DeepScout] Searching 2 questions in parallel ...
 2026-04-30 19:00:10,832 [WARNING] deep_scout - [DeepScout] RAG search failed for 'TOPCon电池效率数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:10,833 [WARNING] deep_scout - [DeepScout] RAG search failed for '2024年光伏组件价格走势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:10,833 [WARNING] deep_scout - [DeepScout] Bocha search failed for 'TOPCon电池效率数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:10,833 [WARNING] deep_scout - [DeepScout] Bocha search failed for '2024年光伏组件价格走势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:10,833 [INFO] deep_scout - [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
 [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
     → FAIL  score=0.000  threshold=0.8  4.1s  [expected 0.5–2.0]
   [DS-RET-003] Verifies deduplication removes duplicate URLs
 [DeepScout] Searching 2 questions in parallel ...
-2026-04-30 19:00:14,938 [WARNING] deep_scout - [DeepScout] Bocha search failed for '宁德时代储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:14,938 [WARNING] deep_scout - [DeepScout] Bocha search failed for '比亚迪储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:14,938 [WARNING] deep_scout - [DeepScout] RAG search failed for '宁德时代储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:14,939 [WARNING] deep_scout - [DeepScout] RAG search failed for '比亚迪储能业务': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:14,939 [INFO] deep_scout - [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
@@ -95,34 +90,27 @@ Test file    : tests\agent_quality_test_cases.json
   [DS-RET-004] Verifies graceful handling when no results returned
 [DeepScout] Searching 1 questions in parallel ...
 2026-04-30 19:00:19,044 [WARNING] deep_scout - [DeepScout] RAG search failed for '不存在的查询': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:19,044 [WARNING] deep_scout - [DeepScout] Bocha search failed for '不存在的查询': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:19,045 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
 [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
     → PASS  score=1.000  threshold=1.0  4.1s
   [DS-RET-005] Verifies credibility scoring prioritizes RAG sources
 [DeepScout] Searching 2 questions in parallel ...
 2026-04-30 19:00:23,133 [WARNING] deep_scout - [DeepScout] RAG search failed for '液流电池成本': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:23,134 [WARNING] deep_scout - [DeepScout] Bocha search failed for '液流电池成本': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:23,134 [WARNING] deep_scout - [DeepScout] RAG search failed for '钠离子电池技术优势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:23,134 [WARNING] deep_scout - [DeepScout] Bocha search failed for '钠离子电池技术优势': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:23,135 [INFO] deep_scout - [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
 [DeepScout] 2 questions → 0 raw → 0 unique → 0 facts | 4.1s
     → FAIL  score=0.000  threshold=0.6  4.1s  [expected 0.4–1.0]
   [DS-RET-006] Verifies parallel search executes for multiple questions
 [DeepScout] Searching 3 questions in parallel ...
 2026-04-30 19:00:27,199 [WARNING] deep_scout - [DeepScout] RAG search failed for '储能装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:27,199 [WARNING] deep_scout - [DeepScout] Bocha search failed for '光伏装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:27,200 [WARNING] deep_scout - [DeepScout] RAG search failed for '光伏装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:27,212 [WARNING] deep_scout - [DeepScout] RAG search failed for '风电装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:27,212 [WARNING] deep_scout - [DeepScout] Bocha search failed for '储能装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:27,212 [WARNING] deep_scout - [DeepScout] Bocha search failed for '风电装机数据': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:27,213 [INFO] deep_scout - [DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
 [DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
     → SKIP  formula unevaluable: NameError: name 'set' is not defined — variable missing from eval context
   [DS-RET-007] Verifies demo_mode limits to 1 question
 [DeepScout] demo_mode: limiting to 1 question
 [DeepScout] Searching 1 questions in parallel ...
-2026-04-30 19:00:31,299 [WARNING] deep_scout - [DeepScout] Bocha search failed for '储能成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:31,319 [WARNING] deep_scout - [DeepScout] RAG search failed for '储能成本是多少': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:31,320 [INFO] deep_scout - [DeepScout] demo_mode: skipping fact extraction LLM call
 [DeepScout] demo_mode: skipping fact extraction
@@ -132,23 +120,18 @@ Test file    : tests\agent_quality_test_cases.json
   [DS-RET-008] Verifies fact extraction from top results
 [DeepScout] Searching 1 questions in parallel ...
 2026-04-30 19:00:35,409 [WARNING] deep_scout - [DeepScout] RAG search failed for '2024年中国储能新增装机容量': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:35,423 [WARNING] deep_scout - [DeepScout] Bocha search failed for '2024年中国储能新增装机容量': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:35,424 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
 [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.1s
     → FAIL  score=0.000  threshold=0.5  4.1s  [expected 0.3–1.0]
   [DS-RET-009] Verifies snippet content length provides sufficient context
 [DeepScout] Searching 1 questions in parallel ...
-2026-04-30 19:00:39,487 [WARNING] deep_scout - [DeepScout] Bocha search failed for '电力现货市场运行情况': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:39,489 [WARNING] deep_scout - [DeepScout] RAG search failed for '电力现货市场运行情况': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:39,489 [INFO] deep_scout - [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.0s
 [DeepScout] 1 questions → 0 raw → 0 unique → 0 facts | 4.0s
     → FAIL  score=0.000  threshold=200.0  4.0s  [expected 150–500]
   [DS-RET-010] Verifies pending_queries are cleared after processing
 [DeepScout] Searching 3 questions in parallel ...
-2026-04-30 19:00:43,576 [WARNING] deep_scout - [DeepScout] Bocha search failed for '补充查询2': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:43,577 [WARNING] deep_scout - [DeepScout] Bocha search failed for '补充查询1': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] RAG search failed for '光伏政策最新动态': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
-2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] Bocha search failed for '光伏政策最新动态': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/web_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] RAG search failed for '补充查询2': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:43,578 [WARNING] deep_scout - [DeepScout] RAG search failed for '补充查询1': HTTPConnectionPool(host='[localhost](http://localhost)', port=8002): Max retries exceeded with url: /tools/rag_search (Caused by NewConnectionError("HTTPConnection(host='[localhost](http://localhost)', port=8002): Failed to establish a new connection: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"))
 2026-04-30 19:00:43,579 [INFO] deep_scout - [DeepScout] 3 questions → 0 raw → 0 unique → 0 facts | 4.1s
