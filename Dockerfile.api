@@ -6,6 +6,7 @@ COPY requirements/api.lock /tmp/api.lock
 RUN pip install --no-cache-dir --require-hashes -r /tmp/api.lock && useradd --create-home --uid 10001 app
 COPY --chown=app:app *.py ./
 COPY --chown=app:app backend ./backend
+COPY --chown=app:app scripts/verify_observatory_run.py ./scripts/verify_observatory_run.py
 COPY --chown=app:app resources/data/schema_metadata.json ./resources/data/schema_metadata.json
 RUN mkdir -p /app/front_end_log /app/logs /app/reports /data \
     && chown app:app /app/front_end_log /app/logs /app/reports /data

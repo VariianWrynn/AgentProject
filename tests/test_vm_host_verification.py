@@ -22,6 +22,14 @@ def test_rejects_outer_wsl_or_unbounded_host():
             validate_host(state, cpus, kernel)
 
 
+def test_accepts_16_gib_ecs_memory_bound():
+    bound = 16 * 1024**3
+    valid = {"MemTotal": bound, "SwapTotal": 0}
+    validate_host(valid, 4, "6.8.0-generic", bound)
+    with pytest.raises(ValueError, match="17,179,869,184"):
+        validate_host({**valid, "MemTotal": bound + 1024}, 4, "6.8.0-generic", bound)
+
+
 @pytest.mark.skipif(os.name != 'posix', reason='The VM supervisor runs on Linux')
 def test_timeout_terminates_descendant_that_ignores_sigterm(tmp_path):
     marker = tmp_path / 'child.pid'

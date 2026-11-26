@@ -14,6 +14,7 @@
 !/scripts/
 !/scripts/provision_deployment.py
 !/scripts/migrate_embedding.py
+!/scripts/verify_observatory_run.py
 !/resources/
 !/resources/data/
 !/resources/data/energy.db

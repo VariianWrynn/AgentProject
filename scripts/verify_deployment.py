@@ -141,7 +141,7 @@ def request_json(url, payload=None, timeout=30):
         return json.load(response)
 
 
-def verify_runtime(compose, base_url, timeout, question, expected, evidence):
+def verify_runtime(compose, base_url, timeout, question, expected, evidence, *, force_research=False):
     containers = wait_ready(compose, timeout)
     for name, container in containers.items():
         limits = expected["services"][name]
@@ -181,11 +181,16 @@ def verify_runtime(compose, base_url, timeout, question, expected, evidence):
         worker.start()
         try:
             session = "deployment-" + str(time.time_ns())
-            response = request_json(base_url + "/api/query", {"question": question, "session_id": session}, timeout)
+            endpoint = "/api/research/report" if force_research else "/api/query"
+            response = request_json(base_url + endpoint, {"question": question, "session_id": session}, timeout)
             evidence["query"] = response
             if response.get("error") or response.get("status") in {"error", "failed"}:
                 raise ValueError("Deployment query returned an error")
-            if not (response.get("answer") or response.get("final_answer") or response.get("report")):
+            if force_research:
+                if not (response.get("route") == "multiagent" and response.get("run_id")
+                        and response.get("sections")):
+                    raise ValueError("Deployment verification did not return a complete research report")
+            elif not (response.get("answer") or response.get("final_answer") or response.get("report")):
                 raise ValueError("Deployment query returned no answer or report")
         except Exception as exc:
             query_error = exc
@@ -220,8 +225,11 @@ def main():
     parser.add_argument("--base-url", default="http://127.0.0.1:8080")
     parser.add_argument("--timeout", type=int, default=1800)
     parser.add_argument("--question", help="Optional real query sent through the gateway")
+    parser.add_argument("--force-research", action="store_true", help="Use the same report endpoint as RELAY")
     parser.add_argument("--output", default="test_output/deployment-verification.json")
     args = parser.parse_args()
+    if args.force_research and not (args.runtime and args.question):
+        parser.error("--force-research requires --runtime and --question")
     compose = ["docker", "compose", "-f", args.compose_file, "--env-file", args.env_file]
     config = json.loads(command(compose + ["config", "--format", "json"]))
     evidence = {"config": validate_config(config), "runtime_executed": args.runtime}
@@ -229,7 +237,8 @@ def main():
     if args.runtime:
         evidence["runtime"] = {}
         try:
-            verify_runtime(compose, args.base_url.rstrip("/"), args.timeout, args.question, config, evidence["runtime"])
+            verify_runtime(compose, args.base_url.rstrip("/"), args.timeout, args.question,
+                           config, evidence["runtime"], force_research=args.force_research)
             evidence["runtime"]["verification_passed"] = True
         except Exception as exc:
             evidence["runtime"]["verification_passed"] = False

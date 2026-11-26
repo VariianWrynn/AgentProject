@@ -134,7 +134,7 @@ The research graph lives in `backend/research_graph.py`. DataAnalyst is no longe
 
 Each query has a unique `run_id`. Versioned SSE events expose node execution, committed StateGraph updates, branch decisions, and tool activity. The existing progress frontend remains supported. See [execution and demonstration API](docs/research-api.md) for replay, reconnect cursors, human decisions, and verification commands.
 
-The CPU-only production stack separates the lightweight API from the single embedding owner in MCP. See the [deployment runbook](docs/deployment-runbook.md) for provisioning, migration, resource caps and verification limits.
+For Alibaba Cloud ECS deployment on 4 vCPUs and 16 GiB, follow the [ECS runbook and Codex handoff](docs/deployment-runbook.md). Use `compose.yaml` for the complete stack and open RELAY at `/relay.html`.
 
 ---
 

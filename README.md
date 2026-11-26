@@ -1,246 +1,46 @@
-# DeepResearch — 能源行业 AI 智能体
+# RELAY · 能源研究工作台
 
-> [English version → README_EN.md](README_EN.md)
+[English README](README_EN.md)
 
-基于 LangGraph 的多智能体研究系统，可针对能源行业问题生成结构化、带引用的深度研究报告。支持中英文提问——流程自动完成规划、检索、数据查询、撰写、审核，最终输出附图表的完整报告。
+RELAY 将能源研究问题拆成规划、资料检索、数据分析、撰写和评审步骤。人工审核通过后，系统汇总带引用和图表的报告，并支持导出 Markdown。
 
-## 功能概览
+## 部署到阿里云 ECS
 
-- **多智能体研究流水线** — 4 个研究 agent：ChiefArchitect（规划）、DeepScout（检索与工具调用）、LeadWriter（撰写）、CriticMaster（审核）。事实关卡与人工关卡控制流程，报告由工具组装
-- **实时 SSE 流式前端** — React/TypeScript 界面实时显示各智能体执行进度
-- **能源行业知识库** — 基于 Milvus + BGE-m3 的 RAG 检索，覆盖精选能源行业文献
-- **Text2SQL 能源数据查询** — 自然语言直接转 SQL，支持中文业务术语（如"营收"→ `SUM(revenue_billion)`）
-- **Redis 缓存工具层** — MCP 服务端缓存高频工具调用，重复查询速度大幅提升
-- **对抗式审核循环** — CriticMaster 在置信度 < 0.7 时自动触发重新研究
+目标环境为 Linux、4 vCPU、16 GiB。使用仓库根目录的 `compose.yaml` 和 `.env.deploy.example`。Compose 启动完整研究栈，模型推理与网页搜索调用外部 API，向量嵌入在 ECS 上运行。
 
-## 环境要求
+把 [ECS 部署手册与 Codex 交接](docs/deployment-runbook.md) 交给 ECS 上的 Codex agent，并提供要部署的 Git 提交、实例规格和配置凭据的安全来源。手册包含首次预置、导入知识库、私有访问、真实研究验收和回退步骤。4 vCPU、16 GiB 的整机验收以这台 ECS 上采集的结果为准。
 
-| 工具 | 版本 | 说明 |
-|------|------|------|
-| Docker Desktop | ≥ 4.x | 用于启动 Milvus + Redis 基础服务 |
-| Python | 3.11+ | 后端及数据导入脚本 |
-| Node.js | 18+ | 仅前端需要 |
-| 内存 | 最低 16 GB | 推荐 32 GB（Milvus + 向量模型） |
+启动后，研究工作台位于 `http://127.0.0.1:8080/relay.html`。从另一台电脑访问时，按手册建立 SSH 隧道。React 阅读器与观测台位于同一入口的 `/#/observatory`。
 
-## 快速部署（< 15 分钟）
+## 研究流程
 
-### 1. 克隆项目并初始化配置
+- ChiefArchitect 拆解研究问题并生成大纲。
+- DeepScout 检索公开网页和知识库，按需通过 Text2SQL 查询本地教学数据库。
+- LeadWriter 撰写并引用证据。事实关卡校验引用，CriticMaster 评审草稿。
+- Human Gate 接收批准或自然语言意见。意图不清时，界面给出四个审核选项。
+- Synthesizer 组装经审核的章节、图表和参考文献。RELAY 实时显示节点事件和状态。
 
-```bash
-git clone https://github.com/VariianWrynn/AgentProject.git
-cd AgentProject
-cp .env.example .env
-```
+教学数据库中的营收数值用于演示和验收。研究真实财务问题时，以可追溯的财报或公开资料为依据。
 
-### 2. 安装 Python 依赖
+## 本地开发
 
-```bash
-pip install -r requirements.txt
-```
+[前端开发说明](frontend/README.md) 覆盖 React 工程。RELAY 页面及其资源位于 `frontend/public/`。前端开发入口默认将 `/api` 代理至本机 `8003`。
 
-### 3. 配置 API Key — 唯一必须修改的步骤
-
-打开 `.env` 填写以下内容：
-
-```bash
-# 必填 — 从 api.scnet.cn 获取
-OPENAI_API_KEY=sk-...        # 主密钥（所有角色的兜底 key）
-OPENAI_BASE_URL=https://api.scnet.cn/api/llm/v1
-LLM_MODEL=MiniMax-M2.5
-
-# 必填 — 从 api.deepseek.com 获取；若主密钥已连接 DeepSeek，可省略
-DEEPSEEK_API_KEY=sk-...      # 网页搜索
-
-# 可选：多 Key 配置（并行提速约 3 倍）
-LLM_KEY_1=sk-...             # ChiefArchitect + Router
-LLM_KEY_2=sk-...             # DeepScout（高并发检索）
-LLM_KEY_3=sk-...             # 预留
-LLM_KEY_4=sk-...             # LeadWriter（并行章节撰写）
-LLM_KEY_5=sk-...             # CriticMaster
-LLM_KEY_6=sk-...             # 备用 / 溢出
-```
-
-> **最简启动：** 主模型使用 DeepSeek 时只需填写 `OPENAI_API_KEY`；其他模型需另填 `DEEPSEEK_API_KEY` 以启用网页搜索。
-> 多 Key 配置为可选项，但可带来约 3 倍吞吐提升。
-
-### 4. 启动后端基础服务
-
-```bash
-docker compose -f docker-compose.yml up -d
-```
-
-等待约 45 秒让 Milvus 完成初始化，然后验证：
-
-```bash
-curl http://localhost:8002/tools/health
-```
-
-期望返回：`{"milvus": "ok", "redis": "ok", "sqlite": "ok", "bocha": "ok"}`
-
-> **注意：** 项目根目录的 `compose.yaml` 仅用于镜像构建，不包含完整服务栈。
-> 务必使用 `-f docker-compose.yml` 以启动全套基础设施。
-
-### 5. 导入能源知识库
-
-```bash
-python backend/tools/ingest_files.py
-```
-
-将能源行业文档导入 Milvus（约 30 秒，仅需执行一次）。
-
-### 6. 启动 API 服务与 MCP 服务
-
-若 Docker Compose 未包含 `mcp-server` / `api-server`，请手动启动：
-
-```bash
-# 终端 1
-python mcp_server.py
-
-# 终端 2
-python api_server.py
-```
-
-验证：
-```bash
-curl http://localhost:8002/tools/health   # MCP 服务
-curl http://localhost:8003/health         # API 服务
-```
-
-### 7. 启动前端
-
-```bash
+```sh
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-浏览器打开 **http://localhost:5173**
+需要一起开发后端时，使用 [研究 API 说明](docs/research-api.md) 核对接口和事件格式。离线示例可在 RELAY 的系统设置里切换。真实研究需要可访问的研究 API。
 
----
+## 项目入口
 
-## 系统架构
-
-正常入口为 `Router → General 直接回答` 或 `Router → multiagent 研究`。后端 ReAct 已移除，研究执行故障明确返回失败及 run_id，允许用户重试。
-
-```text
-前端 React :5173 → FastAPI :8003 → query_entry.py
-    ├── General 直接回答
-    └── 研究图 backend/research_graph.py
-        Architect → DeepScout → Writer → 事实与引用关卡 → CriticMaster
-                        ↑          ↑          │失败          │
-                        │          └──────────┘              ├── 通过或轮次上限 → 报告组装工具
-                        └── 自动补研或人工拒绝 ───────────────┤
-                                                            └── 低分且 HITL 开启 → Human Gate
-DeepScout → MCPClient → MCP 工具服务 :8002
-    ├── RAG → Milvus
-    ├── 网页搜索 → DeepSeek Search
-    └── SQL 分析与制图 → SQLite + matplotlib
-Redis 在工具服务端缓存 RAG 和 SQL，并保存运行事件及人工决定。
-```
-
-事实关卡失败返回 Writer，两次重写仍失败则终止研究。Critic 低分时，HITL 开启则转人工，关闭则自动补研。保留两轮补研上限与人工等待 300 秒自动批准。报告组装工具保留审核后的正文，不调用 LLM。
-
-前端继续使用 `POST /query` 和 `GET /query/stream`。响应带独立 `run_id`。新演示可通过原始 SSE 查看节点执行、已提交的 StateGraph 状态增量、分支与工具事件，并按序回放。
-
-详细接口、事件格式和验证命令见 [DeepResearch 执行与演示接口](docs/research-api.md)。
-
-4 CPU / 8GB 的 CPU-only 生产部署使用独立 API、单份 MCP 向量模型和 nginx 入口，先执行模型及数据预置，再启动服务。部署命令、迁移和验收范围见 [部署运行手册](docs/deployment-runbook.md)。
-
----
-
-## 部分重建
-
-### 重建知识库
-
-```bash
-# 清空已有向量后重新导入
-python -c "
-from rag_pipeline import RAGPipeline
-r = RAGPipeline()
-for src in r.list_sources():
-    r.delete_by_source(src)
-"
-python backend/tools/ingest_files.py
-```
-
-### 重建能源数据库
-
-```bash
-python resources/data/create_energy_db.py
-```
-
-### 清空 Redis 缓存
-
-```bash
-python backend/tools/clean_redis.py
-```
-
-### 全量重置（危险操作，会清空所有 Milvus 数据）
-
-```bash
-docker compose -f docker-compose.yml down -v   # 警告：将删除全部向量数据
-docker compose -f docker-compose.yml up -d
-# 等待 45 秒
-python backend/tools/ingest_files.py
-```
-
----
-
-## 端口说明
-
-| 服务 | 端口 | 用途 |
-|------|------|------|
-| MCP 服务器 | 8002 | 工具接口（RAG、SQL、网页搜索） |
-| API 服务器 | 8003 | 统一接口 `/query` + 兼容接口 `/chat`、`/research/*` |
-| 前端（开发） | 5173 | React 开发服务器 |
-| Milvus | 19530 | 向量数据库 |
-| Redis | 6379 | 会话缓存 + 智能体记忆 |
-| etcd | 2379 | Milvus 元数据（内部） |
-| MinIO | 9000 | Milvus 对象存储（内部） |
-
-## 运行测试
-
-```bash
-python tests/test_energy_p1.py   # 能源领域基线（5/5）
-python tests/test_energy_p2.py   # 多智能体基线（5/5）
-python tests/final_test.py       # 全流程评估（28/30）
-```
-
-组件测试：
-```bash
-python tests/test_text2sql.py    # Text2SQL 准确率
-python tests/test_rag.py         # RAG 检索效果
-python tests/test_mcp_api.py     # MCP 工具接口
-```
-
----
-
-## 常见问题
-
-| 现象 | 解决方案 |
-|------|---------|
-| 健康检查返回 `milvus: error` | `docker compose up` 后等待 45 秒，Milvus 启动较慢 |
-| `deepseek_search: missing_key` | 检查 `.env` 中的 `DEEPSEEK_API_KEY`，或确认主模型连接 DeepSeek |
-| 网页搜索返回 401 | 检查 DeepSeek API 密钥及账号权限 |
-| 前端显示 API 错误 | API 服务未启动，执行 `python api_server.py` |
-| 报告卡在"审核报告质量" | CriticMaster 循环 bug（已修复），重启 `api_server.py` |
-| 图表中文显示方块 □□□ | 执行 `pip install matplotlib` 后重启 `api_server.py` |
-| `docker compose up` 服务不全 | 务必使用 `-f docker-compose.yml`，`compose.yaml` 仅构建镜像 |
-
----
-
-## 关键文件
-
-| 文件 | 用途 |
-|------|------|
-| `api_server.py` | 用户接口 FastAPI 服务器（端口 8003） |
-| `query_entry.py` | 独立复杂度识别与双图调度 |
-| `mcp_server.py` | 带 Redis 缓存的工具服务（端口 8002） |
-| `backend/research_graph.py` | 研究图、事实关卡与人工审核 |
-| `llm_router.py` | 按智能体角色路由 API Key |
-| `rag_pipeline.py` | BGE-m3 向量嵌入 → Milvus |
-| `backend/agents/` | 6 个专业智能体模块 |
-| `backend/tools/` | text2sql、ingest、rag_evaluator、clean_redis |
-| `resources/data/energy.db` | SQLite 能源财务数据库 |
-| `resources/data/energy_docs/` | RAG 知识库原始文档 |
-| `docs/AGENT_CONTEXT.md` | 完整开发者上下文——请优先阅读 |
+| 路径 | 用途 |
+| --- | --- |
+| `compose.yaml` | Linux CPU 部署和资源限制 |
+| `api_server.py`、`mcp_server.py` | 研究 API、工具服务与健康检查 |
+| `backend/research_graph.py` | 研究流程、证据校验与人工审核 |
+| `frontend/public/relay.html` | RELAY 工作台 |
+| `resources/data/energy_corpus/clean/` | 用于部署的公开能源语料 |
+| `scripts/test_offline.sh` | 显式选择的离线回归测试 |

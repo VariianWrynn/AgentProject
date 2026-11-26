@@ -1,4 +1,4 @@
-"""Run a verification command inside a four-CPU Linux VM with an 8GB whole-guest bound."""
+"""Measure whole-host memory while running a verification command on four Linux vCPUs."""
 
 import argparse
 import json
@@ -20,13 +20,13 @@ def snapshot(proc=Path("/proc")):
             "loadavg": (proc / "loadavg").read_text().strip()}
 
 
-def validate_host(state, cpu_count, kernel):
+def validate_host(state, cpu_count, kernel, max_memory_bytes=8_000_000_000):
     if "microsoft" in kernel.lower():
         raise ValueError("Run inside the independent guest, not the outer WSL VM")
     if cpu_count != 4:
         raise ValueError(f"Expected four guest CPUs, found {cpu_count}")
-    if not 0 < state["MemTotal"] <= 8_000_000_000:
-        raise ValueError("Whole-guest RAM exceeds the 8,000,000,000-byte boundary")
+    if not 0 < state["MemTotal"] <= max_memory_bytes:
+        raise ValueError(f"Whole-host RAM exceeds the {max_memory_bytes:,}-byte boundary")
     if state["SwapTotal"] != 0:
         raise ValueError("Whole-guest swap must be disabled")
 
@@ -55,12 +55,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=1800)
+    parser.add_argument("--max-memory-bytes", type=int, default=8_000_000_000)
+    parser.add_argument("--host-kind", choices=("vm", "ecs"), default="vm")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if not command:
         parser.error("A verification command is required after --")
-    record = {"passed": False, "kernel": platform.release(), "cpus": os.cpu_count(), "samples": []}
+    if args.max_memory_bytes <= 0:
+        parser.error("--max-memory-bytes must be positive")
+    record = {"passed": False, "kernel": platform.release(), "cpus": os.cpu_count(), "samples": [],
+              "host_kind": args.host_kind, "max_memory_bytes": args.max_memory_bytes}
     stop = threading.Event()
 
     def sample():
@@ -73,10 +78,14 @@ def main():
     try:
         before = snapshot()
         record["before"] = before
-        validate_host(before, record["cpus"], record["kernel"])
-        record["virtualization"] = subprocess.check_output(["systemd-detect-virt"], text=True).strip()
-        if record["virtualization"] not in {"kvm", "qemu"}:
+        validate_host(before, record["cpus"], record["kernel"], args.max_memory_bytes)
+        detection = subprocess.run(["systemd-detect-virt"], capture_output=True, text=True)
+        record["virtualization"] = detection.stdout.strip()
+        if args.host_kind == "vm" and record["virtualization"] not in {"kvm", "qemu"}:
             raise ValueError("Expected an independent QEMU/KVM guest")
+        if args.host_kind == "ecs" and subprocess.run(
+                ["systemd-detect-virt", "--container"], capture_output=True).returncode == 0:
+            raise ValueError("Run on the ECS host, outside containers")
         worker = threading.Thread(target=sample, daemon=True)
         worker.start()
         try:

@@ -187,6 +187,7 @@ services:
       <<: *embedding
       HF_HUB_OFFLINE: '0'
       TRANSFORMERS_OFFLINE: '0'
+      HF_ENDPOINT: ${HF_ENDPOINT:-https://huggingface.co}
     volumes: [app_data:/data, model_cache:/models]
     command: [python, scripts/provision_deployment.py, --database, --seed, /seed/energy.db, --data-dir, /data, --model]
     cpus: 1.0
