@@ -1,12 +1,12 @@
 # 在阿里云 ECS 部署 RELAY
 
-目标是让一台 4 vCPU、16 GiB 的 Linux ECS 跑通真实研究。以下部署和验收命令由 ECS 上的 Codex agent 执行。远程浏览器验收使用 SSH 隧道。
+目标是在一台 4 vCPU、16 GiB 的 Linux ECS 上部署 RELAY，并在 [varianc.cn](https://varianc.cn/) 首页提供真实研究工作台。部署和验收由 ECS 上的 Codex agent 执行。SSH 隧道用于域名接入前的预验收和故障排查。
 
 ## 交给 ECS 上 Codex 的指令
 
 把下面这段给 ECS 上的 Codex，并补充目标提交和凭据位置。
 
-> 在这台 4 vCPU、16 GiB 的 ECS 部署 RELAY。用我提供的 Git 提交和本手册执行。先核对实例规格、磁盘、Docker Compose、现有容器及卷，再决定是首次部署还是升级。使用我提供的密钥来源。验收至少覆盖真实研究、人工审核、报告及引用、重启后持久化和整机资源记录。缺少凭据或需要调整公网规则、清理数据、停机升级时报告具体阻塞并等待授权。交付脱敏的验收摘要和回退方式。
+> 在这台 4 vCPU、16 GiB 的 ECS 部署 RELAY，把它接入现有 varianc.cn 的 HTTPS 入口，使首页直接显示研究工作台。用我提供的 Git 提交和本手册执行。先核对实例规格、磁盘、Docker Compose、现有容器、卷和域名入口，再决定是首次部署还是升级。使用我提供的密钥来源。验收至少覆盖公网域名、SSE、真实研究、人工审核、报告及引用、重启后持久化和整机资源记录。缺少凭据或需要扩大访问范围、调整公网规则、清理数据、停机升级时报告具体阻塞并等待授权。交付脱敏的验收摘要和回退方式。
 
 需要提供目标 Git SHA 或标签、仓库访问方式、ECS 实例规格、模型和搜索凭据的安全来源，以及首次部署或升级的范围。如果部署分支尚未合入主分支，检出指定部署分支中的目标提交。
 
@@ -98,9 +98,42 @@ curl -fsSI http://127.0.0.1:8080/relay.html
 ssh -N -L 18081:127.0.0.1:8080 ECS_USER@ECS_HOST
 ```
 
-浏览器打开 `http://127.0.0.1:18081/relay.html`。观测台位于 `http://127.0.0.1:18081/#/observatory`。如已授权公开访问，另行配置有访问控制的 HTTPS 入口，通过同一域名代理页面、`/api` 和 SSE。保持内部服务端口为私有。
+浏览器打开 `http://127.0.0.1:18081/relay.html`。本机观测台位于 `http://127.0.0.1:18081/#/observatory`。
 
-## 5. 验收真实研究和整机资源
+## 5. 把 RELAY 接入 varianc.cn
+
+1. 找到当前负责 `varianc.cn` 的 HTTPS 入口。确认 TLS 在哪一层终止、当前虚拟主机的配置位置和现有访问控制。复制配置作为回退点。
+2. 在现有入口把 `/` 映射到 RELAY 的 `/relay.html`。把 `/relay.html`、`/relay-layout.css`、`/relay-live.js` 和 `/api/` 转发到本机 Compose 网关。保留 `/api/` 的路径前缀、查询参数和方法。其他站点路由继续由原入口处理。如现有 `/api/` 已被其他应用使用，先确认路由归属再切换。
+3. 对 `/api/` 禁用代理缓存和响应缓冲，设置足够覆盖研究运行时间的读取超时。保持现有访问控制覆盖页面及 API。当前应用使用服务端模型和搜索凭据，若现有入口允许匿名访问，交接时确认研究 API 应向哪些用户开放再放行。
+
+如果 HTTPS 入口是宿主机 nginx，可把下面的路由合入现有 HTTPS `server` 块。ECS 上若使用其他入口，按同样的路径和 SSE 要求配置。代理自身在容器中运行时，应使用它可达的 Compose 网关地址。
+
+```nginx
+location = / {
+    proxy_pass http://127.0.0.1:8080/relay.html;
+}
+location = /relay.html {
+    proxy_pass http://127.0.0.1:8080;
+}
+location = /relay-layout.css {
+    proxy_pass http://127.0.0.1:8080;
+}
+location = /relay-live.js {
+    proxy_pass http://127.0.0.1:8080;
+}
+location /api/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 3600s;
+}
+```
+
+先校验配置，再重载现有入口。用有访问权限的浏览器打开 `https://varianc.cn/`，确认首页是 RELAY，CSS 和 JS 来自同域，`/api/health` 正常，并且实际研究的 SSE 事件在报告完成前持续更新。验收失败时按备份恢复原入口配置。
+
+## 6. 验收真实研究和整机资源
 
 先在终端定义问题。本轮教学数据用于校验报表，不能作为真实企业财报。
 
@@ -123,7 +156,7 @@ dc exec -T api-server python -m scripts.verify_observatory_run RUN_ID \
   --out /data/deployment-verification
 ```
 
-浏览器另跑一次同题。评审通过时，系统可能直接生成报告。若该次未触发 Human Gate，另选一条容易产生证据缺口的简短问题验证人工审核。在 Human Gate 出现时点击「批准并继续」，核对该次研究的审核决定。自动审核超时与人工批准分别记录。如果实际未触发人工审核，标注该项待验收。确认 SSE 状态、草稿、图表、引用预览和 Markdown 导出均可用。另用两条短问题验证两个研究能同时推进，互不串项目。超出容量的请求可能返回 429。
+从 `https://varianc.cn/` 另跑一次同题。评审通过时，系统可能直接生成报告。若该次未触发 Human Gate，另选一条容易产生证据缺口的简短问题验证人工审核。在 Human Gate 出现时点击「批准并继续」，核对该次研究的审核决定。自动审核超时与人工批准分别记录。如果实际未触发人工审核，标注该项待验收。确认 SSE 状态、草稿、图表、引用预览和 Markdown 导出均可用。另用两条短问题验证两个研究能同时推进，互不串项目。超出容量的请求可能返回 429。
 
 回报 Git SHA、ECS 规格、健康结果、关键资源峰值及最低可用内存、研究 run ID、内容校验与人工审核结果。验收产物可能含研究问题和报告，按项目数据管理。完成前按授权重启需验收的服务，检查卷、报告及可回放事件。事件会受 TTL 限制。
 

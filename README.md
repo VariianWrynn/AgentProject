@@ -10,7 +10,7 @@ RELAY 将能源研究问题拆成规划、资料检索、数据分析、撰写�
 
 把 [ECS 部署手册与 Codex 交接](docs/deployment-runbook.md) 交给 ECS 上的 Codex agent，并提供要部署的 Git 提交、实例规格和配置凭据的安全来源。手册包含首次预置、导入知识库、私有访问、真实研究验收和回退步骤。4 vCPU、16 GiB 的整机验收以这台 ECS 上采集的结果为准。
 
-启动后，研究工作台位于 `http://127.0.0.1:8080/relay.html`。从另一台电脑访问时，按手册建立 SSH 隧道。React 阅读器与观测台位于同一入口的 `/#/observatory`。
+ECS 的对外入口是 [varianc.cn](https://varianc.cn/)。按手册把 RELAY 设为该域名首页，并在同一域名下转发 `/api/`。ECS 本机可用 `http://127.0.0.1:8080/relay.html` 排查问题，域名接入前可通过 SSH 隧道预验收。
 
 ## 研究流程
 
