@@ -592,7 +592,6 @@
       const title = Array.from(question.split('\n')[0].trim()).slice(0, 60).join('');
       project = createProject(title, '新研究项目', question);
     }
-    state.connected = true;
     const sessionId = 'relay_' + ID() + Date.now().toString(36);
     project.relayRun = { base, sessionId, id: null, terminal: false, question, replacing };
     const run = contextAfterReset(project);
@@ -726,8 +725,6 @@
       save();
     }
   }
-
-  submitRealDecision = decision => sendReview(proj(), { decision });
 
   sendChat = () => {
     if (state.mode !== 'real') return original.sendChat();
