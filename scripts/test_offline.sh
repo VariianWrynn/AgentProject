@@ -32,6 +32,7 @@ OFFLINE_TESTS=(
   tests/test_query_api.py
   tests/test_research_events.py
   tests/test_research_tool_api.py
+  tests/test_vm_host_verification.py
 )
 
 echo "离线门禁：${#OFFLINE_TESTS[@]} 个文件，不依赖 Milvus / Redis / MCP / LLM"

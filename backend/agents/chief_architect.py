@@ -111,6 +111,9 @@ def run(state: dict, llm) -> dict:
         "请生成研究大纲、假设和子问题。"
     )
 
+    feedback = state.get("review_feedback") or {}
+    if feedback.get("decision") == "chief_architect":
+        user_msg += f"\n\n人工审核意见（用于重新规划）：{feedback['feedback']}"
     result = llm.chat_json(_SYSTEM, user_msg, temperature=0.3)
 
     hypotheses         = result.get("hypotheses", [])

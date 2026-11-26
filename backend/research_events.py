@@ -86,6 +86,8 @@ class RunEvents:
         self.journal = journal
         self.session_id = session_id
         self.run_id = run_id or uuid.uuid4().hex
+        self.superseded = lambda: False
+        self.pause_requested = lambda: False
 
     def emit(self, event_type: str, node: str | None = None,
              workflow: str = "research", **payload) -> ResearchEvent:

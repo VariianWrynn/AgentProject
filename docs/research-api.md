@@ -29,6 +29,12 @@ flowchart LR
 
 ## 发起执行
 
+RELAY 工作台由前端构建发布到 `/relay.html`。部署后从 nginx 入口打开该路径，页面通过同源 `/api` 发起研究。使用 Vite 开发服务器时，同一路径由开发代理转发到本地 API。系统设置也接受直接访问 FastAPI 的地址。
+
+使用 Compose 和单个模型 API Key 时，将该密钥同时写入部署环境的 `OPENAI_API_KEY` 和 `LLM_KEY_1`，供没有配置独立密钥的角色使用。
+
+RELAY 的真实模式从项目标题和研究背景生成研究请求。画布按运行事件更新，人工审核接收自然语言或四选一决定。工具、报告和证据引用使用本次运行的数据。暂停表示停止浏览器监听，继续会订阅原运行。工作台的资料排除和恢复用于本地列表筛选。
+
 ```http
 POST /query
 Content-Type: application/json
@@ -91,10 +97,32 @@ SSE 的 `id` 等于事件 `seq`。重连支持 `Last-Event-ID`，与 `after_seq`
 POST /research/decision
 Content-Type: application/json
 
-{"session_id":"demo-session","run_id":"execution-uuid","review_id":0,"decision":"approve"}
+{"session_id":"demo-session","run_id":"execution-uuid","review_id":0,"feedback":"数据足够，只重写结论。"}
 ```
 
-`run_id` 与 `review_id` 必须来自当前 `awaiting_review` 事件。`decision` 为 `approve` 或 `reject`。旧运行、旧轮次、已结束审核或重复提交返回 HTTP 409。决定写入该运行该轮次独立的 Redis key，防止上一轮延迟响应影响下一轮。
+`run_id` 与 `review_id` 必须来自当前 `awaiting_review` 事件。`feedback` 去除首尾空白后须有内容，最多 2000 字符。
+
+HTTP 200 的 `status` 为 `ok` 时，`decision` 是已提交的审核决定。`section_ids` 是定位到的章节 ID，`summary` 代表执行摘要，空数组表示反馈没有指定章节。
+
+| `decision` | 执行结果 |
+| --- | --- |
+| `approve` | 进入 Synthesizer，组装已审核报告。 |
+| `chief_architect` | 按反馈重新规划，再检索和写作。 |
+| `deep_scout` | 沿用规划，补证据并更新草稿。 |
+| `lead_writer` | 沿用证据改写。明确指定章节时保留其他正文，事实校验仍可要求修复更多章节。 |
+
+意图不明确时，HTTP 200 返回 `status: "selection_required"`、`message` 和四个 `options`。每个选项包含显示用的 `label` 和提交用的 `decision`。
+
+| `label` | `decision` |
+| --- | --- |
+| 完全拒绝 | `chief_architect` |
+| 重新找资料 | `deep_scout` |
+| 重新写 | `lead_writer` |
+| 通过 | `approve` |
+
+提交选项时，使用同一组 `session_id`、`run_id`、`review_id`，并发送所选的 `decision`。服务会直接应用该选项，并保留最初的反馈供修订使用。可同时提交新的 `feedback` 来替换原反馈。待选择时只提交文本会再次收到四个选项。审核窗口结束仍待选择时，原研究请求返回 HTTP 408。
+
+格式无效返回 HTTP 422，分类服务不可用返回 HTTP 503。旧运行、旧轮次、已结束审核或重复提交返回 HTTP 409。退回后沿用 `run_id`，下一次 `awaiting_review` 提供新的 `review_id`。现有补研轮次上限仍适用。旧客户端可在普通审核时单独发送 `reject` 回到 DeepScout。
 
 ## 验证入口
 

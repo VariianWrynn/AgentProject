@@ -100,3 +100,7 @@ class LLMClient:
         )
         record_usage(self.model, getattr(resp, "usage", None))
         return resp.choices[0].message.content
+
+
+def make_deepseek_llm(api_key: str) -> LLMClient:
+    return LLMClient(api_key=api_key, base_url="https://api.deepseek.com", model="deepseek-flash")

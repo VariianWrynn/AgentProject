@@ -49,6 +49,9 @@ def run(state: dict, llm) -> dict:
         f"- {section.get('title', '')}：{section.get('description', '')}" for section in sections
     )
     previous = state.get("draft_sections", {})
+    review = state.get("review_feedback") or {}
+    revision_sections = set(review.get("section_ids", []))
+    review_note = review.get("feedback", "")
     feedback = state.get("guard_feedback", [])
     feedback_by_section: dict[str, list[dict]] = {}
     for violation in feedback:
@@ -68,6 +71,8 @@ def run(state: dict, llm) -> dict:
         section_id = section["id"]
         if feedback and section_id in previous and section_id not in feedback_by_section:
             return section_id, previous[section_id]
+        if not feedback and revision_sections and section_id not in revision_sections and section_id in previous:
+            return section_id, previous[section_id]
         prompt = (
             f"研究主题：{state.get('question', '')}\n"
             f"本章节：{section.get('title', '')}\n"
@@ -77,6 +82,10 @@ def run(state: dict, llm) -> dict:
             f"证据集（引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
             "请基于证据集撰写本章节内容。" + correction(section_id)
         )
+        if review_note:
+            prompt += f"\n\n人工审核意见：{review_note}"
+            if section_id in previous and review.get("decision") == "lead_writer" and not feedback:
+                prompt += f"\n\n待修订草稿：\n{previous[section_id]}"
         return section_id, llm.chat(_SECTION_SYSTEM, prompt, temperature=0.3)
 
     workers = 1 if os.getenv("PARALLEL", "on").lower() == "off" else min(len(sections), 6)
@@ -90,6 +99,10 @@ def run(state: dict, llm) -> dict:
         f"证据集（引用格式 [E编号]/[D编号]）：\n{evidence_text}\n\n"
         f"报告正文：\n{body}\n\n请撰写执行摘要。" + correction("summary")
     )
+    if review_note:
+        prompt += f"\n\n人工审核意见：{review_note}"
+        if "summary" in previous and review.get("decision") == "lead_writer" and not feedback:
+            prompt += f"\n\n待修订摘要：\n{previous['summary']}"
     drafts["summary"] = llm.chat(_SUMMARY_SYSTEM, prompt, temperature=0.3)
     references = []
     for label, item in evidence.items():

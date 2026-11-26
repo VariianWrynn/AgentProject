@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import unittest
@@ -31,6 +32,14 @@ class DeploymentConfigTests(unittest.TestCase):
         config["services"]["milvus"]["ports"] = [{"target": 19530, "published": "19530"}]
         with self.assertRaisesRegex(ValueError, "Internal service"):
             VERIFY.validate_config(config)
+
+    def test_deployment_passes_llm_retry_override_to_callers(self):
+        config = json.loads(subprocess.check_output(
+            ["docker", "compose", "--env-file", ".env.deploy.example", "config", "--format", "json"],
+            cwd=ROOT, text=True, encoding="utf-8", env={**os.environ, "LLM_MAX_RETRIES": "5"}))
+        for service in ("api-server", "mcp-server"):
+            with self.subTest(service=service):
+                self.assertEqual(config["services"][service]["environment"].get("LLM_MAX_RETRIES"), "5")
 
     def test_rejects_budget_overallocation(self):
         config = copy.deepcopy(self.config)

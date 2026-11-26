@@ -7,6 +7,8 @@ Fields use top-level replacement semantics for execution-event replay.
 
 from typing import Literal, Optional, TypedDict  # noqa: F401 — Optional used below
 
+from backend.review_intent import ReviewFeedback, ReviewIntent
+
 
 class AgentState(TypedDict):
     run_id: str
@@ -30,6 +32,7 @@ class AgentState(TypedDict):
 
     # Knowledge layer
     facts:               list[dict]     # [{content, source, credibility}]
+    excluded_sources:    list[dict]
     raw_sources:         list[dict]     # raw source objects from search/RAG
 
     # Fact constraints (pre-hoc citation guard)
@@ -58,6 +61,7 @@ class AgentState(TypedDict):
     demo_mode:           bool           # limits scope without bypassing gates
 
     # Human-in-the-loop (OPT-003)
-    user_decision:   Optional[str]      # "approve" | "reject" | None (not yet decided)
+    user_decision:   ReviewIntent | Literal["reject", "timeout"] | None
+    review_feedback: ReviewFeedback | None
     awaiting_human:  bool               # True while human_gate_node is polling for decision
     issue_summary:   str                # rendered issue list pushed to SSE for UI display

@@ -1,6 +1,9 @@
 import importlib
 import json
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
@@ -190,6 +193,137 @@ def test_exhausted_evidence_returns_422_without_react(api, scripted_graph):
     assert events[-1]["type"] == "error"
 
 
+@pytest.mark.parametrize("feedback, decision", [
+    ("可以发布了", "approve"), ("方向错了", "chief_architect"),
+    ("需要补近三年的数据", "deep_scout"), ("只重写业绩一节", "lead_writer"),
+])
+def test_review_feedback_returns_model_intent(api, monkeypatch, feedback, decision):
+    module, client, redis, _ = api
+    events = module._new_events("human")
+    events.emit("run_started", state={"iteration": 1, "awaiting_human": True,
+                                      "outline": [{"id": "s1", "title": "业绩"}]})
+    events.emit("awaiting_review", node="human_gate", review_id=1)
+    request = {"session_id": "human", "run_id": events.run_id, "review_id": 1, "feedback": feedback}
+    expected_sections = ["s1"] if decision == "lead_writer" else []
+    expected_query = "近三年营收" if decision == "deep_scout" else ""
+
+    class Model:
+        def chat_json(self, system, user, *, temperature):
+            assert json.loads(user) == {"feedback": feedback, "sections": {"s1": "业绩"}}
+            return {"decision": decision, "section_ids": expected_sections, "search_query": expected_query}
+
+    monkeypatch.setattr(module, "make_llm", lambda role: Model())
+    response = client.post("/research/decision", json=request)
+    assert response.status_code == 200
+    assert response.json()["decision"] == decision
+    assert response.json()["section_ids"] == expected_sections
+    assert json.loads(redis.get(f"hitl_decision:{events.run_id}:1")) == {
+        "decision": decision, "feedback": feedback, "section_ids": expected_sections,
+        "search_query": expected_query,
+    }
+    assert client.post("/research/decision", json=request).status_code == 409
+
+
+@pytest.mark.parametrize("choice", ["chief_architect", "deep_scout", "lead_writer", "approve"])
+def test_review_feedback_with_unknown_intent_requires_choice(api, monkeypatch, choice):
+    module, client, redis, _ = api
+    events = module._new_events("human")
+    events.emit("run_started", state={"iteration": 0, "awaiting_human": True})
+    events.emit("awaiting_review", node="human_gate", review_id=0)
+
+    class Model:
+        def chat_json(self, *args, **kwargs):
+            return {"decision": None}
+
+    monkeypatch.setattr(module, "make_llm", lambda role: Model())
+    request = {"session_id": "human", "run_id": events.run_id, "review_id": 0, "feedback": "嗯"}
+    response = client.post("/research/decision", json=request)
+    assert response.status_code == 200
+    assert response.json() == {
+        "session_id": "human", "run_id": events.run_id, "review_id": 0,
+        "status": "selection_required", "message": "请从以下四个选项中选择。",
+        "options": [
+            {"decision": "chief_architect", "label": "完全拒绝"},
+            {"decision": "deep_scout", "label": "重新找资料"},
+            {"decision": "lead_writer", "label": "重新写"},
+            {"decision": "approve", "label": "通过"},
+        ],
+    }
+    assert not redis.get(f"hitl_decision:{events.run_id}:0")
+
+    def unexpected_model(role):
+        pytest.fail("An explicit review decision must not call the model")
+
+    monkeypatch.setattr(module, "make_llm", unexpected_model)
+    assert client.post("/research/decision", json={**request, "feedback": "再说吧"}).json() == response.json()
+    selection = {key: value for key, value in request.items() if key != "feedback"}
+    selected = client.post("/research/decision", json={**selection, "decision": choice})
+    assert selected.status_code == 200
+    assert selected.json()["status"] == "ok"
+    assert selected.json()["decision"] == choice
+    assert json.loads(redis.get(f"hitl_decision:{events.run_id}:0"))["feedback"] == "嗯"
+    assert client.post("/research/decision", json={**request, "decision": choice}).status_code == 409
+
+
+@pytest.mark.parametrize("mode", ["classified", "selected", "expired"])
+def test_live_review_feedback_resumes_graph_at_writer(api, scripted_graph, monkeypatch, mode):
+    import redis as redis_module
+
+    module, client, redis, _ = api
+    monkeypatch.setenv("HITL_ENABLED", "on")
+    monkeypatch.setattr(module._lga, "HITL_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(redis_module, "Redis", lambda **kwargs: redis)
+    scripted_graph["critic_master"] = lambda state: {"quality_score": 0.4 if state["iteration"] == 0 else 0.9}
+    original_writer = scripted_graph["lead_writer"]
+
+    def writer(state):
+        if state["iteration"] == 1:
+            assert state["review_feedback"]["feedback"] == "只改分析章节"
+            assert state["review_feedback"]["section_ids"] == (["analysis"] if mode == "classified" else [])
+            return {"draft_sections": {"summary": "Revised summary.", "analysis": "Revised body."}}
+        return original_writer(state)
+
+    scripted_graph["lead_writer"] = writer
+
+    class Model:
+        def chat_json(self, *args, **kwargs):
+            return {"decision": "lead_writer", "section_ids": ["analysis"]} if mode == "classified" else {"decision": None}
+
+    monkeypatch.setattr(module, "make_llm", lambda role: Model())
+    monkeypatch.setattr(module._lga, "HITL_TIMEOUT", 1 if mode == "expired" else 5)
+    with ThreadPoolExecutor() as pool:
+        pending = pool.submit(client.post, "/query", json={"question": "compare", "session_id": "human"})
+        deadline = time.monotonic() + 2
+        review = None
+        while review is None and time.monotonic() < deadline:
+            run_id = module._active_run("human")
+            if run_id:
+                review = next((event for event in module._journal(run_id).read()
+                               if event["type"] == "awaiting_review"), None)
+            if review is None:
+                time.sleep(0.01)
+        assert review is not None
+        request = {"session_id": "human", "run_id": run_id, "review_id": review["payload"]["review_id"]}
+        response = client.post("/research/decision", json={**request, "feedback": "只改分析章节"})
+        assert response.status_code == 200
+        assert response.json()["status"] == ("ok" if mode == "classified" else "selection_required")
+        if mode == "selected":
+            chosen = client.post("/research/decision", json={**request, "decision": "lead_writer"})
+            assert chosen.json()["decision"] == "lead_writer"
+        result = pending.result(timeout=5)
+    events = module._journal(run_id).read()
+    if mode == "expired":
+        assert result.status_code == 408
+        assert not any(event["node"] == "synthesizer" for event in events)
+        assert client.post("/research/decision", json={**request, "decision": "approve"}).status_code == 409
+        return
+    assert result.status_code == 200
+    assert result.json()["report"]["sections"][0]["content"] == "Revised body."
+    assert sum(event["node"] == "deep_scout" and event["type"] == "node_started" for event in events) == 1
+    assert any(event["type"] == "branch_selected" and event["node"] == "human_gate"
+               and event["payload"]["target"] == "lead_writer" for event in events)
+
+
 def test_human_decision_requires_current_run_and_review_round(api):
     module, client, redis, _ = api
     events = module._new_events("human")
@@ -241,14 +375,16 @@ def test_markdown_export_preserves_evidence_labels(api, monkeypatch, tmp_path):
 
 def test_busy_query_does_not_publish_and_slot_releases_after_failure(api, monkeypatch):
     module, client, redis, journals = api
-    assert module._query_slot.acquire(blocking=False)
+    for _ in range(module._max_concurrent_queries):
+        assert module._query_slot.acquire(blocking=False)
     try:
         response = client.post("/query", json={"question": "hello", "session_id": "busy"})
         assert response.status_code == 429
         assert response.headers["Retry-After"] == "5"
         assert not journals and not redis.values
     finally:
-        module._query_slot.release()
+        for _ in range(module._max_concurrent_queries):
+            module._query_slot.release()
     monkeypatch.setattr(module, "_classify_query", lambda _: {"route": "general"})
     def fail(*_):
         raise OSError("provider down")
@@ -256,6 +392,168 @@ def test_busy_query_does_not_publish_and_slot_releases_after_failure(api, monkey
     assert client.post("/query", json={"question": "hello"}).status_code == 500
     monkeypatch.setattr(module, "_run_general", lambda *_: {"final_answer": "recovered"})
     assert client.post("/query", json={"question": "hello"}).status_code == 200
+
+
+def test_distinct_research_sessions_run_concurrently_without_overwriting_session(api, monkeypatch):
+    module, client, _, _ = api
+    started = {sid: Event() for sid in ("first", "second")}
+    finish = Event()
+
+    def report(question, sid, demo_mode, *, events):
+        started[sid].set()
+        assert finish.wait(timeout=5)
+        return {"title": question}
+
+    monkeypatch.setattr(module, "_execute_report", report)
+
+    def submit(sid):
+        return client.post("/research/report", json={"question": sid, "session_id": sid})
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(submit, "first")
+        second = executor.submit(submit, "second")
+        try:
+            assert started["first"].wait(timeout=3)
+            assert started["second"].wait(timeout=3)
+            first_run = client.get("/research/session/first/run").json()["run_id"]
+            second_run = client.get("/research/session/second/run").json()["run_id"]
+            assert first_run != second_run
+            assert submit("first").status_code == 409
+            assert submit("third").status_code == 429
+            assert client.get("/research/session/third/run").status_code == 404
+        finally:
+            finish.set()
+        assert first.result().json()["run_id"] == first_run
+        assert second.result().json()["run_id"] == second_run
+
+
+def test_report_applies_exclusions_to_only_the_submitted_run(api, scripted_graph):
+    _, client, _, journals = api
+    rule = {"location": "https://example.com/rejected"}
+    first = client.post("/research/report", json={"question": "one", "excluded_sources": [rule]})
+    second = client.post("/research/report", json={"question": "two"})
+    assert first.status_code == second.status_code == 200
+    for response, count in ((first, 1), (second, 0)):
+        journal = journals[response.json()["run_id"]]
+        started = next(event for event in journal.read() if event["type"] == "run_started")
+        excluded = started["payload"]["state"]["excluded_sources"]
+        assert len(excluded) == count
+        if count:
+            assert excluded[0]["location"] == rule["location"]
+
+
+def test_superseded_run_exits_before_report_publication(api, scripted_graph):
+    _, client, _, journals = api
+    entered = Event()
+    resume = Event()
+
+    def wait(_):
+        entered.set()
+        assert resume.wait(5)
+        return {"facts": [], "phase": "writing"}
+
+    scripted_graph["deep_scout"] = wait
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(client.post, "/research/report",
+                                 json={"question": "one", "session_id": "changing"})
+        try:
+            assert entered.wait(3)
+            run_id = client.get("/research/session/changing/run").json()["run_id"]
+            path = f"/research/runs/{run_id}/supersede"
+            assert client.post(path, json={"session_id": "different"}).status_code == 404
+            assert client.post(path, json={"session_id": "changing"}).status_code == 202
+        finally:
+            resume.set()
+        assert future.result().status_code == 409
+    events = journals[run_id].read()
+    assert events[-1]["type"] == "error"
+    assert all(event.get("node") != "lead_writer" for event in events)
+
+
+def _wait_for_run_event(module, run_id, kind, timeout=3):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        event = next((item for item in module._journal(run_id).read() if item["type"] == kind), None)
+        if event:
+            return event
+        time.sleep(0.01)
+    pytest.fail(f"missing run event: {kind}")
+
+
+def test_pause_stops_at_the_next_node_until_resumed(api, scripted_graph):
+    module, client, _, journals = api
+    entered, release, writer_called = Event(), Event(), Event()
+    writer = scripted_graph["lead_writer"]
+
+    def scout(_):
+        entered.set()
+        assert release.wait(5)
+        return {"facts": [], "phase": "writing"}
+
+    def observe_writer(state):
+        writer_called.set()
+        return writer(state)
+
+    scripted_graph.update(deep_scout=scout, lead_writer=observe_writer)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(client.post, "/research/report", json={"question": "one", "session_id": "pause"})
+        assert entered.wait(2)
+        run_id = module._active_run("pause")
+        path = f"/research/runs/{run_id}/control"
+        try:
+            assert client.post(path, json={"session_id": "different", "action": "pause"}).status_code == 404
+            assert client.post(path, json={"session_id": "pause", "action": "pause"}).status_code == 202
+            release.set()
+            _wait_for_run_event(module, run_id, "run_paused")
+            assert not writer_called.wait(0.35)
+            assert not future.done()
+            assert client.get(f"/research/runs/{run_id}/state").json()["pause_requested"]
+        finally:
+            release.set()
+            client.post(path, json={"session_id": "pause", "action": "resume"})
+        assert future.result(timeout=4).status_code == 200
+    events = journals[run_id].read()
+    resume = next(event["seq"] for event in events if event["type"] == "run_resumed")
+    started_writer = next(event["seq"] for event in events
+                          if event["node"] == "lead_writer" and event["type"] == "node_started")
+    assert resume < started_writer
+    assert client.post(path, json={"session_id": "pause", "action": "pause"}).status_code == 409
+
+
+def test_pause_freezes_the_review_deadline(api, scripted_graph, monkeypatch):
+    import redis as redis_module
+
+    module, client, redis, _ = api
+    monkeypatch.setenv("HITL_ENABLED", "on")
+    monkeypatch.setattr(module._lga, "HITL_TIMEOUT", 0.7)
+    monkeypatch.setattr(module._lga, "HITL_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(redis_module, "Redis", lambda **kwargs: redis)
+    scripted_graph["critic_master"] = lambda _: {"quality_score": 0.4}
+    sid = "pause_review"
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(client.post, "/research/report", json={"question": "one", "session_id": sid})
+        deadline = time.monotonic() + 2
+        while not module._active_run(sid) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        run_id = module._active_run(sid)
+        assert run_id
+        review = _wait_for_run_event(module, run_id, "awaiting_review")
+        path = f"/research/runs/{run_id}/control"
+        req = {"session_id": sid, "run_id": run_id,
+               "review_id": review["payload"]["review_id"], "decision": "approve"}
+        try:
+            assert client.post(path, json={"session_id": sid, "action": "pause"}).status_code == 202
+            pause = _wait_for_run_event(module, run_id, "run_paused")
+            assert pause["node"] == "human_gate"
+            assert client.post("/research/decision", json=req).status_code == 409
+            assert not future.done()
+            time.sleep(0.8)
+            assert not future.done()
+        finally:
+            client.post(path, json={"session_id": sid, "action": "resume"})
+        _wait_for_run_event(module, run_id, "run_resumed")
+        assert client.post("/research/decision", json=req).status_code == 200
+        assert future.result(timeout=4).status_code == 200
 
 
 def test_admin_token_protects_mutations_and_input_is_bounded(api, monkeypatch):
