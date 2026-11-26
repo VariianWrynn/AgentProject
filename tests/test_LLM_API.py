@@ -3,7 +3,6 @@ Test all LLM API keys and models defined in .env.
 
 Checks:
   - OPENAI_API_KEY / LLM_KEY_1 … LLM_KEY_6  (reachability + latency)
-  - BOCHA_API_KEY                             (web search endpoint)
   - Each MODEL_* env var                      (model listed by endpoint)
 
 Run:
@@ -16,14 +15,12 @@ import time
 from typing import Optional
 
 import pytest
-import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
 BASE_URL   = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL") or ""
-BOCHA_KEY  = os.getenv("BOCHA_API_KEY", "")
 
 # ── Collect every LLM key defined in .env ────────────────────────────────────
 LLM_KEYS: dict[str, str] = {}
@@ -93,10 +90,6 @@ def test_env_base_url_set():
 
 def test_env_at_least_one_llm_key():
     assert UNIQUE_KEYS, "No LLM API key found in .env"
-
-
-def test_env_bocha_key_set():
-    assert BOCHA_KEY, "BOCHA_API_KEY not set in .env"
 
 
 def test_env_model_vars_set():
@@ -173,23 +166,3 @@ def test_model_available(var_name: str, model_name: str):
         f"{var_name}={model_name!r} not found in endpoint model list.\n"
         f"Available: {models}"
     )
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Section 4 — Bocha web search
-# ═══════════════════════════════════════════════════════════════════════════════
-
-BOCHA_SEARCH_URL = "https://api.bochaai.com/v1/web-search"
-
-
-def test_bocha_key_reachability():
-    """BOCHA_API_KEY must return a valid search response."""
-    if not BOCHA_KEY:
-        pytest.skip("BOCHA_API_KEY not set")
-    headers = {"Authorization": f"Bearer {BOCHA_KEY}", "Content-Type": "application/json"}
-    payload = {"query": "test", "count": 1, "freshness": "noLimit", "summary": False}
-    t0 = time.perf_counter()
-    resp = requests.post(BOCHA_SEARCH_URL, json=payload, headers=headers, timeout=15)
-    latency = time.perf_counter() - t0
-    print(f"\n  [BOCHA] status={resp.status_code}  latency={latency:.2f}s")
-    assert resp.status_code == 200, f"Bocha returned {resp.status_code}: {resp.text[:200]}"

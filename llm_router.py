@@ -20,7 +20,7 @@ BASE_URL = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
 
 # Key distribution: spread concurrency across 6 keys
 # KEY_1: Router, ChiefArchitect              — 1 call at a time
-# KEY_2: DeepScout                           — parallel Bocha/RAG calls
+# KEY_2: DeepScout                           — parallel DeepSeek Search and RAG calls
 # KEY_3: available for tool-specific model configuration
 # KEY_4: LeadWriter                          — parallel section writes
 # KEY_5: CriticMaster                        — split from KEY_3

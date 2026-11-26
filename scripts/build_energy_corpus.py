@@ -4,8 +4,8 @@ scripts/build_energy_corpus.py — Build the energy-domain RAG corpus.
 Three subcommands (run from project root):
 
   python scripts/build_energy_corpus.py discover
-      Read resources/data/energy_corpus/targets.json (list of Bocha search
-      queries per target document), search Bocha, and write candidates.json
+      Read search queries from resources/data/energy_corpus/targets.json,
+      run DeepSeek Search for each query, and write candidates.json
       with the top URLs for manual curation into seeds.json.
 
   python scripts/build_energy_corpus.py fetch
@@ -35,6 +35,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 
+from backend.tools.deepseek_search import search
+
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 CORPUS_DIR = os.path.join("resources", "data", "energy_corpus")
@@ -50,29 +52,16 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 
 # ── discover ──────────────────────────────────────────────────────────────────
 
-def bocha_search(query: str, count: int = 5) -> list[dict]:
-    key = os.getenv("BOCHA_API_KEY")
-    r = requests.post(
-        "https://api.bochaai.com/v1/web-search",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={"query": query, "count": count},
-        timeout=25,
-    )
-    r.raise_for_status()
-    pages = r.json().get("data", {}).get("webPages", {}).get("value", [])
-    return [
-        {"title": p.get("name", ""), "url": p.get("url", ""), "snippet": (p.get("snippet") or "")[:120]}
-        for p in pages
-    ]
-
-
 def cmd_discover() -> None:
     with open(TARGETS_PATH, encoding="utf-8") as f:
         targets = json.load(f)
     out = []
     for i, t in enumerate(targets):
         try:
-            hits = bocha_search(t["query"], count=5)
+            hits = [
+                {"title": hit["title"], "url": hit["url"], "snippet": hit["snippet"][:120]}
+                for hit in search(t["query"], count=5)
+            ]
         except Exception as exc:
             hits = [{"title": f"SEARCH_ERROR: {exc}", "url": "", "snippet": ""}]
         out.append({**t, "candidates": hits})

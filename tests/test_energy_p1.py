@@ -42,25 +42,23 @@ def _fail(msg: str, detail: str = "") -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Test 1: Bocha web search returns Chinese energy-relevant results
+# Test 1: DeepSeek Search returns Chinese energy-relevant results
 # ──────────────────────────────────────────────────────────────────────────────
 
-def test1_bocha_web_search():
-    print("\n[Test 1] Bocha web search — Chinese energy query")
+def test1_web_search():
+    print("\n[Test 1] DeepSeek Search — Chinese energy query")
     query = "2024年中国光伏装机容量"
 
-    # 1a. Health check shows bocha: ok
+    # 1a. Check whether the search key is configured.
     try:
         r = requests.get(f"{MCP_URL}/tools/health", timeout=10)
         assert r.status_code == 200, f"health HTTP {r.status_code}"
         data = r.json()
-        bocha_status = data.get("bocha", "missing")
-        # Accept "ok" or any 2xx status; the actual search test below is the real gate
-        if bocha_status == "ok" or bocha_status.startswith("http_2"):
-            _ok(f"health check: bocha={bocha_status}")
+        search_status = data.get("deepseek_search", "missing")
+        if search_status == "configured":
+            _ok(f"health check: deepseek_search={search_status}")
         else:
-            # Don't fail here — web_search result test below is authoritative
-            print(f"    [WARN] health check bocha='{bocha_status}' (will verify via web_search)")
+            print(f"    [WARN] health check deepseek_search='{search_status}' (will verify via web_search)")
     except Exception as exc:
         _fail("health check request failed", str(exc))
         return
@@ -335,7 +333,7 @@ def main():
 
     t_start = time.time()
 
-    test1_bocha_web_search()
+    test1_web_search()
     test2_energy_text2sql()
     test3_energy_router_intent()
     test4_rag_energy_docs()
