@@ -192,5 +192,5 @@ or fix took more than ~10 minutes.
 | Bug solved (non-trivial) | READ docs/AGENT_PROTOCOLS.md → Bug Log Format → fill in docs/troubleshooting-log/ |
 | Bug fails 3 times | Stop, report to user with full error context |
 | Regression detected | Stop all new work, fix regression first |
-| Context at 75%+ | Run `bash scripts/context-health-check.sh` |
+| Context at 75%+ | Run `python scripts/context_health_check.py` |
 | Need architecture advice | Stop, present 2-3 options with tradeoffs to user |
