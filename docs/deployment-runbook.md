@@ -84,3 +84,20 @@ nginx 是唯一发布端口。知识库、内存管理和预热接口在公共�
 报告保存在 app_data 卷的 /data/reports，模型在 model_cache 卷。事件保留时间沿用现有 TTL。升级前备份 app_data、Redis 和向量存储相关卷。回退时恢复镜像与对应集合配置。不要使用 down -v 清空卷。
 
 当前容量记录只覆盖 37 份公开语料、211 个分块和固定研究问题，不能外推到大型知识库、多人并发或英文检索质量。严格 8GB / 4-vCPU 主机验收通过前，PR 保持 Draft。
+
+## 在独立虚拟机中检查整机边界
+
+创建独立 QEMU/KVM Linux 来宾机，固定四个 vCPU，禁用 balloon 和内存热插拔。将分配内存限制在 8,000,000,000 字节以内。例如 QEMU 的 -m 7629M 对应 7,999,586,304 字节。关闭来宾机 swap。在来宾机中安装独立 Docker 引擎，并按上文预置和启动项目。
+
+先从虚拟机管理器读取实际配置，再在来宾机执行以下命令。把 QUESTION 替换为上文固定研究问题。
+
+```sh
+sudo python3 scripts/verify_vm_host.py --output test_output/whole-vm.json \
+  -- python3 scripts/verify_deployment.py --env-file .env.deploy --runtime \
+  --base-url http://127.0.0.1:8080 --question 'QUESTION' \
+  --output test_output/container-verification.json
+```
+
+整机监督器拒绝外层 WSL 内核、超过四个 CPU、超过内存边界和启用 swap 的环境。它每秒读取来宾机 MemAvailable 和 OOM 计数，将操作系统、Docker 及测试进程纳入观测。至少保留 1GiB 可用内存，查询失败或超时会让验收失败。超时清理整个命令进程组，后台服务仍由虚拟机生命周期负责关闭。
+
+容器脚本本身继续保留 whole_host_8gb_verified=false，因为容器检查不能独立证明虚拟机硬件配置。整机结论需要同时核对管理器配置、整机监督记录和真实内容校验，不能只修改这个字段。

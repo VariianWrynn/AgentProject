@@ -27,6 +27,7 @@ class Scenario:
         return {"intent": "research"}
 
     def architect(self, state):
+        self.calls["architect"] += 1
         return {"outline": [{"id": "s1", "title": "业绩"}], "phase": "researching"}
 
     def scout(self, state):
@@ -49,7 +50,7 @@ class Scenario:
         self.calls["human"] += 1
         decision = next(self.decisions)
         return {"user_decision": decision, "awaiting_human": False,
-                "phase": "re_researching" if decision == "reject" else "done"}
+                "phase": "done" if decision in ("approve", "timeout") else "re_researching"}
 
     @property
     def nodes(self):
@@ -70,7 +71,7 @@ def test_evidence_failure_reenters_writer_and_gate_before_critic(monkeypatch):
     monkeypatch.setenv("FACT_GUARD", "off")
     scenario = Scenario(rejected_drafts=1)
     state, events = execute(scenario, fact_guard=False, demo_mode=True)
-    assert scenario.calls == {"scout": 1, "writer": 2, "critic": 1}
+    assert scenario.calls == {"architect": 1, "scout": 1, "writer": 2, "critic": 1}
     assert scenario.last_feedback[0]["section"] == "s1"
     targets = [event["payload"]["target"] for event in events
                if event["type"] == "branch_selected" and event["node"] == "evidence_gate"]
@@ -110,6 +111,22 @@ def test_human_rejection_uses_same_two_research_rounds(monkeypatch):
     assert scenario.rounds == [0, 1, 2]
     assert scenario.calls["human"] == 2
     assert state["review_decision"] == "limit"
+    assert replay_state(events) == state
+
+
+@pytest.mark.parametrize("decision,scout_rounds,architect_calls", [
+    ("chief_architect", [0, 1], 2), ("deep_scout", [0, 1], 1), ("lead_writer", [0], 1),
+])
+def test_human_intent_restarts_at_selected_node(monkeypatch, decision, scout_rounds, architect_calls):
+    monkeypatch.setenv("HITL_ENABLED", "on")
+    scenario = Scenario(score=0.4, decisions=[decision, "approve"])
+    state, events = execute(scenario)
+    assert scenario.calls["architect"] == architect_calls
+    assert scenario.rounds == scout_rounds
+    assert scenario.calls["writer"] == 2
+    assert state["iteration"] == 1
+    assert [event["payload"]["target"] for event in events
+            if event["type"] == "branch_selected" and event["node"] == "human_gate"] == [decision, "synthesizer"]
     assert replay_state(events) == state
 
 
@@ -199,6 +216,9 @@ def test_actual_human_gate_timeout_preserves_300_seconds(monkeypatch):
         def delete(self, key):
             self.deleted.append(key)
 
+        def get(self, key):
+            return None
+
     connection = Connection()
     monkeypatch.setattr(redis, "Redis", lambda **kwargs: connection)
     clock = iter([0, 301])
@@ -210,6 +230,24 @@ def test_actual_human_gate_timeout_preserves_300_seconds(monkeypatch):
     assert result["user_decision"] == "timeout"
     assert connection.deleted == ["hitl_decision:run:0"]
     assert events.journal.read()[0]["payload"]["review_id"] == 0
+
+
+def test_writer_keeps_other_sections_on_scoped_human_revision(monkeypatch):
+    monkeypatch.setenv("PARALLEL", "off")
+    prompts = []
+
+    class Model:
+        def chat(self, system, user, **kwargs):
+            prompts.append(user)
+            return "更新正文。"
+
+    state = {"outline": [{"id": "s1", "title": "一"}, {"id": "s2", "title": "二"}],
+             "draft_sections": {"s1": "原第一节。", "s2": "原第二节。"},
+             "review_feedback": {"decision": "lead_writer", "section_ids": ["s2"], "feedback": "只改第二节"}}
+    result = write(state, Model())
+    assert result["draft_sections"] == {"s1": "原第一节。", "s2": "更新正文。", "summary": "更新正文。"}
+    assert len(prompts) == 2
+    assert "原第二节。" in prompts[0] and "只改第二节" in prompts[0]
 
 
 def test_production_nodes_use_real_writer_critic_and_mcp_boundary(monkeypatch):

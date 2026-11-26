@@ -17,6 +17,7 @@ import logging
 import re
 import time
 from mcp_client import MCPClient, MCPCallError
+from backend.source_exclusions import is_excluded
 from backend.tools.citation_guard import build_evidence
 
 logger = logging.getLogger("deep_scout")
@@ -173,7 +174,9 @@ def _search_queries(state: dict) -> list[str]:
     question = state["question"].split("\n\n", 1)[0].strip()
     planned = state.get("research_questions") or []
     pending = state.get("pending_queries") or []
-    return list(dict.fromkeys([question] + planned + pending))
+    feedback = state.get("review_feedback") or {}
+    revised_query = feedback.get("search_query") if feedback.get("decision") == "deep_scout" else None
+    return list(dict.fromkeys(([revised_query] if revised_query else []) + [question] + planned + pending))
 
 
 _LOCAL_DATA_REQUESTS = (
@@ -223,7 +226,8 @@ def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
         loop.close()
 
     elapsed = time.time() - t0
-    unique = _deduplicate(raw)
+    exclusions = state.get("excluded_sources", [])
+    unique = _deduplicate([item for item in raw if not is_excluded(item, exclusions)])
 
     # Score and sort
     for item in unique:
@@ -258,6 +262,13 @@ def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
     analysis = {"data_points": [], "charts_data": []}
     if needs_data_analysis(state):
         analysis = tools.call("data_analysis", state["question"], session_id="deep_scout")
+    points = analysis["data_points"]
+    retained = [point for point in points if not is_excluded({
+        "source_type": "sql", "sql": point.get("sql", ""),
+        "text": f"{point.get('metric', '')}: {point.get('value', '')}",
+    }, exclusions)]
+    if len(retained) != len(points):
+        analysis = {**analysis, "data_points": retained, "charts_data": []}
     update.update(analysis)
     evidence = build_evidence({"evidence_frozen": freeze_evidence(unique),
                                "data_points": analysis["data_points"]})

@@ -268,6 +268,29 @@ def test_scout_freezes_evidence_even_when_fact_guard_disabled(monkeypatch):
     assert ("data_analysis", "change") in tools.calls
 
 
+def test_scout_excludes_retrieved_sources_before_fact_extraction(monkeypatch):
+    candidates = [
+        {"source_type": "web", "url": "https://example.com/rejected?utm_source=a#part",
+         "title": "old", "snippet": "rejected web content"},
+        {"source_type": "rag", "url": "https://example.com/rejected/",
+         "title": "old", "chunk_id": 8, "snippet": "same page from RAG"},
+        {"source_type": "web", "url": "https://example.com/kept", "title": "keep",
+         "snippet": "replacement content"},
+    ]
+
+    async def search(*_):
+        return candidates
+
+    consumed = []
+    monkeypatch.setattr(deep_scout, "_search_all", search)
+    monkeypatch.setattr(deep_scout, "_extract_facts", lambda items, _: consumed.extend(items) or [])
+    excluded = [{"location": "http://example.com/rejected", "chunk_id": "", "sql": "", "text": ""}]
+    result = deep_scout.run({"question": "research", "excluded_sources": excluded}, None, ResearchTools())
+    assert [item["title"] for item in consumed] == ["keep"]
+    assert [item["title"] for item in result["raw_sources"]] == ["keep"]
+    assert [item["source"] for item in result["evidence_frozen"].values()] == ["keep"]
+
+
 def test_partial_search_failure_can_use_other_valid_evidence():
     result = asyncio.run(deep_scout._search_all(["question"], ResearchTools({"web_search"})))
     assert result[0]["snippet"] == "original chunk 42"

@@ -150,17 +150,20 @@ warnings.filterwarnings(
 )
 
 import requests
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
+from openai import APIError
+from backend.llm_client import make_deepseek_llm
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Annotated, Literal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import redis
 import backend.research_graph as _lga
 from backend.research_events import RedisJournal, RunEvents, replay_state
+from backend.review_intent import ReviewIntent, classify_feedback, review_selection_key
 from llm_router import make_llm
 from query_entry import ROUTE_PROMPT, dispatch_query
 
@@ -171,7 +174,11 @@ MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
 REPORT_CACHE_TTL = 3600
 
 
-_query_slot = threading.BoundedSemaphore(1)
+_max_concurrent_queries = 2
+_query_slot = threading.BoundedSemaphore(_max_concurrent_queries)
+_query_sessions_lock = threading.Lock()
+_query_sessions: set[str] = set()
+_review_decision_lock = threading.Lock()
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
@@ -217,10 +224,18 @@ class ChatResponse(BaseModel):
     memory_actions: list[str]
 
 
+class SourceExclusion(BaseModel):
+    location: str = Field(default="", max_length=4096)
+    chunk_id: str = Field(default="", max_length=512)
+    sql: str = Field(default="", max_length=16000)
+    text: str = Field(default="", max_length=4000)
+
+
 class ReportRequest(BaseModel):
     question: str = Field(min_length=1, max_length=16000)
     session_id: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     demo_mode: bool = False
+    excluded_sources: list[SourceExclusion] = Field(default_factory=list, max_length=250)
 
 
 class IngestRequest(BaseModel):
@@ -228,11 +243,48 @@ class IngestRequest(BaseModel):
     content: str = Field(min_length=1, max_length=1000000)
 
 
-class DecisionRequest(BaseModel):
+class ReportRunContext(BaseModel):
+    session_id: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+class ResearchControlRequest(ReportRunContext):
+    action: Literal["pause", "resume"]
+
+
+class ReviewContext(BaseModel):
     session_id: str
     run_id: str
     review_id: int
-    decision:   Literal["approve", "reject"]
+
+
+class DecisionRequest(ReviewContext):
+    feedback: str | None = Field(default=None, min_length=1, max_length=2000)
+    decision: ReviewIntent | Literal["reject"] | None = None
+
+
+class DecisionResponse(ReviewContext):
+    decision: ReviewIntent | Literal["reject"]
+    section_ids: list[str] | None = None
+    status: Literal["ok"] = "ok"
+
+
+class ReviewOption(BaseModel):
+    decision: ReviewIntent
+    label: str
+
+
+REVIEW_OPTIONS = (
+    ReviewOption(decision="chief_architect", label="完全拒绝"),
+    ReviewOption(decision="deep_scout", label="重新找资料"),
+    ReviewOption(decision="lead_writer", label="重新写"),
+    ReviewOption(decision="approve", label="通过"),
+)
+
+
+class SelectionRequiredResponse(ReviewContext):
+    status: Literal["selection_required"] = "selection_required"
+    message: str = "请从以下四个选项中选择。"
+    options: tuple[ReviewOption, ...] = REVIEW_OPTIONS
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -253,6 +305,22 @@ def _journal(run_id: str):
 def _new_events(session_id: str):
     run_id = str(uuid.uuid4())
     events = RunEvents(_journal(run_id), session_id, run_id)
+    events.superseded = lambda: bool(_redis.get(f"research_superseded:{run_id}"))
+    pause_key = f"research_pause:{run_id}"
+    renewed_at = time.monotonic()
+
+    def pause_requested():
+        nonlocal renewed_at
+        if not _redis.get(pause_key):
+            return False
+        now = time.monotonic()
+        if now - renewed_at >= 30:
+            for key in (pause_key, f"research_run:{session_id}", f"research_trace:{run_id}"):
+                _redis.expire(key, REPORT_CACHE_TTL)
+            renewed_at = now
+        return True
+
+    events.pause_requested = pause_requested
     events.emit("run_created")
     _redis.setex(f"research_run:{session_id}", REPORT_CACHE_TTL, run_id)
     return events
@@ -263,33 +331,57 @@ def _active_run(session_id: str) -> str | None:
     return value.decode() if isinstance(value, bytes) else value
 
 
-def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = False) -> dict:
+def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = False,
+              *, excluded_sources: list[dict] | None = None, llm=None) -> dict:
     if len(question) > 16000 or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", sid):
         raise HTTPException(status_code=422, detail="Invalid query input")
-    if not _query_slot.acquire(blocking=False):
-        raise HTTPException(status_code=429, detail="A query is already running; retry later", headers={"Retry-After": "5"})
+    with _query_sessions_lock:
+        if sid in _query_sessions:
+            raise HTTPException(status_code=409, detail="This session already has an active query")
+        if not _query_slot.acquire(blocking=False):
+            raise HTTPException(status_code=429, detail="Research capacity reached; retry later",
+                                headers={"Retry-After": "5"})
+        _query_sessions.add(sid)
     try:
-        return _dispatch_admitted(question, sid, demo_mode, force_research)
+        return _dispatch_admitted(question, sid, demo_mode, force_research, excluded_sources, llm=llm)
     finally:
-        _query_slot.release()
+        with _query_sessions_lock:
+            _query_sessions.remove(sid)
+            _query_slot.release()
 
 
-def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research: bool = False) -> dict:
+def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research: bool = False,
+                       excluded_sources: list[dict] | None = None, *, llm=None) -> dict:
     if not question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
     events = _new_events(sid)
     started = time.time()
+    options = {"excluded_sources": excluded_sources} if excluded_sources else {}
+    if llm is not None:
+        options["llm"] = llm
     try:
         result = dispatch_query(
             question.strip(), sid, demo_mode,
             (lambda _: {"route": "multiagent", "reason": "指定研究流程"})
             if force_research else _classify_query,
-            lambda q, session_id, demo: _execute_report(q, session_id, demo, events=events),
+            lambda q, session_id, demo: _execute_report(q, session_id, demo, events=events, **options),
             events.emit_event, run_general=_run_general,
         )
+    except _lga.ResearchSuperseded as exc:
+        raise HTTPException(status_code=409, detail="Research was superseded") from exc
+    except _lga.ReviewSelectionExpired as exc:
+        raise HTTPException(status_code=408, detail={"message": str(exc), "run_id": events.run_id}) from exc
     except _lga.EvidenceRejected as exc:
         raise HTTPException(status_code=422, detail={"message": str(exc), "run_id": events.run_id}) from exc
     except Exception as exc:
+        if llm is not None:
+            provider_error = exc.__cause__ if isinstance(exc, _lga.ResearchExecutionError) else exc
+            status_code = getattr(provider_error, "status_code", None)
+            if status_code in (401, 402, 403):
+                message = "DeepSeek 账户余额不足。" if status_code == 402 else "DeepSeek 拒绝了请求，请检查 API Key。"
+                raise HTTPException(status_code=status_code, detail=message) from None
+            _api_logger.error("Research with a user DeepSeek client failed (%s)", type(exc).__name__)
+            raise HTTPException(status_code=500, detail="研究执行失败。") from None
         _api_logger.exception("Query failed for session=%s", sid)
         raise HTTPException(status_code=500, detail={"message": "query execution failed",
                                                    "run_id": events.run_id}) from exc
@@ -402,6 +494,7 @@ def run_state(run_id: str, after_seq: int = 0) -> dict:
         raise HTTPException(status_code=404, detail="Run not found")
     events = journal.read()
     return {"run_id": run_id, "last_seq": events[-1]["seq"] if events else 0,
+            "pause_requested": bool(not journal.terminal() and _redis.get(f"research_pause:{run_id}")),
             "state": replay_state(events),
             "states": {workflow: replay_state(events, workflow) for workflow in
                        ("research", "general")},
@@ -601,17 +694,56 @@ def _save_report_markdown(result: dict, question: str, session_id: str) -> str:
     return filename
 
 
+DeepSeekKey = Annotated[str | None, Header(alias="X-DeepSeek-Api-Key")]
+
+
+def _personal_deepseek(key: str | None):
+    if key is None:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9_-]{12,256}", key):
+        raise HTTPException(status_code=400, detail="DeepSeek API Key 格式有误。")
+    return make_deepseek_llm(key)
+
+
 @app.post("/research/report")
-def research_report(req: ReportRequest) -> dict:
-    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode, force_research=True)
+def research_report(req: ReportRequest, deepseek_key: DeepSeekKey = None) -> dict:
+    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode, force_research=True,
+                       excluded_sources=[source.model_dump() for source in req.excluded_sources],
+                       llm=_personal_deepseek(deepseek_key))
     if result["route"] == "multiagent":
         return {**result["report"], "run_id": result["run_id"], "route": result["route"]}
     return result
 
 
-def _execute_report(question: str, sid: str, demo_mode: bool, *, events) -> dict:
+@app.post("/research/runs/{run_id}/control", status_code=202)
+def control_research(run_id: str, req: ResearchControlRequest) -> dict:
+    with _query_sessions_lock:
+        if _active_run(req.session_id) != run_id:
+            raise HTTPException(status_code=404, detail="Run not found for session")
+        if req.session_id not in _query_sessions or _journal(run_id).terminal():
+            raise HTTPException(status_code=409, detail="Research run has ended")
+        key = f"research_pause:{run_id}"
+        if req.action == "pause":
+            _redis.setex(key, REPORT_CACHE_TTL, "1")
+        else:
+            _redis.delete(key)
+    return {"status": "accepted"}
+
+
+@app.post("/research/runs/{run_id}/supersede", status_code=202)
+def supersede_research(run_id: str, req: ReportRunContext) -> dict:
+    if _active_run(req.session_id) != run_id:
+        raise HTTPException(status_code=404, detail="Run not found for session")
+    _redis.setex(f"research_superseded:{run_id}", REPORT_CACHE_TTL, "1")
+    return {"status": "superseded"}
+
+
+def _execute_report(question: str, sid: str, demo_mode: bool, *, events, excluded_sources=None, llm=None) -> dict:
     started = time.time()
-    state = _lga.run_deep_research(question, sid, demo_mode=demo_mode, events=events)
+    options = {"excluded_sources": excluded_sources} if excluded_sources else {}
+    if llm is not None:
+        options["llm"] = llm
+    state = _lga.run_deep_research(question, sid, demo_mode=demo_mode, events=events, **options)
     result = _build_report_result(state, sid, (time.time() - started) * 1000)
     result["run_id"] = events.run_id
     try:
@@ -621,25 +753,81 @@ def _execute_report(question: str, sid: str, demo_mode: bool, *, events) -> dict
     return result
 
 
-@app.post("/research/decision")
-def research_decision(req: DecisionRequest) -> dict:
+def _pending_review(req: DecisionRequest) -> dict:
     active = _active_run(req.session_id)
     if not active:
         raise HTTPException(status_code=404, detail="No active run")
     if req.run_id != active:
         raise HTTPException(status_code=409, detail="Decision belongs to a different run")
+    if _redis.get(f"research_pause:{active}"):
+        raise HTTPException(status_code=409, detail="Research run is paused")
     events = _journal(active).read()
     human_events = [event for event in events if event["node"] == "human_gate"
                     and event["type"] in ("awaiting_review", "node_completed", "node_failed")]
     state = replay_state(events)
+    paused_seconds = sum(
+        event["payload"]["paused_seconds"] for event in events
+        if human_events and event["type"] == "run_resumed" and event["node"] == "human_gate"
+        and event["seq"] > human_events[-1]["seq"]
+    )
     if (not state.get("awaiting_human") or state.get("iteration") != req.review_id or not human_events
-            or human_events[-1]["type"] != "awaiting_review" or any(
+            or human_events[-1]["type"] != "awaiting_review"
+            or human_events[-1]["payload"].get("review_id") != req.review_id
+            or time.time() >= human_events[-1]["timestamp_ms"] / 1000 + _lga.HITL_TIMEOUT + paused_seconds or any(
                 event["type"] in ("done", "error", "run_completed", "run_failed") for event in events)):
         raise HTTPException(status_code=409, detail="Run is not awaiting human review")
-    if not _redis.set(f"hitl_decision:{active}:{req.review_id}", req.decision, ex=REPORT_CACHE_TTL, nx=True):
+    return state
+
+
+@app.post("/research/decision", response_model_exclude_none=True)
+def research_decision(req: DecisionRequest, deepseek_key: DeepSeekKey = None) -> Annotated[
+    DecisionResponse | SelectionRequiredResponse, Field(discriminator="status")
+]:
+    feedback = req.feedback.strip() if req.feedback is not None else None
+    if (feedback == "" or (feedback is None and req.decision is None)
+            or (req.decision == "reject" and feedback is not None)):
+        raise HTTPException(status_code=422, detail="Provide nonempty feedback or a valid review decision")
+    state = _pending_review(req)
+    review = {"session_id": req.session_id, "run_id": req.run_id, "review_id": req.review_id}
+    key = f"hitl_decision:{req.run_id}:{req.review_id}"
+    selection_key = review_selection_key(req.run_id, req.review_id)
+    if _redis.get(key):
         raise HTTPException(status_code=409, detail="A decision has already been submitted")
-    return {"session_id": req.session_id, "run_id": active, "review_id": req.review_id,
-            "decision": req.decision, "status": "ok"}
+    classified = None
+    if req.decision is None and not _redis.get(selection_key):
+        try:
+            llm = _personal_deepseek(deepseek_key) or make_llm("router")
+            classified = classify_feedback(feedback, state.get("outline", []), llm)
+        except ValueError:
+            pass
+        except (APIError, OSError) as exc:
+            if deepseek_key is not None and getattr(exc, "status_code", None) in (401, 402, 403):
+                raise HTTPException(status_code=exc.status_code, detail="请检查 DeepSeek API Key 或账户余额。") from None
+            raise HTTPException(status_code=503, detail="Review intent classification unavailable") from exc
+    with _review_decision_lock:
+        _pending_review(req)
+        if _redis.get(key):
+            raise HTTPException(status_code=409, detail="A decision has already been submitted")
+        pending_feedback = _redis.get(selection_key)
+        if pending_feedback and req.decision in (None, "reject"):
+            return SelectionRequiredResponse(**review)
+        if req.decision is None and classified is None:
+            _redis.set(selection_key, feedback, ex=REPORT_CACHE_TTL, nx=True)
+            return SelectionRequiredResponse(**review)
+
+        decision = stored = req.decision
+        section_ids = None
+        if classified is not None:
+            decision = classified["decision"]
+            section_ids = classified["section_ids"]
+            stored = json.dumps(classified, ensure_ascii=False)
+        elif decision not in ("approve", "reject") or feedback is not None or pending_feedback:
+            section_ids = []
+            stored = json.dumps({"decision": decision, "feedback": feedback or pending_feedback or "",
+                                 "section_ids": section_ids, "search_query": ""}, ensure_ascii=False)
+        if not _redis.set(key, stored, ex=REPORT_CACHE_TTL, nx=True):
+            raise HTTPException(status_code=409, detail="A decision has already been submitted")
+    return DecisionResponse(**review, decision=decision, section_ids=section_ids)
 
 
 @app.post("/demo/warmup")
