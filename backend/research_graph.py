@@ -19,7 +19,8 @@ MAX_RESEARCH_ROUNDS = 2
 MAX_GUARD_REWRITES = 2
 HITL_TIMEOUT = 300
 HITL_POLL_INTERVAL = 2
-QUALITY_THRESHOLD = 0.7
+# Only a critic score strictly above this threshold skips human review.
+QUALITY_THRESHOLD = 0.95
 
 
 class ResearchSuperseded(Exception):
@@ -112,7 +113,7 @@ def _route_evidence_gate(state):
 
 
 def review_decision(state):
-    if state.get("quality_score", 0.0) >= QUALITY_THRESHOLD:
+    if state.get("quality_score", 0.0) > QUALITY_THRESHOLD:
         return "approved"
     if state.get("iteration", 0) >= MAX_RESEARCH_ROUNDS:
         return "limit"

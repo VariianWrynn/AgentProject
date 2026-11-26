@@ -3,6 +3,10 @@
 .heroTitle { font-size: clamp(27px, 4vw, 36px); margin: 0 0 14px; letter-spacing: -.03em; color: #254332; font-weight: 650; }
 .heroSub { font-size: 14px; color: #7d8b7c; margin: 0; }
 .card { padding: 30px 36px; background: #fffefb; border: 1px solid #e0e6d9; border-radius: 16px; min-width: 0; box-shadow: 0 6px 24px #223b2710; }
+.keyLabel { display: block; color: #294735; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.keyInput { width: 100%; padding: 10px 14px; margin-bottom: 18px; font-size: 14px; border: 1px solid #dbe3d8; border-radius: 10px; background: #fcfdf9; color: #243f2e; font-family: inherit; box-sizing: border-box; }
+.keyInput:focus { outline: 2px solid #93b4a0; outline-offset: 2px; }
+.keyInput::placeholder { color: #8c998d; }
 .answer { color: #39493e; line-height: 1.95; overflow-wrap: anywhere; }
 .answer h2 { margin-top: 0; }
 .errorCard { padding: 20px; border: 1px solid #e7c7bb; background: #fff9f4; color: #894731; border-radius: 12px; font-size: 14px; overflow-wrap: anywhere; }

@@ -30,6 +30,13 @@
   line-height: 1.5;
 }
 
+.reviewRule {
+  font-size: 0.75rem;
+  color: #78716c;
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+}
+
 /* Issue list */
 .issueList {
   background: #fff;

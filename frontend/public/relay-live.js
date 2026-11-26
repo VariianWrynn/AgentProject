@@ -577,6 +577,11 @@
   };
 
   function startResearch(project, question, newProject = false, replacing = false) {
+    if (!personalKey) {
+      toast('请先设置你自己的 DeepSeek API Key，再开始真实研究。');
+      accountDialog();
+      return null;
+    }
     const active = state.projects.filter(item => {
       const run = context(item);
       return run && !run.terminal;
@@ -692,6 +697,11 @@
     const review = run?.review;
     if (project.revisionQuestion || !review || run.terminal || run.sending) return;
     if (run.info.control) return toast('请继续研究后再提交审核意见。');
+    if (payload.feedback && !personalKey) {
+      toast('请先设置 DeepSeek API Key，再提交审核意见。');
+      accountDialog();
+      return;
+    }
     run.sending = true;
     syncNodeDetail();
     if (renderedProject === project.id && state.view === 'workspace') paintNodes(project, new Set([5]));
@@ -978,7 +988,9 @@
         const score = project.reviewScore?.toFixed(2);
         const queries = run?.criticQueries || snapshot.pending_queries || [];
         return [
-          summaryLine('评审评分', score) + summaryList('评审问题', issues.map(issue =>
+          summaryLine('评审评分', score) +
+            '<p class="score-rule">评审规则：评分 &gt; 0.95 才会跳过人工审核直接生成报告；≤ 0.95 进入人工审核（研究轮次耗尽时自动汇总）。</p>' +
+            summaryList('评审问题', issues.map(issue =>
             [severity[issue.severity], issue.section, issue.description].filter(Boolean).join(' · '))),
           summaryList('要求补查', queries) || (score ? '本轮没有补查要求。' : ''),
         ];
@@ -1073,6 +1085,7 @@
       const issue = snapshot.issue_summary || feedback;
       return (project.reviewScore == null ? '' : '<div class="review-score"><strong class="score-number">' +
         project.reviewScore.toFixed(2) + '</strong><span class="score-label">评审评分</span></div>') +
+        '<p class="score-rule">评审规则：评分 &gt; 0.95 才会跳过人工审核直接生成报告；≤ 0.95 进入人工审核（研究轮次耗尽时自动汇总）。</p>' +
         (issue ? '<div class="warning">' + referenceText(issue) + '</div>' : '');
     }
     if (index === 5 && run?.review) {
@@ -1081,6 +1094,7 @@
       const disabled = blocked ? ' disabled' : '';
       return '<div class="mini-card" style="margin-top:12px"><strong>Human-in-the-loop · 人工审核</strong><p>' +
         referenceText(review.issue_summary || review.content) + '</p>' +
+        '<p class="score-rule">评审分 ≤ 0.95 的研究会进入此关卡；仅评分 &gt; 0.95 直接生成报告。</p>' +
         (review.options ? '<p>' + escapeHTML(review.message || '') + '</p><div class="stage-footer">' +
           review.options.map(option => '<button class="btn ' + (option.decision === 'approve' ? 'primary' : '') +
             '" data-review-choice="' + escapeHTML(option.decision) + '"' + disabled + '>' +
@@ -1202,7 +1216,7 @@
 
   accountDialog = () => {
     const description = keyTransportAllowed
-      ? '用于研究和人工审核中的模型调用。只在当前页面生效，刷新后需要重新输入。'
+      ? '用于研究和人工审核中的模型调用。开始真实研究前必须设置；服务端密钥不向访客开放。只在当前页面生效，刷新后需要重新输入。'
       : '请通过 HTTPS 或本机工作台使用 DeepSeek API Key。';
     const form = keyTransportAllowed ? '<form data-relay-key><label class="form-row">DeepSeek API Key' +
       '<input type="password" autocomplete="off" spellcheck="false" maxlength="256" required ' +

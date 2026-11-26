@@ -63,6 +63,8 @@ export function HITLDecisionCard({
         <span className={styles.title}>需要人工审核</span>
       </div>
 
+      <p className={styles.reviewRule}>评审规则：评分 &gt; 0.95 才会跳过人工审核直接生成报告；≤ 0.95 进入人工审核。</p>
+
       {/* Score + issue count summary */}
       <p className={styles.content}>{content}</p>
 

@@ -2,6 +2,7 @@
 import argparse
 import http.client
 import json
+import os
 import socket
 import subprocess
 import threading
@@ -134,14 +135,34 @@ def wait_ready(compose, timeout):
     raise TimeoutError("Production services did not become healthy before the deadline")
 
 
-def request_json(url, payload=None, timeout=30):
+def request_json(url, payload=None, timeout=30, headers=None):
     data = None if payload is None else json.dumps(payload).encode()
-    request = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    request = urllib.request.Request(url, data=data,
+                                     headers={"Content-Type": "application/json", **(headers or {})})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.load(response)
 
 
-def verify_runtime(compose, base_url, timeout, question, expected, evidence, *, force_research=False):
+def auth_headers(env_file):
+    """Model endpoints require a personal key or the admin token; read them from
+    the process environment or the compose env file (never recorded in evidence)."""
+    values = {}
+    path = Path(env_file)
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                values[key.strip()] = value.strip().strip("'\"")
+    key = os.environ.get("DEEPSEEK_API_KEY") or values.get("DEEPSEEK_API_KEY", "")
+    if key:
+        return {"X-DeepSeek-Api-Key": key}
+    token = os.environ.get("DEPLOY_ADMIN_TOKEN") or values.get("DEPLOY_ADMIN_TOKEN", "")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def verify_runtime(compose, base_url, timeout, question, expected, evidence, *, force_research=False,
+                   request_headers=None):
     containers = wait_ready(compose, timeout)
     for name, container in containers.items():
         limits = expected["services"][name]
@@ -182,7 +203,8 @@ def verify_runtime(compose, base_url, timeout, question, expected, evidence, *, 
         try:
             session = "deployment-" + str(time.time_ns())
             endpoint = "/api/research/report" if force_research else "/api/query"
-            response = request_json(base_url + endpoint, {"question": question, "session_id": session}, timeout)
+            response = request_json(base_url + endpoint, {"question": question, "session_id": session},
+                                    timeout, headers=request_headers)
             evidence["query"] = response
             if response.get("error") or response.get("status") in {"error", "failed"}:
                 raise ValueError("Deployment query returned an error")
@@ -238,7 +260,8 @@ def main():
         evidence["runtime"] = {}
         try:
             verify_runtime(compose, args.base_url.rstrip("/"), args.timeout, args.question,
-                           config, evidence["runtime"], force_research=args.force_research)
+                           config, evidence["runtime"], force_research=args.force_research,
+                           request_headers=auth_headers(args.env_file))
             evidence["runtime"]["verification_passed"] = True
         except Exception as exc:
             evidence["runtime"]["verification_passed"] = False

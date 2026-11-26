@@ -11,9 +11,9 @@ flowchart LR
     A[Architect] --> D[DeepScout] --> W[Writer] --> F{Evidence gate}
     F -->|失败| W
     F -->|通过| C[CriticMaster]
-    C -->|通过或研究轮次耗尽| S[报告组装工具]
-    C -->|低分且 HITL 关闭| D
-    C -->|低分且 HITL 开启| H{Human gate}
+    C -->|评分 > 0.95 或研究轮次耗尽| S[报告组装工具]
+    C -->|评分 ≤ 0.95 且 HITL 关闭| D
+    C -->|评分 ≤ 0.95 且 HITL 开启| H{Human gate}
     H -->|拒绝且还有轮次| D
     H -->|批准或 300 秒超时| S
     S --> O[Report]
@@ -22,6 +22,8 @@ flowchart LR
 ```
 
 研究的初始轮次为 0，最多再补研两轮。自动补研与人工拒绝共用这个预算。事实关卡有独立的两次重写预算，每轮补研重新计算。重写耗尽仍未通过时，返回 HTTP 422，不进入 Critic，不启动 ReAct。空证据仍执行校验，可以输出说明证据不足的定性内容。
+
+CriticMaster 的通过阈值为 `QUALITY_THRESHOLD = 0.95`，且判定是严格大于：只有 `quality_score > 0.95` 才跳过人工审核直接组装报告；`quality_score ≤ 0.95` 时，若仍有补研轮次则进入 Human Gate（HITL 开启）或自动补研（HITL 关闭），轮次耗尽则强制汇总。该阈值与判定在 `backend/research_graph.py` 的 `review_decision` 中实现，RELAY 与内部工作台在评审节点和人工审核卡片上均明示此规则。
 
 模型、工具或基础设施的执行故障返回失败并保留 run_id，不再启动后端 ReAct。`/chat` 使用同一个入口；`/research/report` 强制研究，也遵守相同故障策略。报告缓存不再绕过实际执行。`demo_mode` 缩小任务规模，不跳过关卡和审核。单进程 API 同时只接受一个查询；忙碌请求返回 HTTP 429 和 Retry-After，且不发布新的运行。
 
@@ -32,6 +34,8 @@ flowchart LR
 RELAY 工作台由前端构建发布到 `/relay.html`。部署后从 nginx 入口打开该路径，页面通过同源 `/api` 发起研究。使用 Vite 开发服务器时，同一路径由开发代理转发到本地 API。系统设置也接受直接访问 FastAPI 的地址。
 
 使用 Compose 和单个模型 API Key 时，将该密钥同时写入部署环境的 `OPENAI_API_KEY` 和 `LLM_KEY_1`，供没有配置独立密钥的角色使用。
+
+模型调用鉴权：设置 `DEPLOY_ADMIN_TOKEN` 后（部署必填），`/query`、`/chat`、`/research/report` 以及 `/research/decision` 的自然语言反馈分类必须携带 `X-DeepSeek-Api-Key`（访客个人 Key，请求头直传、不落盘）或 `Authorization: Bearer <管理令牌>`，匿名请求返回 HTTP 401。服务端模型密钥只服务管理请求；网页搜索仍使用服务端 `DEEPSEEK_API_KEY`。审核的四选一决定不调用模型，无需个人 Key。未设置管理令牌的本地开发环境沿用服务端密钥。RELAY 在开始真实研究前强制弹出个人 Key 设置；内部工作台把个人 Key 保存在浏览器 sessionStorage。
 
 RELAY 的真实模式从项目标题和研究背景生成研究请求。画布按运行事件更新，人工审核接收自然语言或四选一决定。工具、报告和证据引用使用本次运行的数据。暂停表示停止浏览器监听，继续会订阅原运行。工作台的资料排除和恢复用于本地列表筛选。
 

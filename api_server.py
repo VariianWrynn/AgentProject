@@ -204,6 +204,9 @@ async def log_requests(request: Request, call_next):
 
 # ── models ────────────────────────────────────────────────────────────────────
 
+DeepSeekKey = Annotated[str | None, Header(alias="X-DeepSeek-Api-Key")]
+
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=16000)
     session_id: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
@@ -293,8 +296,12 @@ def _classify_query(question: str) -> dict:
     return make_llm("router").chat_json(ROUTE_PROMPT, question, temperature=0.1)
 
 
-def _run_general(question: str, session_id: str) -> dict:
-    answer = make_llm("router").chat("你是助手。直接回答用户问题。", question)
+def _classify_query_with(question: str, llm) -> dict:
+    return llm.chat_json(ROUTE_PROMPT, question, temperature=0.1)
+
+
+def _run_general(question: str, session_id: str, llm=None) -> dict:
+    answer = (llm or make_llm("router")).chat("你是助手。直接回答用户问题。", question)
     return {"final_answer": answer, "intent": "general", "steps_executed": []}
 
 
@@ -363,9 +370,10 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
         result = dispatch_query(
             question.strip(), sid, demo_mode,
             (lambda _: {"route": "multiagent", "reason": "指定研究流程"})
-            if force_research else _classify_query,
+            if force_research else
+            (_classify_query if llm is None else lambda q: _classify_query_with(q, llm)),
             lambda q, session_id, demo: _execute_report(q, session_id, demo, events=events, **options),
-            events.emit_event, run_general=_run_general,
+            events.emit_event, run_general=lambda q, s: _run_general(q, s, llm),
         )
     except _lga.ResearchSuperseded as exc:
         raise HTTPException(status_code=409, detail="Research was superseded") from exc
@@ -390,8 +398,9 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
 
 
 @app.post("/query")
-def query(req: QueryRequest) -> dict:
-    return _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode)
+def query(req: QueryRequest, request: Request, deepseek_key: DeepSeekKey = None) -> dict:
+    return _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode,
+                     llm=_model_llm(request, deepseek_key))
 
 
 def _project_event(event: dict) -> dict | None:
@@ -502,8 +511,9 @@ def run_state(run_id: str, after_seq: int = 0) -> dict:
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(req: ChatRequest) -> ChatResponse:
-    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), False)
+def chat(req: ChatRequest, request: Request, deepseek_key: DeepSeekKey = None) -> ChatResponse:
+    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), False,
+                       llm=_model_llm(request, deepseek_key))
     report = result.get("report", {})
     answer = result.get("answer") or "\n\n".join(
         [report.get("summary", "")] + [section["content"] for section in report.get("sections", [])])
@@ -694,9 +704,6 @@ def _save_report_markdown(result: dict, question: str, session_id: str) -> str:
     return filename
 
 
-DeepSeekKey = Annotated[str | None, Header(alias="X-DeepSeek-Api-Key")]
-
-
 def _personal_deepseek(key: str | None):
     if key is None:
         return None
@@ -705,11 +712,26 @@ def _personal_deepseek(key: str | None):
     return make_deepseek_llm(key)
 
 
+def _model_llm(request: Request, key: str | None):
+    """Model calls require a personal key; server credentials stay admin-only.
+
+    Without DEPLOY_ADMIN_TOKEN (local development) the server key remains usable,
+    matching _require_admin. Deployments always set the token, so anonymous
+    visitors can no longer spend the server-side key.
+    """
+    llm = _personal_deepseek(key)
+    if llm is None:
+        token = os.getenv("DEPLOY_ADMIN_TOKEN", "")
+        if token and not secrets.compare_digest(request.headers.get("Authorization", ""), f"Bearer {token}"):
+            raise HTTPException(status_code=401, detail="请先在账户菜单设置你自己的 DeepSeek API Key。服务端密钥不向匿名访问开放。")
+    return llm
+
+
 @app.post("/research/report")
-def research_report(req: ReportRequest, deepseek_key: DeepSeekKey = None) -> dict:
+def research_report(req: ReportRequest, request: Request, deepseek_key: DeepSeekKey = None) -> dict:
     result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode, force_research=True,
                        excluded_sources=[source.model_dump() for source in req.excluded_sources],
-                       llm=_personal_deepseek(deepseek_key))
+                       llm=_model_llm(request, deepseek_key))
     if result["route"] == "multiagent":
         return {**result["report"], "run_id": result["run_id"], "route": result["route"]}
     return result
@@ -780,7 +802,7 @@ def _pending_review(req: DecisionRequest) -> dict:
 
 
 @app.post("/research/decision", response_model_exclude_none=True)
-def research_decision(req: DecisionRequest, deepseek_key: DeepSeekKey = None) -> Annotated[
+def research_decision(req: DecisionRequest, request: Request, deepseek_key: DeepSeekKey = None) -> Annotated[
     DecisionResponse | SelectionRequiredResponse, Field(discriminator="status")
 ]:
     feedback = req.feedback.strip() if req.feedback is not None else None
@@ -796,7 +818,7 @@ def research_decision(req: DecisionRequest, deepseek_key: DeepSeekKey = None) ->
     classified = None
     if req.decision is None and not _redis.get(selection_key):
         try:
-            llm = _personal_deepseek(deepseek_key) or make_llm("router")
+            llm = _model_llm(request, deepseek_key) or make_llm("router")
             classified = classify_feedback(feedback, state.get("outline", []), llm)
         except ValueError:
             pass
