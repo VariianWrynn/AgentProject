@@ -186,6 +186,21 @@ def test_programmer_errors_do_not_fallback(api, scripted_graph, failure, status)
     assert not any(e["workflow"] == "react" for e in events)
 
 
+def test_missing_research_model_configuration_returns_actionable_error(api, scripted_graph):
+    from llm_router import ModelConfigurationError
+
+    _, client, *_ = api
+
+    def fail(_):
+        raise ModelConfigurationError("No server API key configured")
+
+    scripted_graph["router"] = fail
+    response = client.post("/research/report", json={"question": "Use evidence"})
+    assert response.status_code == 503
+    assert "DeepSeek API Key" in response.json()["detail"]["message"]
+    assert response.json()["detail"]["run_id"]
+
+
 def test_exhausted_evidence_returns_422_without_react(api, scripted_graph):
     _, client, *_ = api
     scripted_graph["lead_writer"] = lambda _: {"draft_sections": {"summary": "[E99]", "analysis": "[E99]"}}

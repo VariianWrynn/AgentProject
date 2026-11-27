@@ -169,7 +169,7 @@ from backend.research_attachments import (
 )
 from backend.research_events import RedisJournal, RunEvents, replay_state
 from backend.review_intent import ReviewIntent, classify_feedback, review_selection_key
-from llm_router import make_llm
+from llm_router import ModelConfigurationError, make_llm
 from query_entry import ROUTE_PROMPT, dispatch_query
 
 # ── singletons ────────────────────────────────────────────────────────────────
@@ -411,8 +411,14 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
     except AttachmentUnavailable as exc:
         raise HTTPException(status_code=410, detail={"message": str(exc), "run_id": events.run_id}) from exc
     except Exception as exc:
+        provider_error = exc.__cause__ if isinstance(exc, _lga.ResearchExecutionError) else exc
+        if isinstance(provider_error, ModelConfigurationError):
+            _api_logger.error("Research model configuration: %s", provider_error)
+            raise HTTPException(status_code=503, detail={
+                "message": "研究模型缺少配置。请在账户菜单填入 DeepSeek API Key，或配置服务端模型。",
+                "run_id": events.run_id,
+            }) from None
         if llm is not None:
-            provider_error = exc.__cause__ if isinstance(exc, _lga.ResearchExecutionError) else exc
             status_code = getattr(provider_error, "status_code", None)
             if status_code in (401, 402, 403):
                 message = "DeepSeek 账户余额不足。" if status_code == 402 else "DeepSeek 拒绝了请求，请检查 API Key。"

@@ -5,7 +5,7 @@ Assigns each agent role to a dedicated API key to eliminate rate-limit
 contention when multiple agents (or sections) call the LLM in parallel.
 
 Fallback chain: role-key → KEY_1 → OPENAI_API_KEY.
-Raises EnvironmentError if no key, base URL, or model can be resolved.
+Raises ModelConfigurationError if a key, base URL, or model is missing.
 """
 
 import logging
@@ -54,18 +54,11 @@ FALLBACK_KEY: dict[str, str] = {
 _DEFAULT_MODEL = os.getenv("LLM_MODEL")
 
 
-def get_client(agent_role: str) -> Tuple[OpenAI, str]:
-    """
-    Return (OpenAI client, model_name) for the given agent role.
+class ModelConfigurationError(OSError):
+    pass
 
-    Key lookup: role-specific env var → KEY_1 fallback → OPENAI_API_KEY fallback.
-    Raises EnvironmentError if no key or base URL can be resolved from the environment.
-    """
-    if not BASE_URL:
-        raise EnvironmentError(
-            "No LLM base URL configured — set LLM_BASE_URL or OPENAI_BASE_URL in your .env file"
-        )
 
+def _role_credentials(agent_role: str) -> tuple[str, str]:
     key_env   = ROLE_TO_KEY_ENV.get(agent_role, "OPENAI_API_KEY")
     model_env = ROLE_TO_MODEL_ENV.get(agent_role, "LLM_MODEL")
 
@@ -77,17 +70,25 @@ def get_client(agent_role: str) -> Tuple[OpenAI, str]:
         if api_key:
             logger.warning("[LLMRouter] %s empty, fell back to %s", key_env, fb)
         else:
-            raise EnvironmentError(
+            raise ModelConfigurationError(
                 f"No API key found for agent role '{agent_role}': "
                 f"set {key_env} (or {fb}) in your .env file"
             )
 
     model = os.getenv(model_env) or _DEFAULT_MODEL
     if not model:
-        raise EnvironmentError(
+        raise ModelConfigurationError(
             f"No model configured for role '{agent_role}': "
             f"set {model_env} (or LLM_MODEL) in your .env file"
         )
+    return api_key, model
+
+
+def get_client(agent_role: str) -> Tuple[OpenAI, str]:
+    """Return the OpenAI client and model configured for the role."""
+    if not BASE_URL:
+        raise ModelConfigurationError("No LLM base URL configured; set LLM_BASE_URL or OPENAI_BASE_URL")
+    api_key, model = _role_credentials(agent_role)
     return OpenAI(api_key=api_key, base_url=BASE_URL, timeout=float(os.getenv("LLM_TIMEOUT_SECONDS", "60")), max_retries=int(os.getenv("LLM_MAX_RETRIES", "1"))), model
 
 
@@ -96,30 +97,10 @@ def make_llm(agent_role: str):
     Return a LLMClient instance configured for the given agent role.
 
     Lazy import of LLMClient to avoid circular imports.
-    Raises EnvironmentError if required env vars are missing from the .env file.
+    Raises ModelConfigurationError if the role has no key or model.
     """
     from backend.llm_client import LLMClient, OPENAI_BASE_URL  # noqa: PLC0415
-    key_env   = ROLE_TO_KEY_ENV.get(agent_role, "OPENAI_API_KEY")
-    model_env = ROLE_TO_MODEL_ENV.get(agent_role, "LLM_MODEL")
-
-    api_key = os.getenv(key_env, "").strip()
-    if not api_key:
-        fb = FALLBACK_KEY.get(key_env, "OPENAI_API_KEY")
-        api_key = os.getenv(fb, os.getenv("OPENAI_API_KEY", "")).strip()
-        if api_key:
-            logger.warning("[LLMRouter] %s empty, fell back to %s", key_env, fb)
-        else:
-            raise EnvironmentError(
-                f"No API key found for agent role '{agent_role}': "
-                f"set {key_env} (or {fb}) in your .env file"
-            )
-
-    model = os.getenv(model_env) or _DEFAULT_MODEL
-    if not model:
-        raise EnvironmentError(
-            f"No model configured for role '{agent_role}': "
-            f"set {model_env} (or LLM_MODEL) in your .env file"
-        )
+    api_key, model = _role_credentials(agent_role)
     # Server key: anonymous try-out usage bills the owner's hourly cost budget.
     return LLMClient(api_key=api_key, model=model, base_url=OPENAI_BASE_URL, bill_to_budget=True)
 
