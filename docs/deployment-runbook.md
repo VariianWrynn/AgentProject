@@ -52,7 +52,8 @@ dc config --quiet
 | 配置 | 填写内容 |
 | --- | --- |
 | `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`LLM_MODEL` | 服务端的 OpenAI 兼容模型端点、密钥和可用模型。角色配置可以覆盖模型或密钥 |
-| `DEEPSEEK_API_KEY` | 具备网页搜索权限的服务端凭据。RELAY 界面的个人 Key 用于模型调用 |
+| `DEEPSEEK_API_KEY` | 服务端凭据：供匿名访客免费尝鲜（受每小时成本闸门约束）与管理/本地运行。访客填个人 Key 则模型与搜索都按其账户计费、不受闸门限制；搜索无需单独开通权限 |
+| `SERVER_KEY_HOURLY_LIMIT_RMB` | 匿名尝鲜的每小时成本上限（元），默认 5。按 token（deepseek-flash 峰谷计价）+ 网页搜索 0.005 元/次精确折算，滚动 1 小时窗口，超限匿名请求返回 429 |
 | `DEPLOY_ADMIN_TOKEN` | 独立生成的长随机值 |
 | `MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD` | 对象存储凭据。已有部署沿用现有凭据，除非另行安排轮换 |
 | `DEPLOY_BIND`、`DEPLOY_PORT` | 私有验收用 `127.0.0.1` 和 `8080`。端口被占用时选一个空闲本地端口 |
@@ -146,7 +147,7 @@ python3 scripts/verify_vm_host.py --host-kind ecs --max-memory-bytes 17179869184
     --output test_output/ecs-containers.json
 ```
 
-工具校验 4 个 Linux vCPU、16 GiB 内存上限和停用 swap 的验收条件，并记录 1 秒间隔的宿主机样本、OOM 计数与最低可用内存。验收要求至少保留 1 GiB 可用内存。如果宿主机启用了 swap，先报告并确认验收环境的调整权限。容器证据中的 `whole_host_8gb_verified` 是旧字段。ECS 结论采用实例规格、`ecs-host.json` 和容器记录。
+工具校验 4 个 Linux vCPU、16 GiB 内存上限和停用 swap 的验收条件，并记录 1 秒间隔的宿主机样本、OOM 计数与最低可用内存。验收要求至少保留 1 GiB 可用内存。如果宿主机启用了 swap，先报告并确认验收环境的调整权限。容器证据中的 `whole_host_8gb_verified` 是旧字段。ECS 结论采用实例规格、`ecs-host.json` 和容器记录。`verify_deployment.py` 会从 `--env-file`（或进程环境变量）读取 `DEEPSEEK_API_KEY` / `DEPLOY_ADMIN_TOKEN` 作为请求凭据，以通过模型调用鉴权；凭据不写入证据文件。
 
 从 `test_output/ecs-containers.json` 的 `runtime.query.run_id` 读取真实研究的 run ID。使用实际部署的 SQLite 做内容对照。以下命令在 API 容器里运行校验，通过 nginx 读取事件，并存放到数据卷。将 `RUN_ID` 换成实际值。
 

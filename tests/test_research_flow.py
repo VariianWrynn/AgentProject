@@ -16,7 +16,7 @@ BAD = "营收999.9亿元[E1]。"
 
 
 class Scenario:
-    def __init__(self, *, score=0.9, rejected_drafts=0, decisions=()):
+    def __init__(self, *, score=0.96, rejected_drafts=0, decisions=()):
         self.calls = Counter()
         self.rounds = []
         self.score = score
@@ -102,6 +102,55 @@ def test_automatic_research_runs_two_additional_rounds(monkeypatch):
     assert scenario.calls["critic"] == 3
     assert state["review_decision"] == "limit"
     assert replay_state(events) == state
+
+
+def test_only_score_strictly_above_threshold_skips_human_review(monkeypatch):
+    # 0.95 is NOT above the 0.95 threshold, so it must still reach the human gate.
+    monkeypatch.setenv("HITL_ENABLED", "on")
+    at_threshold = Scenario(score=0.95, decisions=["approve"])
+    state, events = execute(at_threshold)
+    assert at_threshold.calls["human"] == 1
+    assert state["review_decision"] == "human"
+    assert state["user_decision"] == "approve"
+    assert replay_state(events) == state
+
+    # Just above the threshold skips the human gate entirely.
+    above = Scenario(score=0.96)
+    state, events = execute(above)
+    assert above.calls["human"] == 0
+    assert state["review_decision"] == "approved"
+    assert replay_state(events) == state
+
+
+def test_at_threshold_with_hitl_off_researches_instead_of_skipping(monkeypatch):
+    monkeypatch.setenv("HITL_ENABLED", "off")
+    scenario = Scenario(score=0.95)
+    state, events = execute(scenario)
+    assert scenario.calls["human"] == 0
+    assert scenario.rounds == [0, 1, 2]
+    assert state["review_decision"] == "limit"
+    assert replay_state(events) == state
+
+
+def test_deep_scout_forwards_personal_key_to_search_tools(monkeypatch):
+    captured = {}
+
+    def fake_run(state, llm, tools=None):
+        captured["api_key"] = tools.api_key
+        return {}
+
+    monkeypatch.setattr("backend.agents.deep_scout.run", fake_run)
+    monkeypatch.setattr(research, "_llm", lambda role: object())
+
+    class PersonalLLM:
+        api_key = "visitor-personal-key"
+
+    research.deep_scout_node({}, events=None, llm=PersonalLLM())
+    assert captured["api_key"] == "visitor-personal-key"
+
+    # Admin/local run (llm=None) forwards no personal key; search falls back to env.
+    research.deep_scout_node({}, events=None, llm=None)
+    assert captured["api_key"] is None
 
 
 def test_human_rejection_uses_same_two_research_rounds(monkeypatch):
@@ -276,7 +325,7 @@ def test_production_nodes_use_real_writer_critic_and_mcp_boundary(monkeypatch):
             if self.role == "router":
                 return {"intent": "research"}
             if self.role == "critic_master":
-                return {"quality_score": 0.9, "issues": []}
+                return {"quality_score": 0.96, "issues": []}
             raise AssertionError(self.role)
 
         def chat(self, system, user, **kwargs):

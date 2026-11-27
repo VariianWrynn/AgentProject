@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { api } from '../api/client'
+import { api, API_KEY_STORAGE } from '../api/client'
 import { ProgressStream } from '../components/ProgressStream'
 import { QueryInput } from '../components/QueryInput'
 import { ReportView } from '../components/ReportView'
@@ -14,11 +14,25 @@ export function ResearchPage() {
   const [sessionId, setSessionId] = useState('')
   const [result, setResult] = useState<QueryResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const [apiKey, setApiKey] = useState(() => sessionStorage.getItem(API_KEY_STORAGE) ?? '')
 
   const queryPromiseRef = useRef<Promise<QueryResult | null> | null>(null)
 
+  const handleKeyChange = useCallback((value: string) => {
+    const key = value.trim()
+    setApiKey(value)
+    if (key) sessionStorage.setItem(API_KEY_STORAGE, key)
+    else sessionStorage.removeItem(API_KEY_STORAGE)
+  }, [])
+
   const handleSubmit = useCallback(
     async (q: string, sid: string, demoMode: boolean) => {
+      const storedKey = sessionStorage.getItem(API_KEY_STORAGE) ?? ''
+      if (storedKey && !/^[A-Za-z0-9_-]{12,256}$/.test(storedKey)) {
+        setErrorMsg('DeepSeek API Key 格式有误，请检查，或清空后使用服务端免费额度。')
+        setPageState('error')
+        return
+      }
       setSessionId(sid)
       setResult(null)
       setErrorMsg('')
@@ -60,6 +74,21 @@ export function ResearchPage() {
         <p className={styles.heroSub}>提出问题，查看研究结论、数据图表和参考来源。</p>
       </div>
       <div className={styles.card}>
+        <label htmlFor="deepseek-key" className={styles.keyLabel}>
+          DeepSeek API Key（可选：留空用服务端免费额度，每小时限 5 元；填写则按你自己账户计费、不受限。仅存于当前浏览器会话）
+        </label>
+        <input
+          id="deepseek-key"
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={256}
+          className={styles.keyInput}
+          value={apiKey}
+          onChange={(event) => handleKeyChange(event.target.value)}
+          placeholder="sk-…"
+          disabled={pageState === 'streaming'}
+        />
         <QueryInput
           onSubmit={handleSubmit}
           disabled={pageState === 'streaming'}

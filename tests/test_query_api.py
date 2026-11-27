@@ -44,6 +44,9 @@ def api(monkeypatch, tmp_path):
     redis, journals = FakeRedis(), {}
     monkeypatch.setattr(module, "_redis", redis)
     monkeypatch.setattr(module, "_journal", lambda run_id: journals.setdefault(run_id, MemoryJournal()))
+    # Bind the cost budget to the fake Redis so anonymous budget checks stay fast
+    # and offline (the import-time client points at a real, possibly absent Redis).
+    module.usage_budget.init(redis)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module, "_classify_query", lambda _: {"route": "multiagent"})
     with TestClient(module.app) as client:
@@ -60,7 +63,7 @@ def scripted_graph(api, monkeypatch):
         "deep_scout": lambda _: {"facts": [], "phase": "writing"},
         "lead_writer": lambda _: {"draft_sections": {"summary": "Reviewed summary.",
                                                      "analysis": "Reviewed body."}},
-        "critic_master": lambda _: {"quality_score": 0.9},
+        "critic_master": lambda _: {"quality_score": 0.96},
     }
     monkeypatch.setattr(module._lga, "run_deep_research",
                         lambda *args, **kwargs: run(*args, **kwargs, nodes=nodes))
@@ -273,7 +276,7 @@ def test_live_review_feedback_resumes_graph_at_writer(api, scripted_graph, monke
     monkeypatch.setenv("HITL_ENABLED", "on")
     monkeypatch.setattr(module._lga, "HITL_POLL_INTERVAL", 0.01)
     monkeypatch.setattr(redis_module, "Redis", lambda **kwargs: redis)
-    scripted_graph["critic_master"] = lambda state: {"quality_score": 0.4 if state["iteration"] == 0 else 0.9}
+    scripted_graph["critic_master"] = lambda state: {"quality_score": 0.4 if state["iteration"] == 0 else 0.96}
     original_writer = scripted_graph["lead_writer"]
 
     def writer(state):
@@ -564,6 +567,54 @@ def test_admin_token_protects_mutations_and_input_is_bounded(api, monkeypatch):
     assert client.delete("/sessions/x/memory").status_code == 401
     assert client.post("/query", json={"question": "x" * 16001}).status_code == 422
     assert client.post("/query", json={"question": "x", "session_id": "../bad"}).status_code == 422
+
+
+def test_anonymous_try_out_is_gated_by_hourly_budget(api, scripted_graph, monkeypatch):
+    module, client, *_ = api
+    monkeypatch.setenv("DEPLOY_ADMIN_TOKEN", "test-admin")
+    anonymous = {"Authorization": ""}
+    monkeypatch.setattr(module.usage_budget, "is_exceeded", lambda: False)
+    assert client.post("/research/report", json={"question": "compare", "session_id": "anon-ok"},
+                       headers=anonymous).status_code == 200
+    monkeypatch.setattr(module.usage_budget, "is_exceeded", lambda: True)
+    blocked = client.post("/research/report", json={"question": "compare", "session_id": "anon-blocked"},
+                          headers=anonymous)
+    assert blocked.status_code == 429
+    assert "免费" in blocked.json()["detail"]
+    # A personal key bills the visitor and bypasses the budget gate even when exhausted.
+    personal = {"Authorization": "", "X-DeepSeek-Api-Key": "sk-personal-key-123"}
+    assert client.post("/research/report", json={"question": "compare", "session_id": "anon-personal"},
+                       headers=personal).status_code == 200
+    # Admin token also bypasses the gate.
+    assert client.post("/research/report", json={"question": "compare", "session_id": "anon-admin"},
+                       headers={"Authorization": "Bearer test-admin"}).status_code == 200
+
+
+def test_budget_endpoint_reports_status(api, monkeypatch):
+    module, client, *_ = api
+    monkeypatch.setattr(module.usage_budget, "status", lambda: {
+        "limit_rmb": 5, "used_rmb": 1.0, "remaining_rmb": 4.0,
+        "exceeded": False, "window_seconds": 3600, "peak_pricing": False})
+    response = client.get("/budget")
+    assert response.status_code == 200
+    assert response.json()["remaining_rmb"] == 4.0
+
+
+def test_personal_key_or_admin_authorizes_model_calls(api, scripted_graph, monkeypatch):
+    module, client, *_ = api
+    monkeypatch.setenv("DEPLOY_ADMIN_TOKEN", "test-admin")
+    monkeypatch.setattr(module, "_classify_query_with", lambda q, llm: {"route": "multiagent"})
+    personal = {"Authorization": "", "X-DeepSeek-Api-Key": "sk-personal-key-123"}
+    response = client.post("/query", json={"question": "compare", "session_id": "byok"}, headers=personal)
+    assert response.status_code == 200
+    assert response.json()["report"]["sections"][0]["content"] == "Reviewed body."
+    admin = {"Authorization": "Bearer test-admin"}
+    assert client.post("/query", json={"question": "compare", "session_id": "admin"},
+                       headers=admin).status_code == 200
+    assert client.post("/research/report", json={"question": "compare", "session_id": "byok-report"},
+                       headers=personal).status_code == 200
+    assert client.post("/query", json={"question": "compare", "session_id": "bad-key"},
+                       headers={"Authorization": "", "X-DeepSeek-Api-Key": "short"}).status_code == 400
 
 
 def test_memory_read_preserves_stored_json_and_default(api):

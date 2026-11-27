@@ -14,28 +14,41 @@ class MCPCallError(Exception):
         super().__init__(f"[MCP:{tool}] {msg}")
 
 
+# Optional sink fed only by server-key web searches (no personal key) so anonymous
+# try-out search cost counts against the hourly budget; personal-key searches skip it.
+_SEARCH_SINK = None
+
+
+def set_search_sink(fn) -> None:
+    global _SEARCH_SINK
+    _SEARCH_SINK = fn
+
+
 class MCPClient:
     TIMEOUTS = {"rag_search": 30, "web_search": 30, "text2sql": 90,
                 "data_analysis": 120, "doc_summary": 30}
 
     def __init__(self, base_url: str | None = None, *,
                  emit: Callable | None = None, transport: Callable | None = None,
-                 node: str = "deep_scout") -> None:
+                 node: str = "deep_scout", api_key: str | None = None) -> None:
         self.base_url = (base_url or os.getenv("MCP_URL", "http://localhost:8002")).rstrip("/")
         self.emit = emit
         self.transport = transport or requests.post
         self.node = node
+        self.api_key = api_key
 
     def call(self, tool: str, query: str, params: dict | None = None,
              session_id: str = "default") -> dict | list:
         if self.emit:
             self.emit("tool_started", node=self.node, tool=tool)
         try:
-            response = self.transport(
-                f"{self.base_url}/tools/{tool}",
-                json={"query": query, "params": params or {}, "session_id": session_id},
-                timeout=self.TIMEOUTS.get(tool, 30),
-            )
+            kwargs = {"json": {"query": query, "params": params or {}, "session_id": session_id},
+                      "timeout": self.TIMEOUTS.get(tool, 30)}
+            # Forward the visitor's personal key only to web search so it bills
+            # their own account; other tools never receive the secret.
+            if tool == "web_search" and self.api_key:
+                kwargs["headers"] = {"X-DeepSeek-Api-Key": self.api_key}
+            response = self.transport(f"{self.base_url}/tools/{tool}", **kwargs)
             response.raise_for_status()
             data = response.json()
             if not isinstance(data, dict) or "result" not in data:
@@ -72,4 +85,10 @@ class MCPClient:
             raise MCPCallError(tool, str(exc)) from exc
         if self.emit:
             self.emit("tool_completed", node=self.node, tool=tool)
+        # A successful server-key web search bills the owner's budget (0.005元/次).
+        if tool == "web_search" and self.api_key is None and _SEARCH_SINK is not None:
+            try:
+                _SEARCH_SINK(1)
+            except Exception:
+                pass
         return result

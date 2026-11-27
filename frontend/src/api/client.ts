@@ -3,6 +3,16 @@ import type { QueryResult, ResearchReport, SourceList, HealthStatus, DecisionRes
 
 const BASE = '/api'
 
+export const API_KEY_STORAGE = 'deepseekApiKey'
+
+// Personal DeepSeek key: kept in sessionStorage only, sent as a header so the
+// server never spends its own credentials for anonymous visitors.
+axios.interceptors.request.use((config) => {
+  const key = sessionStorage.getItem(API_KEY_STORAGE)
+  if (key) config.headers['X-DeepSeek-Api-Key'] = key
+  return config
+})
+
 export const api = {
   submitQuery: (question: string, sessionId: string, demoMode = false) =>
     axios.post<QueryResult>(`${BASE}/query`, {

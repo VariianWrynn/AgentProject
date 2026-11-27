@@ -11,7 +11,9 @@ export function ReportView({ report }: { report: ResearchReport }) {
   const visibleReferences = references.filter((reference) => cited.has(reference.label))
   const title = report.title && report.title.length <= 64 ? report.title : '研究报告'
   return <article className={styles.container}>
-    <header className={styles.header}><h2 className={styles.title}>{title}</h2></header>
+    <header className={styles.header}><h2 className={styles.title}>{title}</h2>
+      <p className={styles.reviewRule}>评审规则：CriticMaster 评分 &gt; 0.95 才会跳过人工审核直接生成报告；≤ 0.95 进入人工审核（研究轮次耗尽时自动汇总）。</p>
+    </header>
     {summary && <section className={styles.summaryBlock}><h3 className={styles.sectionTitle}>摘要</h3><div className={styles.sectionContent}><EvidenceMarkdown references={references}>{summary}</EvidenceMarkdown></div></section>}
     <div className={styles.sections}>{sections.map((section, index) => <section key={index} className={styles.section}>
       <h3 className={styles.sectionTitle}>{section.title}</h3>

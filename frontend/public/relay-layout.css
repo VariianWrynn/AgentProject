@@ -376,3 +376,14 @@ button.node-top {
 body[data-research-mode="demo"] [data-action="newProject"] {
   display: none;
 }
+
+.score-rule {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 6px 0;
+}
+
+.node-detail-body .score-rule {
+  font-size: 13px;
+}

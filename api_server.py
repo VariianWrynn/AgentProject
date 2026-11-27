@@ -173,6 +173,20 @@ _redis = redis.Redis(host=os.getenv("REDIS_HOST", "localhost"),
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
 REPORT_CACHE_TTL = 3600
 
+# Hourly cost budget for anonymous server-key try-out usage. Server-key model
+# calls and web searches feed it; personal-key runs bill the visitor and skip it.
+from backend import usage_budget
+import backend.llm_client as _llm_client_module
+import mcp_client as _mcp_client_module
+# Dedicated short-timeout client so a Redis hiccup cannot stall every request's
+# budget check; tracking degrades to "no cost" on failure rather than blocking.
+usage_budget.init(redis.Redis(host=os.getenv("REDIS_HOST", "localhost"),
+                              port=int(os.getenv("REDIS_PORT", "6379")),
+                              decode_responses=True,
+                              socket_connect_timeout=2, socket_timeout=2))
+_llm_client_module.set_budget_sink(usage_budget.add_model_usage)
+_mcp_client_module.set_search_sink(usage_budget.add_search)
+
 
 _max_concurrent_queries = 2
 _query_slot = threading.BoundedSemaphore(_max_concurrent_queries)
@@ -203,6 +217,9 @@ async def log_requests(request: Request, call_next):
 
 
 # ── models ────────────────────────────────────────────────────────────────────
+
+DeepSeekKey = Annotated[str | None, Header(alias="X-DeepSeek-Api-Key")]
+
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=16000)
@@ -293,8 +310,12 @@ def _classify_query(question: str) -> dict:
     return make_llm("router").chat_json(ROUTE_PROMPT, question, temperature=0.1)
 
 
-def _run_general(question: str, session_id: str) -> dict:
-    answer = make_llm("router").chat("你是助手。直接回答用户问题。", question)
+def _classify_query_with(question: str, llm) -> dict:
+    return llm.chat_json(ROUTE_PROMPT, question, temperature=0.1)
+
+
+def _run_general(question: str, session_id: str, llm=None) -> dict:
+    answer = (llm or make_llm("router")).chat("你是助手。直接回答用户问题。", question)
     return {"final_answer": answer, "intent": "general", "steps_executed": []}
 
 
@@ -363,9 +384,10 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
         result = dispatch_query(
             question.strip(), sid, demo_mode,
             (lambda _: {"route": "multiagent", "reason": "指定研究流程"})
-            if force_research else _classify_query,
+            if force_research else
+            (_classify_query if llm is None else lambda q: _classify_query_with(q, llm)),
             lambda q, session_id, demo: _execute_report(q, session_id, demo, events=events, **options),
-            events.emit_event, run_general=_run_general,
+            events.emit_event, run_general=lambda q, s: _run_general(q, s, llm),
         )
     except _lga.ResearchSuperseded as exc:
         raise HTTPException(status_code=409, detail="Research was superseded") from exc
@@ -390,8 +412,9 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
 
 
 @app.post("/query")
-def query(req: QueryRequest) -> dict:
-    return _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode)
+def query(req: QueryRequest, request: Request, deepseek_key: DeepSeekKey = None) -> dict:
+    return _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode,
+                     llm=_model_llm(request, deepseek_key))
 
 
 def _project_event(event: dict) -> dict | None:
@@ -502,8 +525,9 @@ def run_state(run_id: str, after_seq: int = 0) -> dict:
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(req: ChatRequest) -> ChatResponse:
-    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), False)
+def chat(req: ChatRequest, request: Request, deepseek_key: DeepSeekKey = None) -> ChatResponse:
+    result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), False,
+                       llm=_model_llm(request, deepseek_key))
     report = result.get("report", {})
     answer = result.get("answer") or "\n\n".join(
         [report.get("summary", "")] + [section["content"] for section in report.get("sections", [])])
@@ -694,9 +718,6 @@ def _save_report_markdown(result: dict, question: str, session_id: str) -> str:
     return filename
 
 
-DeepSeekKey = Annotated[str | None, Header(alias="X-DeepSeek-Api-Key")]
-
-
 def _personal_deepseek(key: str | None):
     if key is None:
         return None
@@ -705,11 +726,40 @@ def _personal_deepseek(key: str | None):
     return make_deepseek_llm(key)
 
 
+def _model_llm(request: Request, key: str | None):
+    """Resolve the LLM for a request and gate anonymous server-key try-out usage.
+
+    - Personal key: bills the visitor's own account, unlimited, never gated.
+    - Admin token: server key, bypasses the hourly budget gate.
+    - Anonymous: server key for trial use, capped at usage_budget.LIMIT_RMB/hour;
+      rejected with 429 once the rolling-hour cost budget is exhausted.
+    """
+    llm = _personal_deepseek(key)
+    if llm is not None:
+        return llm
+    token = os.getenv("DEPLOY_ADMIN_TOKEN", "")
+    is_admin = bool(token) and secrets.compare_digest(
+        request.headers.get("Authorization", ""), f"Bearer {token}")
+    if not is_admin and usage_budget.is_exceeded():
+        raise HTTPException(
+            status_code=429,
+            detail=f"免费尝鲜额度本小时已用尽（每小时 {usage_budget.LIMIT_RMB:g} 元）。"
+                   "请稍后再试，或在账户菜单填入你自己的 DeepSeek API Key 继续使用。",
+            headers={"Retry-After": "600"})
+    return None
+
+
+@app.get("/budget")
+def budget_status() -> dict:
+    """Public hourly try-out budget status (no secrets)."""
+    return usage_budget.status()
+
+
 @app.post("/research/report")
-def research_report(req: ReportRequest, deepseek_key: DeepSeekKey = None) -> dict:
+def research_report(req: ReportRequest, request: Request, deepseek_key: DeepSeekKey = None) -> dict:
     result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode, force_research=True,
                        excluded_sources=[source.model_dump() for source in req.excluded_sources],
-                       llm=_personal_deepseek(deepseek_key))
+                       llm=_model_llm(request, deepseek_key))
     if result["route"] == "multiagent":
         return {**result["report"], "run_id": result["run_id"], "route": result["route"]}
     return result
@@ -780,7 +830,7 @@ def _pending_review(req: DecisionRequest) -> dict:
 
 
 @app.post("/research/decision", response_model_exclude_none=True)
-def research_decision(req: DecisionRequest, deepseek_key: DeepSeekKey = None) -> Annotated[
+def research_decision(req: DecisionRequest, request: Request, deepseek_key: DeepSeekKey = None) -> Annotated[
     DecisionResponse | SelectionRequiredResponse, Field(discriminator="status")
 ]:
     feedback = req.feedback.strip() if req.feedback is not None else None
@@ -796,7 +846,7 @@ def research_decision(req: DecisionRequest, deepseek_key: DeepSeekKey = None) ->
     classified = None
     if req.decision is None and not _redis.get(selection_key):
         try:
-            llm = _personal_deepseek(deepseek_key) or make_llm("router")
+            llm = _model_llm(request, deepseek_key) or make_llm("router")
             classified = classify_feedback(feedback, state.get("outline", []), llm)
         except ValueError:
             pass
