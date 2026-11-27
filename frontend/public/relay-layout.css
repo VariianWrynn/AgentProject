@@ -25,12 +25,23 @@
 
 .evidence-panel {
   top: var(--relay-evidence-top, var(--relay-top));
-  bottom: auto;
+  bottom: 92px;
   transform: none;
-  max-height: calc(100dvh - var(--relay-evidence-top, var(--relay-top)) - 82px);
+  max-height: none;
+}
+
+.evidence-panel .source-section.accepted:not(.collapsed) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.evidence-panel .source-section.trash:not(.collapsed) {
+  min-height: 0;
 }
 
 .evidence-panel.relay-evidence-collapsed {
+  bottom: auto;
   height: var(--relay-evidence-height, 112px);
   max-height: none;
   justify-content: center;
@@ -123,8 +134,28 @@
 
   .evidence-panel {
     top: var(--relay-toolbar-top, 135px);
-    max-height: calc(100dvh - var(--relay-toolbar-top, 135px) - 82px);
   }
+}
+
+.chat-bar [data-action="uploadAttachment"] {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent-light);
+}
+
+.chat-bar [data-action="uploadAttachment"]:hover {
+  background: var(--hover);
+}
+
+#relay-attachments {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .evidence-counts {

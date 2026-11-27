@@ -37,14 +37,15 @@ def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
     extra = []
     seen_sources = set()
     for item in unique:
-        source = item.get("url") or item.get("title") or item.get("snippet")
+        source = (item["chunk_id"] if item.get("source_type") == "upload"
+                  else item.get("url") or item.get("title") or item.get("snippet"))
         if source in seen_sources:
             extra.append(item)
         else:
             seen_sources.add(source)
             primary.append(item)
     for i, item in enumerate((primary + extra)[:max_items]):
-        if item.get("source_type") == "rag" and item.get("chunk_id") is not None:
+        if item.get("source_type") in {"rag", "upload"} and item.get("chunk_id") is not None:
             cid = item["chunk_id"]
         else:
             cid = "web:" + hashlib.md5((item.get("url") or "").encode("utf-8")).hexdigest()[:8]
@@ -54,6 +55,7 @@ def freeze_evidence(unique: list[dict], max_items: int = 24) -> dict:
             "source":   item.get("title") or item.get("url", ""),
             "url":      item.get("url", ""),
             "source_type": item.get("source_type", "web"),
+            **({"expires_at": item["expires_at"]} if item.get("source_type") == "upload" else {}),
         }
     return evidence
 
@@ -194,7 +196,7 @@ def needs_data_analysis(state: dict) -> bool:
                for clause in clauses for request in _LOCAL_DATA_REQUESTS)
 
 
-def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
+def run(state: dict, llm, tools: MCPClient | None = None, *, attachment_sources: list[dict] | None = None) -> dict:
     """
     Run DeepScout parallel search.
 
@@ -206,6 +208,8 @@ def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
         partial state update
     """
     tools = tools or MCPClient()
+    exclusions = state.get("excluded_sources", [])
+    uploads = [item for item in attachment_sources or [] if not is_excluded(item, exclusions)]
     all_questions = _search_queries(state)
 
     # demo_mode: limit to 1 question for faster completion (ChiefArchitect already sends 1)
@@ -222,11 +226,14 @@ def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         raw = loop.run_until_complete(_search_all(all_questions, tools))
+    except MCPCallError:
+        if not uploads:
+            raise
+        raw = []
     finally:
         loop.close()
 
     elapsed = time.time() - t0
-    exclusions = state.get("excluded_sources", [])
     unique = _deduplicate([item for item in raw if not is_excluded(item, exclusions)])
 
     # Score and sort
@@ -253,15 +260,20 @@ def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
         f"{len(facts)} facts | {elapsed:.1f}s"
     )
 
+    evidence_sources = uploads + unique
     update = {
-        "raw_sources": unique,
+        "raw_sources": evidence_sources,
         "facts":       facts,
         "phase":       "writing",
         "pending_queries": [],   # clear after processing
     }
     analysis = {"data_points": [], "charts_data": []}
     if needs_data_analysis(state):
-        analysis = tools.call("data_analysis", state["question"], session_id="deep_scout")
+        try:
+            analysis = tools.call("data_analysis", state["question"], session_id="deep_scout")
+        except MCPCallError:
+            if not uploads:
+                raise
     points = analysis["data_points"]
     retained = [point for point in points if not is_excluded({
         "source_type": "sql", "sql": point.get("sql", ""),
@@ -270,7 +282,7 @@ def run(state: dict, llm, tools: MCPClient | None = None) -> dict:
     if len(retained) != len(points):
         analysis = {**analysis, "data_points": retained, "charts_data": []}
     update.update(analysis)
-    evidence = build_evidence({"evidence_frozen": freeze_evidence(unique),
+    evidence = build_evidence({"evidence_frozen": freeze_evidence(evidence_sources),
                                "data_points": analysis["data_points"]})
     update["evidence_frozen"] = evidence
     return update

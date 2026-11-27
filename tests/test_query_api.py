@@ -193,6 +193,10 @@ def test_exhausted_evidence_returns_422_without_react(api, scripted_graph):
     assert response.status_code == 422
     events = event_data(client.get(f"/research/runs/{response.json()['detail']['run_id']}/events"))
     assert not any(e["node"] == "critic_master" for e in events)
+    checks = [e["payload"] for e in events if e["type"] == "evidence_checked"]
+    assert [check["status"] for check in checks] == ["rewrite", "rewrite", "blocked"]
+    assert checks[-1]["rewrites"] == 2
+    assert checks[-1]["violations"][0]["sentence"] == "[E99]"
     assert events[-1]["type"] == "error"
 
 
@@ -443,6 +447,84 @@ def test_report_applies_exclusions_to_only_the_submitted_run(api, scripted_graph
         assert len(excluded) == count
         if count:
             assert excluded[0]["location"] == rule["location"]
+
+
+def test_attachment_is_private_citable_evidence_until_deleted(api, scripted_graph, monkeypatch):
+    from backend.agents import deep_scout
+    from backend.agents.lead_writer import run as write
+
+    module, client, *_ = api
+    del scripted_graph["deep_scout"]
+    monkeypatch.setattr(module._lga, "_llm", lambda _: object())
+    monkeypatch.setattr(deep_scout, "needs_data_analysis", lambda _: False)
+
+    async def search(*_):
+        return []
+
+    monkeypatch.setattr(deep_scout, "_search_all", search)
+    phrase = "UNPUBLISHED DOCUMENT: Capacity was 123.4 MW."
+    uploaded = client.post("/research/attachments", params={"filename": "capacity.markdown"},
+                           content=phrase.encode())
+    assert uploaded.status_code == 201
+    upload = uploaded.json()
+    assert upload["title"] == "capacity.markdown"
+    assert set(upload) == {"id", "source_id", "title", "expires_at"}
+    assert client.get("/research/attachments", headers={"X-Relay-Attachment": upload["id"]}).status_code == 405
+
+    class DraftModel:
+        def chat(self, system, user, **kwargs):
+            if phrase in user:
+                return "Capacity was 123.4 MW [E1]."
+            return "No available evidence."
+
+    scripted_graph["lead_writer"] = lambda state: write(state, DraftModel())
+    request = {"question": "Compare capacity", "demo_mode": True, "attachment_ids": [upload["id"]]}
+    response = client.post("/research/report", json=request)
+    assert response.status_code == 200, response.text
+    assert "123.4 MW [E1]" in response.json()["summary"]
+    reference = response.json()["references"][0]
+    assert reference["title"] == "capacity.markdown" and reference["url"] == reference["text"] == ""
+    assert "saved_path" not in response.json()
+    trace = client.get(f"/research/runs/{response.json()['run_id']}/state")
+    item = trace.json()["state"]["evidence_frozen"]["E1"]
+    assert item["source_type"] == "upload" and item["chunk_id"] == upload["source_id"]
+    assert item["url"] == ""
+    assert phrase not in trace.text and upload["id"] not in trace.text
+
+    excluded = client.post("/research/report", json={**request,
+        "excluded_sources": [{"chunk_id": upload["source_id"]}]})
+    assert excluded.status_code == 200
+    assert excluded.json()["summary"] == "No available evidence."
+
+    forged = client.post("/research/report", json={**request, "attachment_ids": ["f" * 32]})
+    assert forged.status_code == 410
+    assert client.delete("/research/attachments", headers={"X-Relay-Attachment": upload["id"]}).status_code == 204
+    assert client.post("/research/report", json=request).status_code == 410
+
+
+def test_upload_enforces_pdf_content_size_and_expiry(api, monkeypatch):
+    import pymupdf
+    from backend import research_attachments as attachments
+
+    module, client, *_ = api
+    now = 1000
+    monkeypatch.setattr(attachments, "monotonic", lambda: now)
+    store = attachments.AttachmentStore()
+    monkeypatch.setattr(module, "_attachments", store)
+    oversized = client.post("/research/attachments", params={"filename": "too-big.txt"},
+                            content=b"a" * (attachments.MAX_UPLOAD_BYTES + 1))
+    assert oversized.status_code == 413
+    invalid = client.post("/research/attachments", params={"filename": "fake.pdf"}, content=b"plain text")
+    assert invalid.status_code == 422
+    with pymupdf.open() as pdf:
+        pdf.new_page().insert_text((72, 72), "Real PDF attachment evidence")
+        response = client.post("/research/attachments", params={"filename": "research.pdf"}, content=pdf.tobytes())
+    assert response.status_code == 201
+    item = response.json()
+    now += 7199
+    assert store.resolve([item["id"]])[0].text == "Real PDF attachment evidence"
+    now += 1
+    assert client.post("/research/report", json={"question": "Read", "attachment_ids": [item["id"]]}).status_code == 410
 
 
 def test_superseded_run_exits_before_report_publication(api, scripted_graph):

@@ -21,6 +21,8 @@ def _location(value: str) -> str:
 
 
 def is_excluded(item: dict, exclusions: list[dict]) -> bool:
+    if item.get("source_type") == "upload":
+        return any(rule.get("chunk_id") == item["chunk_id"] for rule in exclusions)
     if item.get("source_type") == "sql":
         text = str(item.get("text", ""))
         sql = " ".join(item.get("sql", "").split())
@@ -29,7 +31,7 @@ def is_excluded(item: dict, exclusions: list[dict]) -> bool:
     location = _location(item.get("url") or item.get("source") or item.get("title") or "")
     chunk = item.get("chunk_id")
     return any(
-        not rule["sql"] and (
+        not rule["sql"] and not rule.get("chunk_id", "").startswith("upload:") and (
             (rule["location"] and location == _location(rule["location"]))
             or (rule["chunk_id"] and chunk is not None and str(chunk) == rule["chunk_id"])
         )
