@@ -8,8 +8,10 @@ import requests
 SEARCH_URL = "https://api.deepseek.com/v1/tools/search"
 
 
-def _api_key() -> str:
-    key = os.getenv("DEEPSEEK_API_KEY", "")
+def _api_key(preferred: str | None = None) -> str:
+    # A visitor's personal key takes precedence so search bills their account;
+    # admin/local runs fall back to the server credential.
+    key = (preferred or "").strip() or os.getenv("DEEPSEEK_API_KEY", "")
     if not key and "api.deepseek.com" in os.getenv("OPENAI_BASE_URL", ""):
         key = os.getenv("OPENAI_API_KEY", "")
     if not key:
@@ -17,11 +19,11 @@ def _api_key() -> str:
     return key
 
 
-def search(query: str, count: int = 10) -> list[dict]:
+def search(query: str, count: int = 10, api_key: str | None = None) -> list[dict]:
     """Return cited web results with page text when Search can provide it."""
     response = requests.post(
         SEARCH_URL,
-        headers={"Authorization": f"Bearer {_api_key()}",
+        headers={"Authorization": f"Bearer {_api_key(api_key)}",
                  "Content-Type": "application/json"},
         json={"query": query.strip()[:128], "count": count, "need_content": True},
         timeout=30,

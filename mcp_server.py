@@ -25,7 +25,7 @@ import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Annotated, Any
 
 # ── CLI args (parsed before heavy imports) ────────────────────────────────────
 _parser = argparse.ArgumentParser(
@@ -122,7 +122,7 @@ if _args.kill:
     _free_port(_args.port)
 
 import redis
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 import os
@@ -261,11 +261,14 @@ def rag_search(req: ToolRequest) -> ToolResponse:
 
 
 @app.post("/tools/web_search", response_model=ToolResponse)
-def web_search(req: ToolRequest) -> ToolResponse:
+def web_search(req: ToolRequest,
+               deepseek_key: Annotated[str | None, Header(alias="X-DeepSeek-Api-Key")] = None) -> ToolResponse:
     # NOT cached — results are time-sensitive
     t0 = time.time()
     try:
-        result = deepseek_search(req.query)
+        # Personal key (from the API server) bills the visitor's account; without
+        # it the tool falls back to the server DEEPSEEK_API_KEY (admin/local runs).
+        result = deepseek_search(req.query, api_key=deepseek_key)
         latency = (time.time() - t0) * 1000
         _log("web_search", req.query, latency, cached=False)
         return ToolResponse(tool="web_search", result=result, latency_ms=latency)

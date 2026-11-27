@@ -132,6 +132,27 @@ def test_at_threshold_with_hitl_off_researches_instead_of_skipping(monkeypatch):
     assert replay_state(events) == state
 
 
+def test_deep_scout_forwards_personal_key_to_search_tools(monkeypatch):
+    captured = {}
+
+    def fake_run(state, llm, tools=None):
+        captured["api_key"] = tools.api_key
+        return {}
+
+    monkeypatch.setattr("backend.agents.deep_scout.run", fake_run)
+    monkeypatch.setattr(research, "_llm", lambda role: object())
+
+    class PersonalLLM:
+        api_key = "visitor-personal-key"
+
+    research.deep_scout_node({}, events=None, llm=PersonalLLM())
+    assert captured["api_key"] == "visitor-personal-key"
+
+    # Admin/local run (llm=None) forwards no personal key; search falls back to env.
+    research.deep_scout_node({}, events=None, llm=None)
+    assert captured["api_key"] is None
+
+
 def test_human_rejection_uses_same_two_research_rounds(monkeypatch):
     monkeypatch.setenv("HITL_ENABLED", "on")
     scenario = Scenario(score=0.4, decisions=["reject", "reject"])

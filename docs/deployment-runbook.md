@@ -52,7 +52,7 @@ dc config --quiet
 | 配置 | 填写内容 |
 | --- | --- |
 | `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`LLM_MODEL` | 服务端的 OpenAI 兼容模型端点、密钥和可用模型。角色配置可以覆盖模型或密钥 |
-| `DEEPSEEK_API_KEY` | 具备网页搜索权限的服务端凭据。模型调用必须使用 RELAY 界面的个人 Key（或管理令牌），匿名请求返回 401 |
+| `DEEPSEEK_API_KEY` | 服务端回退凭据，仅供管理/本地运行的模型调用与网页搜索。访客的模型调用与网页搜索都用其个人 Key（或管理令牌），匿名请求返回 401；搜索按所用 Key 的账号计费，无需单独开通权限 |
 | `DEPLOY_ADMIN_TOKEN` | 独立生成的长随机值 |
 | `MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD` | 对象存储凭据。已有部署沿用现有凭据，除非另行安排轮换 |
 | `DEPLOY_BIND`、`DEPLOY_PORT` | 私有验收用 `127.0.0.1` 和 `8080`。端口被占用时选一个空闲本地端口 |

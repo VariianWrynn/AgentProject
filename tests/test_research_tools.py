@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -31,6 +32,34 @@ def test_client_uses_configured_tool_service(monkeypatch):
 
     MCPClient(transport=transport).call("rag_search", "question")
     assert requests_seen == ["http://mcp-server:8002/tools/rag_search"]
+
+
+def test_personal_key_forwarded_only_to_web_search():
+    seen = []
+
+    def transport(url, **kwargs):
+        seen.append((url, kwargs))
+        return Response({"result": []})
+
+    client = MCPClient(transport=transport, api_key="visitor-personal-key")
+    client.call("web_search", "question")
+    client.call("rag_search", "question")
+    web_kwargs = seen[0][1]
+    rag_kwargs = seen[1][1]
+    assert web_kwargs["headers"] == {"X-DeepSeek-Api-Key": "visitor-personal-key"}
+    assert "headers" not in rag_kwargs
+    assert "visitor-personal-key" not in json.dumps(rag_kwargs)
+
+
+def test_no_personal_key_sends_no_search_header():
+    seen = []
+
+    def transport(url, **kwargs):
+        seen.append(kwargs)
+        return Response({"result": []})
+
+    MCPClient(transport=transport).call("web_search", "question")
+    assert "headers" not in seen[0]
 
 
 def test_mcp_lifecycle_and_timeout_are_safe_for_parallel_calls():

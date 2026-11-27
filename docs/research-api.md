@@ -35,7 +35,9 @@ RELAY 工作台由前端构建发布到 `/relay.html`。部署后从 nginx 入�
 
 使用 Compose 和单个模型 API Key 时，将该密钥同时写入部署环境的 `OPENAI_API_KEY` 和 `LLM_KEY_1`，供没有配置独立密钥的角色使用。
 
-模型调用鉴权：设置 `DEPLOY_ADMIN_TOKEN` 后（部署必填），`/query`、`/chat`、`/research/report` 以及 `/research/decision` 的自然语言反馈分类必须携带 `X-DeepSeek-Api-Key`（访客个人 Key，请求头直传、不落盘）或 `Authorization: Bearer <管理令牌>`，匿名请求返回 HTTP 401。服务端模型密钥只服务管理请求；网页搜索仍使用服务端 `DEEPSEEK_API_KEY`。审核的四选一决定不调用模型，无需个人 Key。未设置管理令牌的本地开发环境沿用服务端密钥。RELAY 在开始真实研究前强制弹出个人 Key 设置；内部工作台把个人 Key 保存在浏览器 sessionStorage。
+模型调用鉴权：设置 `DEPLOY_ADMIN_TOKEN` 后（部署必填），`/query`、`/chat`、`/research/report` 以及 `/research/decision` 的自然语言反馈分类必须携带 `X-DeepSeek-Api-Key`（访客个人 Key，请求头直传、不落盘）或 `Authorization: Bearer <管理令牌>`，匿名请求返回 HTTP 401。服务端模型密钥只服务管理请求。审核的四选一决定不调用模型，无需个人 Key。未设置管理令牌的本地开发环境沿用服务端密钥。RELAY 在开始真实研究前强制弹出个人 Key 设置；内部工作台把个人 Key 保存在浏览器 sessionStorage。
+
+网页搜索计费跟随同一把个人 Key：访客研究的 `web_search` 由 API 服务把个人 Key 经 `X-DeepSeek-Api-Key` 头转给 MCP 工具（`mcp_client` 仅对 `web_search` 附带该头），搜索按所用 Key 对应账号计费，因此访客的搜索开销也落在其自身账户，服务端 `DEEPSEEK_API_KEY` 仅供管理/本地运行回退使用。DeepSeek 搜索无需单独开通权限，任意有效且有余额的 Key 即可调用（401=Key 无效，402=余额不足，429=账号级限速）。
 
 RELAY 的真实模式从项目标题和研究背景生成研究请求。画布按运行事件更新，人工审核接收自然语言或四选一决定。工具、报告和证据引用使用本次运行的数据。暂停表示停止浏览器监听，继续会订阅原运行。工作台的资料排除和恢复用于本地列表筛选。
 

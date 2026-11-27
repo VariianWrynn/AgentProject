@@ -72,7 +72,11 @@ def chief_architect_node(state, llm=None):
 def deep_scout_node(state, events=None, llm=None):
     from backend.agents.deep_scout import run
     from mcp_client import MCPClient
-    tools = MCPClient(emit=events.emit if events else None)
+    # A personal-key run carries its key on the LLM client; forward it so web
+    # search bills the visitor's account. Admin/local runs (llm=None) fall back
+    # to the server DEEPSEEK_API_KEY inside the MCP tool.
+    tools = MCPClient(emit=events.emit if events else None,
+                      api_key=getattr(llm, "api_key", None))
     return run(state, llm or _llm("deep_scout"), tools=tools)
 
 

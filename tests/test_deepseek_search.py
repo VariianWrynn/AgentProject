@@ -44,3 +44,37 @@ def test_search_does_not_use_unrelated_openai_key(monkeypatch):
     monkeypatch.setattr(deepseek_search.requests, "post", lambda *_a, **_k: pytest.fail("network"))
     with pytest.raises(ValueError, match="DEEPSEEK_API_KEY"):
         deepseek_search.search("query")
+
+
+def test_search_prefers_personal_key_over_server_env(monkeypatch):
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"results": []}
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "server-key")
+    monkeypatch.setattr(deepseek_search.requests, "post",
+                        lambda url, **kwargs: calls.append(kwargs) or Response())
+    deepseek_search.search("query", api_key="visitor-personal-key")
+    assert calls[0]["headers"]["Authorization"] == "Bearer visitor-personal-key"
+
+
+def test_search_without_personal_key_falls_back_to_server_env(monkeypatch):
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"results": []}
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "server-key")
+    monkeypatch.setattr(deepseek_search.requests, "post",
+                        lambda url, **kwargs: calls.append(kwargs) or Response())
+    deepseek_search.search("query")
+    assert calls[0]["headers"]["Authorization"] == "Bearer server-key"

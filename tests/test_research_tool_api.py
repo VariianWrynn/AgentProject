@@ -96,3 +96,33 @@ def test_rag_cache_separates_model_collection_and_result_count(monkeypatch):
             assert rag.calls == 4
     finally:
         sys.modules.pop("mcp_server", None)
+
+
+def test_web_search_forwards_personal_key_and_falls_back(monkeypatch):
+    import redis
+
+    cache = types.SimpleNamespace(get=lambda key: None, setex=lambda *args: None)
+    monkeypatch.setitem(sys.modules, "rag_pipeline", types.SimpleNamespace(RAGPipeline=lambda: object()))
+    monkeypatch.setitem(sys.modules, "backend.tools.text2sql_tool", types.SimpleNamespace(Text2SQLTool=lambda: object()))
+    monkeypatch.setattr(redis, "Redis", lambda *args, **kwargs: cache)
+    stdout, stderr = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+    try:
+        module = importlib.import_module("mcp_server")
+    finally:
+        sys.stdout, sys.stderr = stdout, stderr
+    try:
+        seen = []
+
+        def fake_search(query, count=10, api_key=None):
+            seen.append(api_key)
+            return []
+
+        monkeypatch.setattr(module, "deepseek_search", fake_search)
+        with TestClient(module.app) as client:
+            client.post("/tools/web_search", json={"query": "q"},
+                        headers={"X-DeepSeek-Api-Key": "visitor-personal-key"})
+            client.post("/tools/web_search", json={"query": "q"})
+        assert seen == ["visitor-personal-key", None]
+    finally:
+        sys.modules.pop("mcp_server", None)

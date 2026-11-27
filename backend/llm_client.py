@@ -56,6 +56,9 @@ class LLMClient:
             max_retries=int(os.getenv("LLM_MAX_RETRIES", "1")),  # one SDK retry; LeadWriter has its own loop on top
         )
         self.model = _model
+        # Exposed so the same personal key can also pay for web search (Option A):
+        # visitors' search calls bill their own account, not the server key.
+        self.api_key = _key
 
     def chat_json(self, system: str, user: str, temperature: float = 0.2) -> dict:
         """Call LLM expecting a JSON response. Falls back to regex extraction."""

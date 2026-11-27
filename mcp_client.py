@@ -20,22 +20,25 @@ class MCPClient:
 
     def __init__(self, base_url: str | None = None, *,
                  emit: Callable | None = None, transport: Callable | None = None,
-                 node: str = "deep_scout") -> None:
+                 node: str = "deep_scout", api_key: str | None = None) -> None:
         self.base_url = (base_url or os.getenv("MCP_URL", "http://localhost:8002")).rstrip("/")
         self.emit = emit
         self.transport = transport or requests.post
         self.node = node
+        self.api_key = api_key
 
     def call(self, tool: str, query: str, params: dict | None = None,
              session_id: str = "default") -> dict | list:
         if self.emit:
             self.emit("tool_started", node=self.node, tool=tool)
         try:
-            response = self.transport(
-                f"{self.base_url}/tools/{tool}",
-                json={"query": query, "params": params or {}, "session_id": session_id},
-                timeout=self.TIMEOUTS.get(tool, 30),
-            )
+            kwargs = {"json": {"query": query, "params": params or {}, "session_id": session_id},
+                      "timeout": self.TIMEOUTS.get(tool, 30)}
+            # Forward the visitor's personal key only to web search so it bills
+            # their own account; other tools never receive the secret.
+            if tool == "web_search" and self.api_key:
+                kwargs["headers"] = {"X-DeepSeek-Api-Key": self.api_key}
+            response = self.transport(f"{self.base_url}/tools/{tool}", **kwargs)
             response.raise_for_status()
             data = response.json()
             if not isinstance(data, dict) or "result" not in data:
