@@ -29,6 +29,7 @@
   const revisionTimers = new WeakMap();
   const citation = /\[((?:E|D)\d+)\]/g;
   const capacityMessage = '当前两个并行名额均在使用，请稍后重试。';
+  const maxAttachments = 6;
   const scoutToolLogs = new Set(Object.values(tools).filter(tool => tool.stage === 1)
     .flatMap(tool => ['开始', '完成', '失败'].map(status => tool.name + '：' + status)));
   const localPage = /^https?:$/.test(location.protocol);
@@ -39,8 +40,14 @@
     (location.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname));
 
   const original = { stageActivity, stageTasks, stageSpecific, outputSignature, nodeState, sendChat, selectProject,
-    saveSettingsDialog, confirmReset, exportReport, previewSource, renderAll, stopRun, deleteProject, discardSource, restoreSource };
+    saveSettingsDialog, confirmReset, exportReport, previewSource, renderAll, stopRun, deleteProject,
+    discardSource, restoreSource, clearTrash };
   const chat = document.getElementById('chatInput');
+  const attachmentInput = document.getElementById('relay-attachment-input');
+  const attachmentButton = document.querySelector('[data-action="uploadAttachment"]');
+  const attachmentStatus = document.getElementById('relay-attachments');
+  let attachmentUploadPending = false;
+  let attachmentExpiryTimer;
   const panel = document.getElementById('evidencePanel');
   const evidenceToggle = document.getElementById('relay-evidence-toggle');
   const projectHead = document.getElementById('projectHead');
@@ -96,13 +103,14 @@
     original.renderAll(focus);
     syncEvidenceCounts(proj());
     updateChatPrompt();
+    updateAttachmentStatus();
   };
 
   function context(project) {
     let run = saved.get(project);
     if (!run && project.relayRun) {
       run = { cursor: 0, snapshot: {}, pending: new Map(), tools: {}, review: null, report: project.report,
-        outputVersions: {}, restoring: Boolean(project.relayRun.id),
+        outputVersions: {}, guardChecks: [], restoring: Boolean(project.relayRun.id),
         terminal: Boolean(project.relayRun.terminal), info: project.relayRun };
       saved.set(project, run);
     }
@@ -199,9 +207,31 @@
     project.progress = Math.min(96, Math.round(project.done.length * 100 / STAGES.length));
   }
 
+  const attachmentSourceId = sourceId => 'relay:upload:' + sourceId;
+  const activeAttachments = project => Object.values(project.attachments || {})
+    .filter(item => Date.parse(item.expires_at) > Date.now());
+
+  function syncAttachmentSources(project, labels) {
+    const previous = new Map(project.sources.filter(item => item.attachmentSourceId)
+      .map(item => [item.attachmentSourceId, item.label]));
+    const items = activeAttachments(project).map(attachment => {
+      const label = (labels || previous).get(attachment.source_id);
+      return { id: attachmentSourceId(attachment.source_id), attachmentSourceId: attachment.source_id,
+        label, relaySource: true, title: attachment.title, publisher: '用户上传', date: '研究附件',
+        kind: '上传文件', url: '', tags: label ? [label] : [], abstract: '',
+        sourceType: 'upload', expiresAt: attachment.expires_at, stage: 1, status: attachment.status };
+    });
+    project.sources = [...items, ...project.sources.filter(item => !item.attachmentSourceId)];
+    const run = context(project);
+    if (run) reviseOutput(run, 1);
+  }
+
   function setEvidence(project, evidence) {
     const previous = new Map(project.sources.filter(item => item.relaySource).map(item => [item.id, item]));
-    const items = Object.entries(evidence || {}).map(([label, item]) => {
+    const entries = Object.entries(evidence || {});
+    const labels = new Map(entries.filter(([, item]) => item.source_type === 'upload')
+      .map(([label, item]) => [item.chunk_id, label]));
+    const items = entries.filter(([, item]) => item.source_type !== 'upload').map(([label, item]) => {
       const identity = item.chunk_id ?? item.url ?? item.source ?? label;
       const id = 'relay:' + String(item.source_type || 'evidence') + ':' + String(identity) + ':' + (item.source || '');
       const old = previous.get(id);
@@ -213,7 +243,9 @@
     });
     const ids = new Set(items.map(item => item.id));
     project.sources = [...items, ...project.sources.filter(item =>
-      !item.relayDemo && !ids.has(item.id) && (!item.relaySource || item.status === 'discarded'))];
+      !item.attachmentSourceId && !item.relayDemo && !ids.has(item.id) &&
+      (!item.relaySource || item.status === 'discarded'))];
+    syncAttachmentSources(project, labels);
   }
 
   function applyState(project, run, delta) {
@@ -224,6 +256,145 @@
     }
     if (Object.hasOwn(delta, 'evidence_frozen')) setEvidence(project, delta.evidence_frozen);
   }
+
+  function updateAttachmentStatus() {
+    if (attachmentButton) attachmentButton.disabled = attachmentUploadPending;
+    if (!attachmentStatus) return;
+    const count = activeAttachments(proj()).filter(item => item.status === 'accepted').length;
+    attachmentStatus.textContent = attachmentUploadPending ? '正在上传附件…' : count ? count + ' 个附件' : '';
+    attachmentStatus.hidden = !attachmentStatus.textContent;
+  }
+
+  function purgeExpiredAttachments() {
+    clearTimeout(attachmentExpiryTimer);
+    const now = Date.now();
+    let nextExpiry = Infinity;
+    let changed = false;
+    for (const project of state.projects) {
+      let expired = false;
+      for (const [sourceId, item] of Object.entries(project.attachments || {})) {
+        const expires = Date.parse(item.expires_at);
+        if (expires > now) {
+          nextExpiry = Math.min(nextExpiry, expires);
+        } else {
+          delete project.attachments[sourceId];
+          expired = true;
+        }
+      }
+      if (expired) {
+        syncAttachmentSources(project);
+        changed = true;
+      }
+    }
+    if (changed) {
+      renderAll();
+      save();
+    }
+    if (Number.isFinite(nextExpiry)) {
+      attachmentExpiryTimer = setTimeout(purgeExpiredAttachments, Math.max(0, nextExpiry - Date.now()));
+    }
+  }
+
+  async function uploadAttachments(files) {
+    if (!files.length || attachmentUploadPending) return;
+    const base = apiBase();
+    let project = proj().id ? proj() : null;
+    let added = 0;
+    attachmentUploadPending = true;
+    updateAttachmentStatus();
+    try {
+      for (const file of files) {
+        if (activeAttachments(project || {}).filter(item => item.status === 'accepted').length >= maxAttachments) {
+          toast('每次研究最多使用 ' + maxAttachments + ' 个附件。');
+          break;
+        }
+        try {
+          const query = new URLSearchParams({ filename: file.name });
+          const item = await json(base + '/research/attachments?' + query, { method: 'POST', body: file });
+          if (project && !state.projects.includes(project)) {
+            await removeStoredAttachment({ ...item, base });
+            break;
+          }
+          if (!project) {
+            project = createProject('新研究项目', '新研究项目', '待补充研究问题。');
+            project.attachmentDraft = true;
+          }
+          const { id, source_id, title, expires_at } = item;
+          (project.attachments ||= {})[source_id] = { id, source_id, title, expires_at, base, status: 'accepted' };
+          added++;
+        } catch (error) {
+          toast(file.name + ' 上传失败：' + error.message);
+        }
+      }
+      if (added && state.projects.includes(project)) {
+        syncAttachmentSources(project);
+        purgeExpiredAttachments();
+        reviseForSource(project);
+        renderAll();
+        save();
+        toast('已添加 ' + added + ' 个研究附件，上传后保留 2 小时。');
+      }
+    } finally {
+      attachmentUploadPending = false;
+      updateAttachmentStatus();
+    }
+  }
+
+  async function removeStoredAttachment(item) {
+    const response = await fetch(item.base + '/research/attachments', {
+      method: 'DELETE',
+      headers: { 'X-Relay-Attachment': item.id },
+    });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+  }
+
+  async function deleteAttachment(sourceId) {
+    const project = proj();
+    const item = project.attachments?.[sourceId];
+    if (!item) return;
+    try {
+      await removeStoredAttachment(item);
+      delete project.attachments[sourceId];
+      syncAttachmentSources(project);
+      if (item.status === 'accepted') reviseForSource(project);
+      if (selected(project)) {
+        closeModal();
+        renderAll();
+        toast('附件已删除。');
+      }
+      purgeExpiredAttachments();
+      save();
+    } catch (error) {
+      toast('附件删除失败：' + error.message);
+    }
+  }
+
+  async function clearDiscardedAttachments(project) {
+    const discarded = Object.values(project.attachments || {}).filter(item => item.status === 'discarded');
+    const results = await Promise.allSettled(discarded.map(removeStoredAttachment));
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') delete project.attachments[discarded[index].source_id];
+    });
+    project.sources = project.sources.filter(item => item.status === 'accepted' || item.attachmentSourceId);
+    syncAttachmentSources(project);
+    if (selected(project)) {
+      closeModal();
+      renderAll();
+      toast(results.some(result => result.status === 'rejected') ? '部分附件无法删除，请重试。' : '废弃库已清空');
+    }
+    purgeExpiredAttachments();
+    save();
+  }
+
+  clearTrash = () => {
+    const project = proj();
+    const count = Object.values(project.attachments || {}).filter(item => item.status === 'discarded').length;
+    if (state.mode !== 'real' || !count) return original.clearTrash();
+    openModal(modalHeader('清空废弃库', 'trash') + '<p class="modal-desc">将清空废弃库，并永久删除其中 ' +
+      count + ' 个上传文件。已保存的其他排除规则仍会生效。</p><div class="modal-actions">' +
+      '<button class="btn" data-action="closeModal">取消</button>' +
+      '<button class="btn danger" data-action="confirmClearTrash">永久清空</button></div>');
+  };
 
   function note(project, stage, message, symbol) {
     const start = (project.logs[stage] || []).length;
@@ -271,12 +442,20 @@
         break;
       case 'node_started':
         run.activeNode = event.node;
+        if (event.node === 'evidence_gate') {
+          run.guardChecking = true;
+          reviseOutput(run, 4);
+        }
         if (project.phase !== 'awaiting') project.phase = 'running';
         step(project, stage);
         if (Number.isInteger(stage)) note(project, stage, '开始执行 ' + event.node, 'play');
         break;
       case 'node_completed':
         if (run.activeNode === event.node) run.activeNode = null;
+        if (event.node === 'evidence_gate' && run.guardChecking) {
+          run.guardChecking = false;
+          reviseOutput(run, 4);
+        }
         run.lastCompletedNode = event.node;
         if (event.node !== 'lead_writer' && event.node !== 'evidence_gate' && event.node !== 'router') {
           completeStep(project, stage);
@@ -285,6 +464,15 @@
         break;
       case 'state_updated':
         if (payload.delta) applyState(project, run, payload.delta);
+        if (event.node === 'evidence_gate' && !run.guardEvents &&
+            typeof payload.delta?.gate_passed === 'boolean') {
+          run.guardChecking = false;
+          const { gate_passed: passed, guard_stats: stats, guard_feedback: violations,
+            guard_rewrites: rewrites } = payload.delta;
+          run.guardChecks.push({ status: passed ? 'passed' : 'rewrite', stats, violations,
+            rewrites: Math.max(0, (rewrites || 0) - Number(!passed)),
+            iteration: project.iteration });
+        }
         if (event.node === 'critic_master') run.criticQueries = payload.delta?.pending_queries || [];
         if (event.node === 'deep_scout') changed.add(2);
         if (Number.isInteger(stage)) reviseOutput(run, ...changed);
@@ -301,6 +489,13 @@
           delete run.info.selection;
           if (project.phase === 'awaiting') project.phase = 'running';
         }
+        break;
+      case 'evidence_checked':
+        run.guardEvents = true;
+        run.guardChecking = false;
+        run.guardChecks.push({ ...payload, iteration: project.iteration });
+        reviseOutput(run, 4);
+        changed.add(4);
         break;
       case 'tool_started':
       case 'tool_completed':
@@ -365,6 +560,12 @@
         break;
       case 'node_failed':
         if (run.activeNode === event.node) run.activeNode = null;
+        if (event.node === 'evidence_gate') run.guardChecking = false;
+        if (event.node === 'evidence_gate' && payload.error_type === 'EvidenceRejected' &&
+            run.guardChecks.at(-1)?.status !== 'blocked') {
+          run.guardChecks.push({ status: 'blocked', iteration: project.iteration });
+          reviseOutput(run, 4);
+        }
         if (Number.isInteger(stage)) note(project, stage, '执行失败：' + (payload.error_type || event.node));
         break;
       case 'done':
@@ -507,6 +708,8 @@
       const report = await post(run.info.base + '/research/report', {
         question, session_id: run.info.sessionId, demo_mode: false,
         excluded_sources: Object.values(project.excludedSources || {}),
+        attachment_ids: activeAttachments(project).filter(item => item.status === 'accepted' &&
+          item.base === run.info.base).map(item => item.id),
       }, personalKey);
       if (saved.get(project) !== run || !state.projects.includes(project)) return;
       run.report = report;
@@ -565,12 +768,14 @@
 
   runReal = () => {
     const project = proj();
+    if (project.attachmentDraft) return toast('请输入研究问题，再启动研究。');
     if (!project.id || project.revisionQuestion) return;
     const existing = context(project);
     if (existing && !existing.terminal) {
       void changeRunControl(project, existing);
       return;
     }
+    if (attachmentUploadPending) return toast('请等附件上传完成后再启动研究。');
     const question = existing?.info.question || [project.title, project.desc === '待补充研究问题。' ? '' : project.desc]
       .map(value => value?.trim()).filter(Boolean).join('\n\n');
     startResearch(project, question);
@@ -591,11 +796,15 @@
     if (newProject) {
       const title = Array.from(question.split('\n')[0].trim()).slice(0, 60).join('');
       project = createProject(title, '新研究项目', question);
+    } else if (project.attachmentDraft) {
+      project.title = Array.from(question.split('\n')[0].trim()).slice(0, 60).join('');
+      project.desc = question;
+      delete project.attachmentDraft;
     }
     const sessionId = 'relay_' + ID() + Date.now().toString(36);
     project.relayRun = { base, sessionId, id: null, terminal: false, question, replacing };
     const run = contextAfterReset(project);
-    project.sources = project.sources.filter(item => !item.relayDemo && (!item.relaySource || item.status === 'discarded'));
+    setEvidence(project, {});
     Object.assign(project, { stage: 0, focus: 0, expanded: 0, expandedNodeIds: [0],
       manuallyCollapsedNodeIds: [], nodeIterationHistory: {}, done: [], logs: {}, history: [],
       report: null, reviewScore: null, iteration: 0, progress: 0, autoFollow: true, phase: 'running' });
@@ -663,6 +872,13 @@
   discardSource = id => {
     const project = proj();
     const source = project.sources.find(item => item.id === id && item.status !== 'discarded');
+    if (source?.attachmentSourceId) {
+      project.attachments[source.attachmentSourceId].status = 'discarded';
+      original.discardSource(id);
+      reviseForSource(project);
+      updateAttachmentStatus();
+      return;
+    }
     if (state.mode === 'real' && source && !source.relayDemo) {
       const rule = exclusionFor(source);
       if (!rule) return toast('这份资料缺少可用于排除的来源标识。');
@@ -674,6 +890,17 @@
 
   restoreSource = id => {
     const project = proj();
+    const source = project.sources.find(item => item.id === id);
+    if (source?.attachmentSourceId) {
+      if (activeAttachments(project).filter(item => item.status === 'accepted').length >= maxAttachments) {
+        return toast('每次研究最多使用 ' + maxAttachments + ' 个附件。');
+      }
+      project.attachments[source.attachmentSourceId].status = 'accepted';
+      original.restoreSource(id);
+      reviseForSource(project);
+      updateAttachmentStatus();
+      return;
+    }
     const excluded = Object.hasOwn(project.excludedSources || {}, id);
     if (excluded) delete project.excludedSources[id];
     original.restoreSource(id);
@@ -728,6 +955,7 @@
 
   sendChat = () => {
     if (state.mode !== 'real') return original.sendChat();
+    if (attachmentUploadPending) return toast('请等附件上传完成后再发送。');
     const question = chat.value.trim();
     const project = proj();
     if (!question) return;
@@ -1043,6 +1271,31 @@
     }).join('');
   };
 
+  function guardMarkup(run) {
+    const check = run?.guardChecks.at(-1);
+    const running = run?.guardChecking;
+    if (!check && !running) return '';
+    const status = { passed: check?.rewrites ? '重写 ' + check.rewrites + ' 次后通过' : '首次通过',
+      rewrite: '退回重写', blocked: '校验未通过，报告已阻断' };
+    const count = check?.stats && Object.values(check.stats)
+      .reduce((total, section) => total + (section.n_numbers_checked || 0), 0);
+    const issueCount = check?.violations?.length || 0;
+    const parts = running ? ['正在校验'] : [status[check.status],
+      Number.isInteger(count) ? '检查 ' + count + ' 处数字' : '',
+      issueCount ? '发现 ' + issueCount + ' 个问题' : ''];
+    const sectionTitles = new Map([['summary', '执行摘要'], ...(run.snapshot.outline || [])
+      .map(section => [section.id, section.title])]);
+    const issues = run.guardChecks.filter(item => item.violations?.length).map(item =>
+      '<li><strong>' + escapeHTML('第 ' + (item.iteration + 1) + ' 轮 · ' +
+        (item.status === 'blocked' ? '阻断' : '第 ' + (item.rewrites + 1) + ' 次退回')) + '</strong><ul>' +
+      item.violations.map(violation => '<li>' + [sectionTitles.get(violation.section) || violation.section,
+        violation.sentence, violation.detail]
+        .filter(Boolean).map(referenceText).join('<br>') + '</li>').join('') + '</ul></li>').join('');
+    return '<section class="mini-card relay-evidence-check"><strong>数字与引用校验</strong><p>' +
+      escapeHTML(parts.filter(Boolean).join(' · ')) + '</p>' + (issues ?
+        '<details><summary>查看校验问题记录</summary><ol>' + issues + '</ol></details>' : '') + '</section>';
+  }
+
   stageSpecific = (project, index) => {
     if (state.mode !== 'real') return original.stageSpecific(project, index);
     const run = context(project);
@@ -1071,9 +1324,8 @@
         content + '</div></section>' : '';
     }
     if (index === 4) {
-      const feedback = (snapshot.guard_feedback || []).map(item => item.detail).filter(Boolean).join('\n');
-      const issue = snapshot.issue_summary || feedback;
-      return (project.reviewScore == null ? '' : '<div class="review-score"><strong class="score-number">' +
+      const issue = snapshot.issue_summary;
+      return guardMarkup(run) + (project.reviewScore == null ? '' : '<div class="review-score"><strong class="score-number">' +
         project.reviewScore.toFixed(2) + '</strong><span class="score-label">评审评分</span></div>') +
         '<p class="score-rule">评审规则：评分 &gt; 0.95 才会跳过人工审核直接生成报告；≤ 0.95 进入人工审核（研究轮次耗尽时自动汇总）。</p>' +
         (issue ? '<div class="warning">' + referenceText(issue) + '</div>' : '');
@@ -1097,8 +1349,21 @@
   };
 
   previewSource = id => {
-    original.previewSource(id);
     const source = proj().sources.find(item => item.id === id);
+    if (state.mode === 'real' && source?.attachmentSourceId) {
+      const sourceId = escapeHTML(source.attachmentSourceId);
+      const escapedId = escapeHTML(id);
+      const action = source.status === 'accepted' ?
+        '<button class="btn" data-action="deleteSource" data-id="' + escapedId + '">排除此资料</button>' :
+        '<button class="btn" data-action="restoreSource" data-id="' + escapedId + '">恢复资料</button>';
+      openModal(modalHeader('研究附件', 'file') + '<h3>' + escapeHTML(source.title) + '</h3><p>有效至 ' +
+        escapeHTML(new Date(source.expiresAt).toLocaleString('zh-CN')) +
+        (source.label ? ' · 引用 [' + escapeHTML(source.label) + ']' : '') + '</p><div class="modal-actions">' +
+        action + '<button class="btn danger" data-action="deleteAttachment" data-id="' + sourceId +
+        '">删除文件</button></div>');
+      return;
+    }
+    original.previewSource(id);
     if (state.mode !== 'real' || !source?.relaySource) return;
     const details = document.querySelector('#modalContent .demo-note:last-of-type');
     if (details) details.textContent = '引用 ' + source.label + (source.url ? ' · ' + source.url : '');
@@ -1132,6 +1397,32 @@
     setTimeout(() => URL.revokeObjectURL(url), 15000);
     toast('已导出后端报告');
   };
+
+  attachmentInput?.addEventListener('change', () => {
+    const files = Array.from(attachmentInput.files || []);
+    attachmentInput.value = '';
+    void uploadAttachments(files).catch(error => toast('上传失败：' + error.message));
+  });
+
+  document.addEventListener('click', event => {
+    const action = event.target.closest('[data-action="uploadAttachment"], [data-action="deleteAttachment"], [data-action="confirmClearTrash"]');
+    if (!action || state.mode !== 'real') return;
+    const actionName = action.dataset.action;
+    if (actionName === 'confirmClearTrash' &&
+        !Object.values(proj().attachments || {}).some(item => item.status === 'discarded')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (actionName === 'uploadAttachment') attachmentInput?.click();
+    else if (actionName === 'deleteAttachment') void deleteAttachment(action.dataset.id);
+    else {
+      action.disabled = true;
+      void clearDiscardedAttachments(proj());
+    }
+  }, true);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') purgeExpiredAttachments();
+  });
 
   document.addEventListener('click', event => {
     const disclosure = event.target.closest('[data-review-disclosure] > summary');
@@ -1290,6 +1581,7 @@
     }
   }
   window.RELAY_DEMO.selectProject = selectProject;
+  purgeExpiredAttachments();
   renderAll();
   alignWorkspace();
 })();

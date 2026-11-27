@@ -670,6 +670,16 @@ pydantic-core==2.50.5 \
     --hash=sha256:fa66340c6d3e08a276803812e7665312dfc75dd24eedfa8e09f18a0f8e3e0e8f \
     --hash=sha256:feb8c87dbc4684777ddafbf37c922d9e2748272ba61e362ebf85db73ebda6234
     # via pydantic
+pymupdf==1.25.5 \
+    --hash=sha256:5a35e2725fae0ab57f058dff77615c15eb5961eac50ba04f41ebc792cd8facad \
+    --hash=sha256:5f96311cacd13254c905f6654a004a0a2025b71cabc04fda667f5472f72c15a0 \
+    --hash=sha256:65e18ddb37fe8ec4edcdbebe9be3a8486b6a2f42609d0a142677e42f3a0614f8 \
+    --hash=sha256:6ed7fc25271004d6d3279c20a80cb2bb4cda3efa9f9088dcc07cd790eca0bc63 \
+    --hash=sha256:7f44bc3d03ea45b2f68c96464f96105e8c7908896f2fb5e8c04f1fb8dae7981e \
+    --hash=sha256:cde4e1c9cfb09c0e1e9c2b7f4b787dd6bb34a32cfe141a4675e24af7c0c25dd3 \
+    --hash=sha256:d94b800e9501929c42283d39bc241001dd87fdeea297b5cb40d5b5714534452f \
+    --hash=sha256:ee22155d3a634642d76553204867d862ae1bdd9f7cf70c0797d8127ebee6bed5
+    # via -r requirements/api.in
 python-dotenv==1.1.0 \
     --hash=sha256:41f90bc6f5f177fb41f53e87666db362025010eb28f60a01c9143bfa33a2b2d5 \
     --hash=sha256:d7c01d9e2293916c18baf562d95698754b0dbbb5e74d457c45d4f6561fb9d55d

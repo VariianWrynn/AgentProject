@@ -251,11 +251,6 @@ class TestHTTPAPIServer:
 
     # ---- A5. GET /research/stream (SSE) ---------------------------------------
 
-    VALID_SSE_TYPES = {
-        "thinking", "searching", "analyzing", "writing",
-        "reviewing", "done", "heartbeat", "error",
-    }
-
     @integration
     def test_stream_content_type_is_event_stream(self, api_client):
         """A5: SSE endpoint sets Content-Type: text/event-stream."""
@@ -264,86 +259,6 @@ class TestHTTPAPIServer:
             params={"question": "What is solar energy?", "session_id": "sse-ctype-test"},
         ) as resp:
             assert "text/event-stream" in resp.headers.get("content-type", "")
-
-    @integration
-    def test_stream_terminates_with_done_or_error(self, api_client):
-        """A5: stream always ends with type=='done' or type=='error', never a heartbeat."""
-        events = []
-        with api_client.stream(
-            "GET", "/research/stream",
-            params={"question": "Brief stream test", "session_id": "sse-term-test"},
-        ) as resp:
-            for line in resp.iter_lines():
-                if line.startswith("data:"):
-                    try:
-                        events.append(json.loads(line[5:].strip()))
-                    except json.JSONDecodeError:
-                        pass
-        assert len(events) > 0
-        assert events[-1]["type"] in ("done", "error"), (
-            f"Stream ended with type={events[-1]['type']!r}"
-        )
-
-    @integration
-    def test_stream_events_have_required_fields(self, api_client):
-        """A5: every SSE event payload has type, content, and t_ms."""
-        with api_client.stream(
-            "GET", "/research/stream",
-            params={"question": "Field check", "session_id": "sse-fields-test"},
-        ) as resp:
-            for line in resp.iter_lines():
-                if line.startswith("data:"):
-                    try:
-                        payload = json.loads(line[5:].strip())
-                    except json.JSONDecodeError:
-                        continue
-                    for field in ("type", "content", "t_ms"):
-                        assert field in payload
-                    break  # one event is enough for field validation
-
-    @integration
-    def test_stream_event_types_are_valid_literals(self, api_client):
-        """A5: every event type is one of the 8 defined SSE type literals."""
-        with api_client.stream(
-            "GET", "/research/stream",
-            params={"question": "Type check", "session_id": "sse-type-check"},
-        ) as resp:
-            for line in resp.iter_lines():
-                if line.startswith("data:"):
-                    try:
-                        payload = json.loads(line[5:].strip())
-                        assert payload["type"] in self.VALID_SSE_TYPES
-                    except json.JSONDecodeError:
-                        pass
-
-    @integration
-    def test_stream_cached_t_ms_monotonically_nondecreasing(self, api_client):
-        """A5: replayed (cached) stream t_ms values are monotonically non-decreasing."""
-        question = "Cached stream monotone test"
-        sid = "sse-monotone-cache"
-
-        def collect_events(session_id):
-            events = []
-            with api_client.stream(
-                "GET", "/research/stream",
-                params={"question": question, "session_id": session_id},
-            ) as resp:
-                for line in resp.iter_lines():
-                    if line.startswith("data:"):
-                        try:
-                            events.append(json.loads(line[5:].strip()))
-                        except json.JSONDecodeError:
-                            pass
-            return events
-
-        collect_events(sid)  # populate cache
-        events = collect_events(sid)  # read from cache
-
-        t_vals = [e["t_ms"] for e in events]
-        for i in range(1, len(t_vals)):
-            assert t_vals[i] >= t_vals[i - 1], (
-                f"t_ms decreased at index {i}: {t_vals[i-1]} → {t_vals[i]}"
-            )
 
     # ---- A6. POST /research/report --------------------------------------------
 

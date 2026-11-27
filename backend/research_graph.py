@@ -10,6 +10,7 @@ from functools import partial
 from langgraph.graph import END, StateGraph
 
 from agent_state import AgentState
+from backend.research_attachments import AttachmentUnavailable
 from backend.research_events import MemoryJournal, RunEvents
 from backend.review_intent import REVISION_TARGETS, review_selection_key
 from backend.tools.citation_guard import build_evidence, verify
@@ -69,7 +70,7 @@ def chief_architect_node(state, llm=None):
     return run(state, llm or _llm("chief_architect"))
 
 
-def deep_scout_node(state, events=None, llm=None):
+def deep_scout_node(state, events=None, llm=None, attachment_loader=None):
     from backend.agents.deep_scout import run
     from mcp_client import MCPClient
     # A personal-key run carries its key on the LLM client; forward it so web
@@ -77,7 +78,8 @@ def deep_scout_node(state, events=None, llm=None):
     # to the server DEEPSEEK_API_KEY inside the MCP tool.
     tools = MCPClient(emit=events.emit if events else None,
                       api_key=getattr(llm, "api_key", None))
-    return run(state, llm or _llm("deep_scout"), tools=tools)
+    options = {"attachment_sources": [item.source() for item in attachment_loader()]} if attachment_loader else {}
+    return run(state, llm or _llm("deep_scout"), tools=tools, **options)
 
 
 def lead_writer_node(state, llm=None):
@@ -90,7 +92,7 @@ def critic_master_node(state, llm=None):
     return run(state, llm or _llm("critic_master"))
 
 
-def evidence_gate_node(state):
+def evidence_gate_node(state, events=None):
     sections = state.get("draft_sections", {})
     evidence = build_evidence(state)
     violations = []
@@ -104,11 +106,17 @@ def evidence_gate_node(state):
         result = verify(content, evidence)
         stats[section_id] = result.stats
         violations.extend(dict(item, section=section_id) for item in result.violations)
-    if violations and state.get("guard_rewrites", 0) >= MAX_GUARD_REWRITES:
+    rewrites = state.get("guard_rewrites", 0)
+    blocked = bool(violations and rewrites >= MAX_GUARD_REWRITES)
+    if events:
+        events.emit("evidence_checked", node="evidence_gate",
+                    status="blocked" if blocked else "rewrite" if violations else "passed",
+                    stats=stats, violations=violations, rewrites=rewrites)
+    if blocked:
         raise EvidenceRejected("evidence validation failed after bounded rewrites")
     return {"gate_passed": not violations, "guard_feedback": violations,
             "guard_stats": stats,
-            "guard_rewrites": state.get("guard_rewrites", 0) + bool(violations),
+            "guard_rewrites": rewrites + bool(violations),
             "phase": "reviewing" if not violations else "writing"}
 
 
@@ -186,12 +194,13 @@ def human_gate_node(state, events=None):
     return {"user_decision": "timeout", "awaiting_human": False, "phase": "done"}
 
 
-def _defaults(events, llm=None):
+def _defaults(events, llm=None, attachment_loader=None):
     from backend.tools.report_assembly import assemble_report
     return {"router": partial(router_node, llm=llm),
             "chief_architect": partial(chief_architect_node, llm=llm),
-            "deep_scout": partial(deep_scout_node, events=events, llm=llm),
-            "lead_writer": partial(lead_writer_node, llm=llm), "evidence_gate": evidence_gate_node,
+            "deep_scout": partial(deep_scout_node, events=events, llm=llm, attachment_loader=attachment_loader),
+            "lead_writer": partial(lead_writer_node, llm=llm),
+            "evidence_gate": partial(evidence_gate_node, events=events),
             "critic_master": partial(critic_master_node, llm=llm),
             "human_gate": lambda state: human_gate_node(state, events),
             "synthesizer": assemble_report}
@@ -201,8 +210,8 @@ BRANCHES = {"evidence_gate": _route_evidence_gate,
             "critic_master": _route_critic_master, "human_gate": _route_human_gate}
 
 
-def build_research_graph(nodes: dict | None = None, events=None, *, llm=None):
-    handlers = _defaults(events, llm)
+def build_research_graph(nodes: dict | None = None, events=None, *, llm=None, attachment_loader=None):
+    handlers = _defaults(events, llm, attachment_loader)
     handlers.update(nodes or {})
     graph = StateGraph(AgentState)
 
@@ -223,6 +232,16 @@ def build_research_graph(nodes: dict | None = None, events=None, *, llm=None):
                     if incoming.get("user_decision") is None:
                         round_update["review_feedback"] = None
                     incoming.update(round_update)
+                if attachment_loader and name in {"lead_writer", "evidence_gate"}:
+                    frozen = incoming.get("evidence_frozen", {})
+                    uploads = [item for item in frozen.values() if item.get("source_type") == "upload"]
+                    if uploads:
+                        excerpts = {item.source_id: item.excerpt(incoming["question"])
+                                    for item in attachment_loader()}
+                        for item in uploads:
+                            if item["chunk_id"] not in excerpts:
+                                raise AttachmentUnavailable("附件已无法访问，请重新上传。")
+                            item["text"] = excerpts[item["chunk_id"]]
                 update = handler(incoming)
                 update = {**update, **round_update}
                 if name == "lead_writer":
@@ -272,14 +291,14 @@ def _make_initial_state(question, session_id, demo_mode=False, fact_guard=None, 
 
 
 def run_deep_research(question, session_id=None, demo_mode=False, fact_guard=None,
-                      events=None, *, nodes=None, excluded_sources=None, llm=None):
+                      events=None, *, nodes=None, excluded_sources=None, llm=None, attachment_loader=None):
     sid = session_id or uuid.uuid4().hex
     events = events or RunEvents(MemoryJournal(), sid)
     state = _make_initial_state(question, sid, demo_mode, fact_guard, events.run_id)
     state["excluded_sources"] = excluded_sources or []
     events.emit("run_started", state=state)
     try:
-        graph = build_research_graph(nodes=nodes, events=events, llm=llm)
+        graph = build_research_graph(nodes=nodes, events=events, llm=llm, attachment_loader=attachment_loader)
         for step in graph.stream(state, config={"recursion_limit": 100}, stream_mode="updates"):
             for node, update in step.items():
                 state.update(update)

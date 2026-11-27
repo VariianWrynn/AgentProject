@@ -5,3 +5,4 @@ redis==5.2.1
 requests==2.32.4
 langgraph==1.0.3
 python-dotenv==1.1.0
+pymupdf==1.25.5

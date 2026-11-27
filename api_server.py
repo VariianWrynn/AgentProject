@@ -150,21 +150,26 @@ warnings.filterwarnings(
 )
 
 import requests
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from openai import APIError
 from backend.llm_client import make_deepseek_llm
 from pydantic import BaseModel, Field
 from typing import Annotated, Literal
+from starlette.concurrency import run_in_threadpool
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import redis
 import backend.research_graph as _lga
+from backend.research_attachments import (
+    MAX_ATTACHMENTS_PER_RUN, MAX_UPLOAD_BYTES, AttachmentCapacityReached, AttachmentStore,
+    AttachmentUnavailable, InvalidAttachment, parse_attachment,
+)
 from backend.research_events import RedisJournal, RunEvents, replay_state
 from backend.review_intent import ReviewIntent, classify_feedback, review_selection_key
-from llm_router import make_llm
+from llm_router import ModelConfigurationError, make_llm
 from query_entry import ROUTE_PROMPT, dispatch_query
 
 # ── singletons ────────────────────────────────────────────────────────────────
@@ -193,6 +198,8 @@ _query_slot = threading.BoundedSemaphore(_max_concurrent_queries)
 _query_sessions_lock = threading.Lock()
 _query_sessions: set[str] = set()
 _review_decision_lock = threading.Lock()
+_attachments = AttachmentStore()
+_attachment_slots = threading.BoundedSemaphore(1)
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
@@ -253,6 +260,9 @@ class ReportRequest(BaseModel):
     session_id: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     demo_mode: bool = False
     excluded_sources: list[SourceExclusion] = Field(default_factory=list, max_length=250)
+    attachment_ids: list[Annotated[str, Field(pattern=r"^[a-f0-9]{32}$")]] = Field(
+        default_factory=list, max_length=MAX_ATTACHMENTS_PER_RUN,
+    )
 
 
 class IngestRequest(BaseModel):
@@ -353,7 +363,7 @@ def _active_run(session_id: str) -> str | None:
 
 
 def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = False,
-              *, excluded_sources: list[dict] | None = None, llm=None) -> dict:
+              *, excluded_sources: list[dict] | None = None, llm=None, attachment_loader=None) -> dict:
     if len(question) > 16000 or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", sid):
         raise HTTPException(status_code=422, detail="Invalid query input")
     with _query_sessions_lock:
@@ -364,7 +374,8 @@ def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = F
                                 headers={"Retry-After": "5"})
         _query_sessions.add(sid)
     try:
-        return _dispatch_admitted(question, sid, demo_mode, force_research, excluded_sources, llm=llm)
+        return _dispatch_admitted(question, sid, demo_mode, force_research, excluded_sources,
+                                  llm=llm, attachment_loader=attachment_loader)
     finally:
         with _query_sessions_lock:
             _query_sessions.remove(sid)
@@ -372,7 +383,7 @@ def _dispatch(question: str, sid: str, demo_mode: bool, force_research: bool = F
 
 
 def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research: bool = False,
-                       excluded_sources: list[dict] | None = None, *, llm=None) -> dict:
+                       excluded_sources: list[dict] | None = None, *, llm=None, attachment_loader=None) -> dict:
     if not question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
     events = _new_events(sid)
@@ -380,6 +391,8 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
     options = {"excluded_sources": excluded_sources} if excluded_sources else {}
     if llm is not None:
         options["llm"] = llm
+    if attachment_loader is not None:
+        options["attachment_loader"] = attachment_loader
     try:
         result = dispatch_query(
             question.strip(), sid, demo_mode,
@@ -395,9 +408,17 @@ def _dispatch_admitted(question: str, sid: str, demo_mode: bool, force_research:
         raise HTTPException(status_code=408, detail={"message": str(exc), "run_id": events.run_id}) from exc
     except _lga.EvidenceRejected as exc:
         raise HTTPException(status_code=422, detail={"message": str(exc), "run_id": events.run_id}) from exc
+    except AttachmentUnavailable as exc:
+        raise HTTPException(status_code=410, detail={"message": str(exc), "run_id": events.run_id}) from exc
     except Exception as exc:
+        provider_error = exc.__cause__ if isinstance(exc, _lga.ResearchExecutionError) else exc
+        if isinstance(provider_error, ModelConfigurationError):
+            _api_logger.error("Research model configuration: %s", provider_error)
+            raise HTTPException(status_code=503, detail={
+                "message": "研究模型缺少配置。请在账户菜单填入 DeepSeek API Key，或配置服务端模型。",
+                "run_id": events.run_id,
+            }) from None
         if llm is not None:
-            provider_error = exc.__cause__ if isinstance(exc, _lga.ResearchExecutionError) else exc
             status_code = getattr(provider_error, "status_code", None)
             if status_code in (401, 402, 403):
                 message = "DeepSeek 账户余额不足。" if status_code == 402 else "DeepSeek 拒绝了请求，请检查 API Key。"
@@ -757,12 +778,56 @@ def budget_status() -> dict:
 
 @app.post("/research/report")
 def research_report(req: ReportRequest, request: Request, deepseek_key: DeepSeekKey = None) -> dict:
+    attachment_ids = list(dict.fromkeys(req.attachment_ids))
+
+    def load_attachments():
+        return _attachments.resolve(attachment_ids)
+
+    if attachment_ids:
+        try:
+            load_attachments()
+        except AttachmentUnavailable as exc:
+            raise HTTPException(status_code=410, detail=str(exc)) from exc
     result = _dispatch(req.question, req.session_id or str(uuid.uuid4()), req.demo_mode, force_research=True,
                        excluded_sources=[source.model_dump() for source in req.excluded_sources],
-                       llm=_model_llm(request, deepseek_key))
+                       llm=_model_llm(request, deepseek_key),
+                       attachment_loader=load_attachments if attachment_ids else None)
     if result["route"] == "multiagent":
         return {**result["report"], "run_id": result["run_id"], "route": result["route"]}
     return result
+
+
+@app.post("/research/attachments", status_code=201)
+async def upload_research_attachment(request: Request, response: Response,
+                                     filename: Annotated[str, Query(min_length=1, max_length=255)]) -> dict:
+    if not _attachment_slots.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="上传繁忙，请稍后重试。", headers={"Retry-After": "5"})
+    try:
+        body = bytearray()
+        async with asyncio.timeout(15):
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="单个文件不能超过 1 MB。")
+                body.extend(chunk)
+        title, parsed = await run_in_threadpool(parse_attachment, filename, body)
+        identifier, item = _attachments.put(title, parsed)
+    except TimeoutError as exc:
+        raise HTTPException(status_code=408, detail="上传超时，请重试。") from exc
+    except InvalidAttachment as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except AttachmentCapacityReached as exc:
+        raise HTTPException(status_code=429, detail="临时附件存储已满，请稍后重试。") from exc
+    finally:
+        _attachment_slots.release()
+    response.headers["Cache-Control"] = "no-store"
+    return {"id": identifier, "source_id": item.source_id, "title": item.title, "expires_at": item.expires_at}
+
+
+@app.delete("/research/attachments", status_code=204)
+def delete_research_attachment(attachment_id: Annotated[str, Header(
+        alias="X-Relay-Attachment", pattern=r"^[a-f0-9]{32}$")]) -> Response:
+    _attachments.delete(attachment_id)
+    return Response(status_code=204)
 
 
 @app.post("/research/runs/{run_id}/control", status_code=202)
@@ -788,18 +853,22 @@ def supersede_research(run_id: str, req: ReportRunContext) -> dict:
     return {"status": "superseded"}
 
 
-def _execute_report(question: str, sid: str, demo_mode: bool, *, events, excluded_sources=None, llm=None) -> dict:
+def _execute_report(question: str, sid: str, demo_mode: bool, *, events, excluded_sources=None,
+                    llm=None, attachment_loader=None) -> dict:
     started = time.time()
     options = {"excluded_sources": excluded_sources} if excluded_sources else {}
     if llm is not None:
         options["llm"] = llm
+    if attachment_loader is not None:
+        options["attachment_loader"] = attachment_loader
     state = _lga.run_deep_research(question, sid, demo_mode=demo_mode, events=events, **options)
     result = _build_report_result(state, sid, (time.time() - started) * 1000)
     result["run_id"] = events.run_id
-    try:
-        result["saved_path"] = _save_report_markdown(result, question, sid)
-    except OSError as exc:
-        _api_logger.warning("Report Markdown save failed: %s", exc)
+    if attachment_loader is None:
+        try:
+            result["saved_path"] = _save_report_markdown(result, question, sid)
+        except OSError as exc:
+            _api_logger.warning("Report Markdown save failed: %s", exc)
     return result
 
 
