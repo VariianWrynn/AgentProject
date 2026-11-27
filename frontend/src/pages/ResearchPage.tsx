@@ -27,8 +27,9 @@ export function ResearchPage() {
 
   const handleSubmit = useCallback(
     async (q: string, sid: string, demoMode: boolean) => {
-      if (!/^[A-Za-z0-9_-]{12,256}$/.test(sessionStorage.getItem(API_KEY_STORAGE) ?? '')) {
-        setErrorMsg('请先填写你自己的 DeepSeek API Key（仅保存在当前浏览器会话中）。')
+      const storedKey = sessionStorage.getItem(API_KEY_STORAGE) ?? ''
+      if (storedKey && !/^[A-Za-z0-9_-]{12,256}$/.test(storedKey)) {
+        setErrorMsg('DeepSeek API Key 格式有误，请检查，或清空后使用服务端免费额度。')
         setPageState('error')
         return
       }
@@ -74,7 +75,7 @@ export function ResearchPage() {
       </div>
       <div className={styles.card}>
         <label htmlFor="deepseek-key" className={styles.keyLabel}>
-          DeepSeek API Key（必填，仅存于当前浏览器会话，不会写入服务器）
+          DeepSeek API Key（可选：留空用服务端免费额度，每小时限 5 元；填写则按你自己账户计费、不受限。仅存于当前浏览器会话）
         </label>
         <input
           id="deepseek-key"

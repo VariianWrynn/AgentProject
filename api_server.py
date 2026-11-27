@@ -173,6 +173,20 @@ _redis = redis.Redis(host=os.getenv("REDIS_HOST", "localhost"),
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8002")
 REPORT_CACHE_TTL = 3600
 
+# Hourly cost budget for anonymous server-key try-out usage. Server-key model
+# calls and web searches feed it; personal-key runs bill the visitor and skip it.
+from backend import usage_budget
+import backend.llm_client as _llm_client_module
+import mcp_client as _mcp_client_module
+# Dedicated short-timeout client so a Redis hiccup cannot stall every request's
+# budget check; tracking degrades to "no cost" on failure rather than blocking.
+usage_budget.init(redis.Redis(host=os.getenv("REDIS_HOST", "localhost"),
+                              port=int(os.getenv("REDIS_PORT", "6379")),
+                              decode_responses=True,
+                              socket_connect_timeout=2, socket_timeout=2))
+_llm_client_module.set_budget_sink(usage_budget.add_model_usage)
+_mcp_client_module.set_search_sink(usage_budget.add_search)
+
 
 _max_concurrent_queries = 2
 _query_slot = threading.BoundedSemaphore(_max_concurrent_queries)
@@ -713,18 +727,32 @@ def _personal_deepseek(key: str | None):
 
 
 def _model_llm(request: Request, key: str | None):
-    """Model calls require a personal key; server credentials stay admin-only.
+    """Resolve the LLM for a request and gate anonymous server-key try-out usage.
 
-    Without DEPLOY_ADMIN_TOKEN (local development) the server key remains usable,
-    matching _require_admin. Deployments always set the token, so anonymous
-    visitors can no longer spend the server-side key.
+    - Personal key: bills the visitor's own account, unlimited, never gated.
+    - Admin token: server key, bypasses the hourly budget gate.
+    - Anonymous: server key for trial use, capped at usage_budget.LIMIT_RMB/hour;
+      rejected with 429 once the rolling-hour cost budget is exhausted.
     """
     llm = _personal_deepseek(key)
-    if llm is None:
-        token = os.getenv("DEPLOY_ADMIN_TOKEN", "")
-        if token and not secrets.compare_digest(request.headers.get("Authorization", ""), f"Bearer {token}"):
-            raise HTTPException(status_code=401, detail="请先在账户菜单设置你自己的 DeepSeek API Key。服务端密钥不向匿名访问开放。")
-    return llm
+    if llm is not None:
+        return llm
+    token = os.getenv("DEPLOY_ADMIN_TOKEN", "")
+    is_admin = bool(token) and secrets.compare_digest(
+        request.headers.get("Authorization", ""), f"Bearer {token}")
+    if not is_admin and usage_budget.is_exceeded():
+        raise HTTPException(
+            status_code=429,
+            detail=f"免费尝鲜额度本小时已用尽（每小时 {usage_budget.LIMIT_RMB:g} 元）。"
+                   "请稍后再试，或在账户菜单填入你自己的 DeepSeek API Key 继续使用。",
+            headers={"Retry-After": "600"})
+    return None
+
+
+@app.get("/budget")
+def budget_status() -> dict:
+    """Public hourly try-out budget status (no secrets)."""
+    return usage_budget.status()
 
 
 @app.post("/research/report")

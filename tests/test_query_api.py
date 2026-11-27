@@ -44,6 +44,9 @@ def api(monkeypatch, tmp_path):
     redis, journals = FakeRedis(), {}
     monkeypatch.setattr(module, "_redis", redis)
     monkeypatch.setattr(module, "_journal", lambda run_id: journals.setdefault(run_id, MemoryJournal()))
+    # Bind the cost budget to the fake Redis so anonymous budget checks stay fast
+    # and offline (the import-time client points at a real, possibly absent Redis).
+    module.usage_budget.init(redis)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module, "_classify_query", lambda _: {"route": "multiagent"})
     with TestClient(module.app) as client:
@@ -566,22 +569,35 @@ def test_admin_token_protects_mutations_and_input_is_bounded(api, monkeypatch):
     assert client.post("/query", json={"question": "x", "session_id": "../bad"}).status_code == 422
 
 
-def test_deployed_server_rejects_anonymous_model_calls(api, monkeypatch):
+def test_anonymous_try_out_is_gated_by_hourly_budget(api, scripted_graph, monkeypatch):
     module, client, *_ = api
     monkeypatch.setenv("DEPLOY_ADMIN_TOKEN", "test-admin")
     anonymous = {"Authorization": ""}
-    for path in ("/query", "/chat", "/research/report"):
-        response = client.post(path, json={"question": "compare"}, headers=anonymous)
-        assert response.status_code == 401
-        assert "DeepSeek API Key" in response.json()["detail"]
-    events = module._new_events("anon")
-    events.emit("run_started", state={"iteration": 0, "awaiting_human": True})
-    events.emit("awaiting_review", node="human_gate", review_id=0)
-    request = {"session_id": "anon", "run_id": events.run_id, "review_id": 0}
-    assert client.post("/research/decision", json={**request, "feedback": "补数据"},
-                       headers=anonymous).status_code == 401
-    assert client.post("/research/decision", json={**request, "decision": "approve"},
+    monkeypatch.setattr(module.usage_budget, "is_exceeded", lambda: False)
+    assert client.post("/research/report", json={"question": "compare", "session_id": "anon-ok"},
                        headers=anonymous).status_code == 200
+    monkeypatch.setattr(module.usage_budget, "is_exceeded", lambda: True)
+    blocked = client.post("/research/report", json={"question": "compare", "session_id": "anon-blocked"},
+                          headers=anonymous)
+    assert blocked.status_code == 429
+    assert "免费" in blocked.json()["detail"]
+    # A personal key bills the visitor and bypasses the budget gate even when exhausted.
+    personal = {"Authorization": "", "X-DeepSeek-Api-Key": "sk-personal-key-123"}
+    assert client.post("/research/report", json={"question": "compare", "session_id": "anon-personal"},
+                       headers=personal).status_code == 200
+    # Admin token also bypasses the gate.
+    assert client.post("/research/report", json={"question": "compare", "session_id": "anon-admin"},
+                       headers={"Authorization": "Bearer test-admin"}).status_code == 200
+
+
+def test_budget_endpoint_reports_status(api, monkeypatch):
+    module, client, *_ = api
+    monkeypatch.setattr(module.usage_budget, "status", lambda: {
+        "limit_rmb": 5, "used_rmb": 1.0, "remaining_rmb": 4.0,
+        "exceeded": False, "window_seconds": 3600, "peak_pricing": False})
+    response = client.get("/budget")
+    assert response.status_code == 200
+    assert response.json()["remaining_rmb"] == 4.0
 
 
 def test_personal_key_or_admin_authorizes_model_calls(api, scripted_graph, monkeypatch):

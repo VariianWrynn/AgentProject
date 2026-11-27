@@ -120,7 +120,8 @@ def make_llm(agent_role: str):
             f"No model configured for role '{agent_role}': "
             f"set {model_env} (or LLM_MODEL) in your .env file"
         )
-    return LLMClient(api_key=api_key, model=model, base_url=OPENAI_BASE_URL)
+    # Server key: anonymous try-out usage bills the owner's hourly cost budget.
+    return LLMClient(api_key=api_key, model=model, base_url=OPENAI_BASE_URL, bill_to_budget=True)
 
 
 def get_model(agent_role: str) -> str:

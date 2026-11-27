@@ -10,6 +10,15 @@ LLM_MODEL = os.getenv("LLM_MODEL")
 _USAGE_LOCK = threading.Lock()
 _USAGE_TOTALS: dict = {}   # {model: {"calls": n, "prompt_tokens": n, "completion_tokens": n}}
 
+# Optional sink fed only by server-key clients (bill_to_budget=True) so anonymous
+# try-out usage counts against the hourly cost budget; personal-key clients skip it.
+_BUDGET_SINK = None
+
+
+def set_budget_sink(fn) -> None:
+    global _BUDGET_SINK
+    _BUDGET_SINK = fn
+
 
 def record_usage(model: str, usage) -> None:
     """Accumulate token usage from an OpenAI-compatible response.usage object."""
@@ -33,7 +42,8 @@ def reset_usage_totals() -> None:
 
 
 class LLMClient:
-    def __init__(self, api_key: str = None, model: str = None, base_url: str = None) -> None:
+    def __init__(self, api_key: str = None, model: str = None, base_url: str = None,
+                 bill_to_budget: bool = False) -> None:
         _key = api_key or OPENAI_API_KEY
         _url = base_url or OPENAI_BASE_URL
         _model = model or LLM_MODEL
@@ -59,6 +69,19 @@ class LLMClient:
         # Exposed so the same personal key can also pay for web search (Option A):
         # visitors' search calls bill their own account, not the server key.
         self.api_key = _key
+        self.bill_to_budget = bill_to_budget
+
+    def _report_budget(self, usage) -> None:
+        if not self.bill_to_budget or _BUDGET_SINK is None or usage is None:
+            return
+        prompt = getattr(usage, "prompt_tokens", 0) or 0
+        completion = getattr(usage, "completion_tokens", 0) or 0
+        details = getattr(usage, "prompt_tokens_details", None)
+        cached = (getattr(details, "cached_tokens", 0) or 0) if details is not None else 0
+        try:
+            _BUDGET_SINK(prompt, completion, cached)
+        except Exception:
+            pass
 
     def chat_json(self, system: str, user: str, temperature: float = 0.2) -> dict:
         """Call LLM expecting a JSON response. Falls back to regex extraction."""
@@ -73,6 +96,7 @@ class LLMClient:
                 response_format={"type": "json_object"},
             )
             record_usage(self.model, getattr(resp, "usage", None))
+            self._report_budget(getattr(resp, "usage", None))
             return json.loads(resp.choices[0].message.content)
         except Exception:
             # Some providers ignore response_format — extract JSON from raw text
@@ -85,6 +109,7 @@ class LLMClient:
                 temperature=temperature,
             )
             record_usage(self.model, getattr(resp, "usage", None))
+            self._report_budget(getattr(resp, "usage", None))
             text = resp.choices[0].message.content
             match = re.search(r"\{.*\}", text, re.DOTALL)
             if match:
@@ -102,8 +127,11 @@ class LLMClient:
             temperature=temperature,
         )
         record_usage(self.model, getattr(resp, "usage", None))
+        self._report_budget(getattr(resp, "usage", None))
         return resp.choices[0].message.content
 
 
 def make_deepseek_llm(api_key: str) -> LLMClient:
-    return LLMClient(api_key=api_key, base_url="https://api.deepseek.com", model="deepseek-flash")
+    # Personal key: bills the visitor's own account, never the server budget.
+    return LLMClient(api_key=api_key, base_url="https://api.deepseek.com", model="deepseek-flash",
+                     bill_to_budget=False)

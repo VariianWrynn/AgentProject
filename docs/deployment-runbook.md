@@ -52,7 +52,8 @@ dc config --quiet
 | 配置 | 填写内容 |
 | --- | --- |
 | `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`LLM_MODEL` | 服务端的 OpenAI 兼容模型端点、密钥和可用模型。角色配置可以覆盖模型或密钥 |
-| `DEEPSEEK_API_KEY` | 服务端回退凭据，仅供管理/本地运行的模型调用与网页搜索。访客的模型调用与网页搜索都用其个人 Key（或管理令牌），匿名请求返回 401；搜索按所用 Key 的账号计费，无需单独开通权限 |
+| `DEEPSEEK_API_KEY` | 服务端凭据：供匿名访客免费尝鲜（受每小时成本闸门约束）与管理/本地运行。访客填个人 Key 则模型与搜索都按其账户计费、不受闸门限制；搜索无需单独开通权限 |
+| `SERVER_KEY_HOURLY_LIMIT_RMB` | 匿名尝鲜的每小时成本上限（元），默认 5。按 token（deepseek-flash 峰谷计价）+ 网页搜索 0.005 元/次精确折算，滚动 1 小时窗口，超限匿名请求返回 429 |
 | `DEPLOY_ADMIN_TOKEN` | 独立生成的长随机值 |
 | `MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD` | 对象存储凭据。已有部署沿用现有凭据，除非另行安排轮换 |
 | `DEPLOY_BIND`、`DEPLOY_PORT` | 私有验收用 `127.0.0.1` 和 `8080`。端口被占用时选一个空闲本地端口 |

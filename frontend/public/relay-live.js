@@ -577,11 +577,6 @@
   };
 
   function startResearch(project, question, newProject = false, replacing = false) {
-    if (!personalKey) {
-      toast('请先设置你自己的 DeepSeek API Key，再开始真实研究。');
-      accountDialog();
-      return null;
-    }
     const active = state.projects.filter(item => {
       const run = context(item);
       return run && !run.terminal;
@@ -697,11 +692,6 @@
     const review = run?.review;
     if (project.revisionQuestion || !review || run.terminal || run.sending) return;
     if (run.info.control) return toast('请继续研究后再提交审核意见。');
-    if (payload.feedback && !personalKey) {
-      toast('请先设置 DeepSeek API Key，再提交审核意见。');
-      accountDialog();
-      return;
-    }
     run.sending = true;
     syncNodeDetail();
     if (renderedProject === project.id && state.view === 'workspace') paintNodes(project, new Set([5]));
@@ -1216,16 +1206,28 @@
 
   accountDialog = () => {
     const description = keyTransportAllowed
-      ? '用于研究和人工审核中的模型调用。开始真实研究前必须设置；服务端密钥不向访客开放。只在当前页面生效，刷新后需要重新输入。'
+      ? '不填 Key 也能用服务端免费额度尝鲜（每小时限 5 元，用完即止）。填入你自己的 DeepSeek API Key 则不受该限制、按你自己账户计费。Key 只在当前页面生效，刷新后需要重新输入。'
       : '请通过 HTTPS 或本机工作台使用 DeepSeek API Key。';
     const form = keyTransportAllowed ? '<form data-relay-key><label class="form-row">DeepSeek API Key' +
       '<input type="password" autocomplete="off" spellcheck="false" maxlength="256" required ' +
       (personalKey ? 'placeholder="输入新密钥以替换"' : '') + '></label><div class="modal-actions">' +
       (personalKey ? '<button type="button" class="btn" data-relay-clear-key>移除密钥</button>' : '') +
       '<button type="submit" class="btn primary">保存</button></div></form>' : '';
-    openModal(modalHeader('DeepSeek API Key', 'user') + '<p class="modal-desc">' + description + '</p>' + form);
+    openModal(modalHeader('DeepSeek API Key', 'user') + '<p class="modal-desc">' + description + '</p>' +
+      '<p class="modal-desc" data-relay-budget>正在读取免费额度…</p>' + form);
     const input = modalContent.querySelector('[data-relay-key] input');
     input?.addEventListener('input', () => input.setCustomValidity(''));
+    fetch(apiBase() + '/budget').then(response => response.json()).then(budget => {
+      const line = modalContent.querySelector('[data-relay-budget]');
+      if (!line) return;
+      line.textContent = budget.exceeded
+        ? '本小时免费额度已用尽：请填入自己的 Key，或稍后再试。'
+        : '本小时免费额度剩余约 ' + Number(budget.remaining_rmb).toFixed(2) + ' / ' + budget.limit_rmb +
+          ' 元' + (budget.peak_pricing ? '（高峰计价）' : '') + '。';
+    }).catch(() => {
+      const line = modalContent.querySelector('[data-relay-budget]');
+      if (line) line.textContent = '';
+    });
   };
 
   selectProject = id => {

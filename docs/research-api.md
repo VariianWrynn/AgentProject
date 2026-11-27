@@ -35,9 +35,11 @@ RELAY 工作台由前端构建发布到 `/relay.html`。部署后从 nginx 入�
 
 使用 Compose 和单个模型 API Key 时，将该密钥同时写入部署环境的 `OPENAI_API_KEY` 和 `LLM_KEY_1`，供没有配置独立密钥的角色使用。
 
-模型调用鉴权：设置 `DEPLOY_ADMIN_TOKEN` 后（部署必填），`/query`、`/chat`、`/research/report` 以及 `/research/decision` 的自然语言反馈分类必须携带 `X-DeepSeek-Api-Key`（访客个人 Key，请求头直传、不落盘）或 `Authorization: Bearer <管理令牌>`，匿名请求返回 HTTP 401。服务端模型密钥只服务管理请求。审核的四选一决定不调用模型，无需个人 Key。未设置管理令牌的本地开发环境沿用服务端密钥。RELAY 在开始真实研究前强制弹出个人 Key 设置；内部工作台把个人 Key 保存在浏览器 sessionStorage。
+模型调用有三种身份：① 携带 `X-DeepSeek-Api-Key`（访客个人 Key，请求头直传、不落盘）——模型与网页搜索都按该 Key 对应账户计费，不受免费额度限制；② 携带 `Authorization: Bearer <DEPLOY_ADMIN_TOKEN>` 管理令牌——用服务端密钥、绕过额度闸门；③ 匿名——用服务端密钥免费尝鲜，受每小时成本闸门约束。审核的四选一决定不调用模型，无需 Key。RELAY 与内部工作台的个人 Key 均为可选（存于浏览器会话），不填即走免费尝鲜。
 
-网页搜索计费跟随同一把个人 Key：访客研究的 `web_search` 由 API 服务把个人 Key 经 `X-DeepSeek-Api-Key` 头转给 MCP 工具（`mcp_client` 仅对 `web_search` 附带该头），搜索按所用 Key 对应账号计费，因此访客的搜索开销也落在其自身账户，服务端 `DEEPSEEK_API_KEY` 仅供管理/本地运行回退使用。DeepSeek 搜索无需单独开通权限，任意有效且有余额的 Key 即可调用（401=Key 无效，402=余额不足，429=账号级限速）。
+免费尝鲜成本闸门（`backend/usage_budget.py`）：匿名服务端密钥用量按滚动 1 小时窗口累计成本，达到 `SERVER_KEY_HOURLY_LIMIT_RMB`（默认 5 元）后，匿名模型请求返回 HTTP 429（附 `Retry-After`），直到窗口滚出。成本精确折算：模型 token 按 deepseek-flash 计价（输入缓存未命中 1/2 元、缓存命中 0.02/0.04 元、输出 4/8 元每百万 token，峰谷按北京时间工作日 9–12、14–18 点为高峰，节假日近似按高峰偏保守），网页搜索 0.005 元/次。仅服务端密钥用量计入（`LLMClient.bill_to_budget` 与 `mcp_client` 搜索钩子），个人 Key 用量不计。`GET /api/budget` 公开返回 `{limit_rmb, used_rmb, remaining_rmb, exceeded, peak_pricing}`，RELAY 账户弹窗展示剩余额度。Redis 故障时记账降级为"无成本"，不阻断研究。
+
+网页搜索计费跟随所用 Key：访客带个人 Key 时，`web_search` 由 API 服务把个人 Key 经 `X-DeepSeek-Api-Key` 头转给 MCP 工具（`mcp_client` 仅对 `web_search` 附带该头），搜索计费到访客账户；匿名尝鲜时搜索用服务端密钥并计入免费额度。DeepSeek 搜索无需单独开通权限，任意有效且有余额的 Key 即可调用（401=Key 无效，402=余额不足，429=账号级限速）。
 
 RELAY 的真实模式从项目标题和研究背景生成研究请求。画布按运行事件更新，人工审核接收自然语言或四选一决定。工具、报告和证据引用使用本次运行的数据。暂停表示停止浏览器监听，继续会订阅原运行。工作台的资料排除和恢复用于本地列表筛选。
 

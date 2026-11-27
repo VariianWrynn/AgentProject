@@ -62,6 +62,23 @@ def test_no_personal_key_sends_no_search_header():
     assert "headers" not in seen[0]
 
 
+def test_search_sink_counts_only_server_key_web_search(monkeypatch):
+    import mcp_client
+
+    calls = []
+    monkeypatch.setattr(mcp_client, "_SEARCH_SINK", lambda n: calls.append(n))
+
+    def transport(url, **kwargs):
+        return Response({"result": []})
+
+    mcp_client.MCPClient(transport=transport).call("web_search", "q")  # server key
+    assert calls == [1]
+    mcp_client.MCPClient(transport=transport, api_key="personal").call("web_search", "q")
+    assert calls == [1]  # personal key search bills the visitor, not the budget
+    mcp_client.MCPClient(transport=transport).call("rag_search", "q")
+    assert calls == [1]  # non-search tools never counted
+
+
 def test_mcp_lifecycle_and_timeout_are_safe_for_parallel_calls():
     events, requests_seen = [], []
 

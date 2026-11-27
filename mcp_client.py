@@ -14,6 +14,16 @@ class MCPCallError(Exception):
         super().__init__(f"[MCP:{tool}] {msg}")
 
 
+# Optional sink fed only by server-key web searches (no personal key) so anonymous
+# try-out search cost counts against the hourly budget; personal-key searches skip it.
+_SEARCH_SINK = None
+
+
+def set_search_sink(fn) -> None:
+    global _SEARCH_SINK
+    _SEARCH_SINK = fn
+
+
 class MCPClient:
     TIMEOUTS = {"rag_search": 30, "web_search": 30, "text2sql": 90,
                 "data_analysis": 120, "doc_summary": 30}
@@ -75,4 +85,10 @@ class MCPClient:
             raise MCPCallError(tool, str(exc)) from exc
         if self.emit:
             self.emit("tool_completed", node=self.node, tool=tool)
+        # A successful server-key web search bills the owner's budget (0.005元/次).
+        if tool == "web_search" and self.api_key is None and _SEARCH_SINK is not None:
+            try:
+                _SEARCH_SINK(1)
+            except Exception:
+                pass
         return result
