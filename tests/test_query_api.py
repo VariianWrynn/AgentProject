@@ -72,6 +72,7 @@ def scripted_graph(api, monkeypatch):
 
 def event_data(response):
     assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
     return [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
 
 
@@ -115,6 +116,8 @@ def test_real_graph_query_events_replay_and_reconnect(api, scripted_graph):
     progress = event_data(client.get("/query/stream?session_id=same"))
     assert progress[-1]["type"] == "done"
     assert all(event["run_id"] == run_id for event in progress)
+    assert [event["seq"] for event in progress] == sorted({event["seq"] for event in progress})
+    assert event_data(client.get("/research/stream?question=compare&session_id=same")) == progress
     second = client.post("/query", json={"question": "compare", "session_id": "same"}).json()
     assert second["run_id"] != run_id
     assert client.get("/research/session/same/run").json()["run_id"] == second["run_id"]
@@ -169,6 +172,8 @@ def test_operational_graph_failure_returns_run_error(api, scripted_graph):
     run_id = response.json()["detail"]["run_id"]
     events = event_data(client.get(f"/research/runs/{run_id}/events"))
     assert events[-1]["type"] == "error"
+    progress = event_data(client.get("/research/stream?question=compare&session_id=failed"))
+    assert progress[-1]["type"] == "error"
     assert not any(event["workflow"] == "react" for event in events)
 
 
